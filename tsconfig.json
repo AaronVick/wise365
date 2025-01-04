@@ -19,5 +19,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules", "api/server/api", "book", "saas", "my-app", ".next", "dist"]
+  "exclude": ["node_modules", "api/server/api", ".next", "dist"]
 }
