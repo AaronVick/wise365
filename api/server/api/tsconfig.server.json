@@ -17,6 +17,6 @@
       "*": ["node_modules/*"]
     }
   },
-  "include": ["server/**/*", "api/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["server/**/*.ts", "api/**/*.ts"],  // Only include TypeScript files
+  "exclude": ["node_modules", "dist", "server/**/*.js", "api/**/*.js"]  // Exclude JavaScript files
 }
