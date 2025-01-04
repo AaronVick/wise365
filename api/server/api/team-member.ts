@@ -1,21 +1,21 @@
-import * as express from 'express';
+const express = require('express');
 
-import { signRequestForUpload } from '../aws-s3';
+const { signRequestForUpload } = require('../aws-s3');
 
-import User from '../models/User';
-import Team from '../models/Team';
-import Invitation from '../models/Invitation';
-import Discussion from '../models/Discussion';
-import Post from '../models/Post';
+const User = require('../models/User');
+const Team = require('../models/Team');
+const Invitation = require('../models/Invitation');
+const Discussion = require('../models/Discussion');
+const Post = require('../models/Post');
 
-import {
+const {
   discussionAdded,
   discussionDeleted,
   discussionEdited,
   postAdded,
   postDeleted,
   postEdited,
-} from '../sockets';
+} = require('../sockets');
 
 const router = express.Router();
 
@@ -49,7 +49,7 @@ router.post('/aws/get-signed-request-for-upload-to-s3', async (req, res, next) =
   }
 });
 
-router.post('/user/update-profile', async (req: any, res, next) => {
+router.post('/user/update-profile', async (req, res, next) => {
   try {
     const { name, avatarUrl } = req.body;
 
@@ -65,7 +65,7 @@ router.post('/user/update-profile', async (req: any, res, next) => {
   }
 });
 
-router.post('/user/toggle-theme', async (req: any, res, next) => {
+router.post('/user/toggle-theme', async (req, res, next) => {
   try {
     const { darkTheme } = req.body;
 
@@ -123,14 +123,12 @@ async function loadTeamData(team, userId, body) {
 
   const initialDiscussions = await loadDiscussionsData(team, userId, body);
 
-  const data: any = { initialMembers, initialInvitations, initialDiscussions };
-
-  // console.log(`Express route:${data.initialPosts}`);
+  const data = { initialMembers, initialInvitations, initialDiscussions };
 
   return data;
 }
 
-router.post('/get-initial-data', async (req: any, res, next) => {
+router.post('/get-initial-data', async (req, res, next) => {
   try {
     const teams = await Team.getAllTeamsForUser(req.user.id);
 
@@ -152,7 +150,7 @@ router.post('/get-initial-data', async (req: any, res, next) => {
   }
 });
 
-router.get('/teams', async (req: any, res, next) => {
+router.get('/teams', async (req, res, next) => {
   try {
     const teams = await Team.getAllTeamsForUser(req.user.id);
 
@@ -164,11 +162,11 @@ router.get('/teams', async (req: any, res, next) => {
   }
 });
 
-router.get('/teams/get-members', async (req: any, res, next) => {
+router.get('/teams/get-members', async (req, res, next) => {
   try {
     const users = await User.getMembersForTeam({
       userId: req.user.id,
-      teamId: req.query.teamId as string,
+      teamId: req.query.teamId,
     });
 
     res.json({ users });
@@ -177,7 +175,7 @@ router.get('/teams/get-members', async (req: any, res, next) => {
   }
 });
 
-router.post('/discussions/add', async (req: any, res, next) => {
+router.post('/discussions/add', async (req, res, next) => {
   try {
     const { name, teamId, memberIds = [], socketId, notificationType } = req.body;
 
@@ -197,7 +195,7 @@ router.post('/discussions/add', async (req: any, res, next) => {
   }
 });
 
-router.post('/discussions/edit', async (req: any, res, next) => {
+router.post('/discussions/edit', async (req, res, next) => {
   try {
     const { name, id, memberIds = [], socketId, notificationType } = req.body;
 
@@ -217,7 +215,7 @@ router.post('/discussions/edit', async (req: any, res, next) => {
   }
 });
 
-router.post('/discussions/delete', async (req: any, res, next) => {
+router.post('/discussions/delete', async (req, res, next) => {
   try {
     const { id, socketId } = req.body;
 
@@ -231,11 +229,11 @@ router.post('/discussions/delete', async (req: any, res, next) => {
   }
 });
 
-router.get('/discussions/list', async (req: any, res, next) => {
+router.get('/discussions/list', async (req, res, next) => {
   try {
     const { discussions } = await Discussion.getList({
       userId: req.user.id,
-      teamId: req.query.teamId as string,
+      teamId: req.query.teamId,
     });
 
     res.json({ discussions });
@@ -244,11 +242,11 @@ router.get('/discussions/list', async (req: any, res, next) => {
   }
 });
 
-router.get('/posts/list', async (req: any, res, next) => {
+router.get('/posts/list', async (req, res, next) => {
   try {
     const posts = await Post.getList({
       userId: req.user.id,
-      discussionId: req.query.discussionId as string,
+      discussionId: req.query.discussionId,
     });
 
     res.json({ posts });
@@ -257,7 +255,7 @@ router.get('/posts/list', async (req: any, res, next) => {
   }
 });
 
-router.post('/posts/add', async (req: any, res, next) => {
+router.post('/posts/add', async (req, res, next) => {
   try {
     const { content, discussionId, socketId } = req.body;
 
@@ -271,7 +269,7 @@ router.post('/posts/add', async (req: any, res, next) => {
   }
 });
 
-router.post('/posts/edit', async (req: any, res, next) => {
+router.post('/posts/edit', async (req, res, next) => {
   try {
     const { content, id, socketId } = req.body;
 
@@ -285,7 +283,7 @@ router.post('/posts/edit', async (req: any, res, next) => {
   }
 });
 
-router.post('/posts/delete', async (req: any, res, next) => {
+router.post('/posts/delete', async (req, res, next) => {
   try {
     const { id, discussionId, socketId } = req.body;
 
@@ -299,4 +297,4 @@ router.post('/posts/delete', async (req: any, res, next) => {
   }
 });
 
-export default router;
+module.exports = router;

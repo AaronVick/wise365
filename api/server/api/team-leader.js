@@ -1,9 +1,9 @@
-import * as express from 'express';
+const express = require('express');
 
-import Invitation from '../models/Invitation';
-import Team from '../models/Team';
-import User from '../models/User';
-import { createSession } from '../stripe';
+const Invitation = require('../models/Invitation');
+const Team = require('../models/Team');
+const User = require('../models/User');
+const { createSession } = require('../stripe');
 
 const router = express.Router();
 
@@ -18,7 +18,7 @@ router.use((req, res, next) => {
   next();
 });
 
-router.post('/teams/add', async (req: any, res, next) => {
+router.post('/teams/add', async (req, res, next) => {
   try {
     const { name, avatarUrl } = req.body;
 
@@ -32,12 +32,9 @@ router.post('/teams/add', async (req: any, res, next) => {
   }
 });
 
-router.post('/teams/update', async (req: any, res, next) => {
+router.post('/teams/update', async (req, res, next) => {
   try {
     const { teamId, name, avatarUrl } = req.body;
-
-    // console.log(req.user.id, typeof req.user.id);
-    // console.log(req.user._id, typeof req.user._id);
 
     const team = await Team.updateTeam({
       userId: req.user.id,
@@ -52,11 +49,11 @@ router.post('/teams/update', async (req: any, res, next) => {
   }
 });
 
-router.get('/teams/get-invitations-for-team', async (req: any, res, next) => {
+router.get('/teams/get-invitations-for-team', async (req, res, next) => {
   try {
     const invitations = await Invitation.getTeamInvitations({
       userId: req.user.id,
-      teamId: req.query.teamId as string,
+      teamId: req.query.teamId,
     });
 
     res.json({ invitations });
@@ -65,7 +62,7 @@ router.get('/teams/get-invitations-for-team', async (req: any, res, next) => {
   }
 });
 
-router.post('/teams/invite-member', async (req: any, res, next) => {
+router.post('/teams/invite-member', async (req, res, next) => {
   try {
     const { teamId, email } = req.body;
 
@@ -77,7 +74,7 @@ router.post('/teams/invite-member', async (req: any, res, next) => {
   }
 });
 
-router.post('/teams/remove-member', async (req: any, res, next) => {
+router.post('/teams/remove-member', async (req, res, next) => {
   try {
     const { teamId, userId } = req.body;
 
@@ -89,7 +86,7 @@ router.post('/teams/remove-member', async (req: any, res, next) => {
   }
 });
 
-router.post('/stripe/fetch-checkout-session', async (req: any, res, next) => {
+router.post('/stripe/fetch-checkout-session', async (req, res, next) => {
   try {
     const { mode, teamId } = req.body;
 
@@ -121,7 +118,7 @@ router.post('/stripe/fetch-checkout-session', async (req: any, res, next) => {
   }
 });
 
-router.post('/cancel-subscription', async (req: any, res, next) => {
+router.post('/cancel-subscription', async (req, res, next) => {
   const { teamId } = req.body;
 
   try {
@@ -136,7 +133,7 @@ router.post('/cancel-subscription', async (req: any, res, next) => {
   }
 });
 
-router.get('/get-list-of-invoices-for-customer', async (req: any, res, next) => {
+router.get('/get-list-of-invoices-for-customer', async (req, res, next) => {
   try {
     const { stripeListOfInvoices } = await User.getListOfInvoicesForCustomer({
       userId: req.user.id,
@@ -147,4 +144,4 @@ router.get('/get-list-of-invoices-for-customer', async (req: any, res, next) => 
   }
 });
 
-export default router;
+module.exports = router;
