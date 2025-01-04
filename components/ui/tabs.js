@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 
+// Tabs Component
 const Tabs = ({ children, defaultValue }) => {
   const [activeTab, setActiveTab] = useState(defaultValue || children[0].props.value);
 
@@ -29,12 +30,9 @@ const Tabs = ({ children, defaultValue }) => {
   );
 };
 
-const TabsList = ({ children }) => <div className="tabs-list">{children}</div>;
-const TabsTrigger = ({ value, children }) => <>{children}</>;
-const TabsContent = ({ value, children }) => <>{children}</>;
+// Directly export the required components
+export const TabsList = ({ children }) => <div className="tabs-list">{children}</div>;
+export const TabsTrigger = ({ value, children }) => <>{children}</>;
+export const TabsContent = ({ value, children }) => <>{children}</>;
 
-Tabs.List = TabsList;
-Tabs.Trigger = TabsTrigger;
-Tabs.Content = TabsContent;
-
-export { Tabs };
+export default Tabs;
