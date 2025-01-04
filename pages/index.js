@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { getFirestore, setDoc, doc } from 'firebase/firestore';
-import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from './firebase'; // Import your Firebase setup
+import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from '../lib/firebase';
 
 const IndexPage = () => {
   const [isLoading, setIsLoading] = useState(false);
