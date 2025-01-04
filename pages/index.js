@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';  // Corrected import statement
+import { Tabs } from '@/components/ui/tabs';  // Correct import for Tabs
+const { List: TabsList, Trigger: TabsTrigger, Content: TabsContent } = Tabs;  // Destructure the components
 
 const HomePage = () => {
   const [isLoading, setIsLoading] = useState(false);
