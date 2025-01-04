@@ -1,4 +1,3 @@
-// pages/register.js
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -9,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-export default function Register() {
+const RegisterPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -17,12 +16,22 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // Map Firebase errors to user-friendly messages
+  const handleFirebaseError = (errorCode) => {
+    const errorMap = {
+      'auth/email-already-in-use': 'This email is already in use.',
+      'auth/weak-password': 'Password should be at least 6 characters.',
+      'auth/invalid-email': 'Invalid email format.',
+    };
+    return errorMap[errorCode] || 'An unexpected error occurred.';
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
-    const auth = getAuth();
-    const db = getFirestore();
     setLoading(true);
     setError('');
+    const auth = getAuth();
+    const db = getFirestore();
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -33,13 +42,14 @@ export default function Register() {
         email,
         name,
         uid: user.uid,
-        role: 'user',
+        role: 'user', // default role
+        theme: 'light', // default theme
         createdAt: new Date().toISOString(),
       });
 
       router.push('/dashboard');
     } catch (err) {
-      setError(err.message);
+      setError(handleFirebaseError(err.code));
     } finally {
       setLoading(false);
     }
@@ -50,9 +60,7 @@ export default function Register() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Create an Account</CardTitle>
-          <CardDescription>
-            Enter your details to get started
-          </CardDescription>
+          <CardDescription>Enter your details to get started</CardDescription>
         </CardHeader>
         <form onSubmit={handleRegister}>
           <CardContent className="space-y-4">
@@ -65,6 +73,7 @@ export default function Register() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
+                aria-label="Full Name"
               />
             </div>
             <div className="space-y-2">
@@ -76,6 +85,7 @@ export default function Register() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                aria-label="Email Address"
               />
             </div>
             <div className="space-y-2">
@@ -83,9 +93,11 @@ export default function Register() {
               <Input
                 id="password"
                 type="password"
+                placeholder="Enter a secure password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                aria-label="Password"
               />
             </div>
             {error && (
@@ -117,4 +129,6 @@ export default function Register() {
       </Card>
     </div>
   );
-}
+};
+
+export default RegisterPage;
