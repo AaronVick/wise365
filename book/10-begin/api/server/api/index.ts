@@ -4,7 +4,7 @@ import publicExpressRoutes from './public';
 import teamMemberExpressRoutes from './team-member';
 import teamLeaderApi from './team-leader';
 
-function handleError(err, _, res, __) {
+function handleError(err: Error, _: any, res: any, __: any) {
   console.error(err.stack);
 
   res.json({ error: err.message || err.toString() });
