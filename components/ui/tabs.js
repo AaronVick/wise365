@@ -1,4 +1,3 @@
-// components/ui/tabs.js
 import React, { useState } from 'react';
 
 const Tabs = ({ children, defaultValue }) => {
@@ -30,9 +29,11 @@ const Tabs = ({ children, defaultValue }) => {
   );
 };
 
+const TabsList = ({ children }) => <div className="tabs-list">{children}</div>;
 const TabsTrigger = ({ value, children }) => <>{children}</>;
 const TabsContent = ({ value, children }) => <>{children}</>;
 
+Tabs.List = TabsList;
 Tabs.Trigger = TabsTrigger;
 Tabs.Content = TabsContent;
 
