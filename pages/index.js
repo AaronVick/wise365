@@ -7,8 +7,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs } from '@/components/ui/tabs';  // Correct import for Tabs
-const { List: TabsList, Trigger: TabsTrigger, Content: TabsContent } = Tabs;  // Destructure the components
 
 const HomePage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -34,53 +32,6 @@ const HomePage = () => {
       router.push('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
-      setError(error.message);
-    }
-    setIsLoading(false);
-  };
-
-  // Handle user registration
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-    try {
-      const email = e.target['register-email'].value;
-      const password = e.target['register-password'].value;
-      const confirmPassword = e.target['confirm-password'].value;
-
-      if (password !== confirmPassword) {
-        throw new Error('Passwords do not match');
-      }
-
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      const db = getFirestore();
-
-      // Initialize user document in Firestore
-      await setDoc(doc(db, 'users', user.uid), {
-        email,
-        uid: user.uid,
-        role: 'user',
-        createdAt: new Date().toISOString(),
-      });
-
-      // Add a default team for the user
-      await setDoc(doc(db, 'teams', `team-${user.uid}`), {
-        name: 'Default Team',
-        teamLeader: user.uid,
-        createdAt: new Date().toISOString(),
-      });
-
-      console.log('User registered:', user);
-
-      // Sync the user with the backend (if needed)
-      await syncUserWithBackend(user);
-
-      router.push('/dashboard');
-    } catch (error) {
-      console.error('Registration error:', error);
       setError(error.message);
     }
     setIsLoading(false);
@@ -132,76 +83,34 @@ const HomePage = () => {
           </div>
         </div>
 
-        {/* Right side - Auth Forms */}
+        {/* Right side - Auth Form */}
         <div className="w-full max-w-md">
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
-            </TabsList>
-
-            {/* Login Form */}
-            <TabsContent value="login">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Login</CardTitle>
-                  <CardDescription>
-                    Enter your credentials to access your account
-                  </CardDescription>
-                </CardHeader>
-                <form onSubmit={handleLogin}>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input id="email" type="email" placeholder="name@example.com" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <Input id="password" type="password" required />
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? 'Logging in...' : 'Login'}
-                    </Button>
-                  </CardFooter>
-                </form>
-              </Card>
-            </TabsContent>
-
-            {/* Register Form */}
-            <TabsContent value="register">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Create an Account</CardTitle>
-                  <CardDescription>
-                    Enter your details to create a new account
-                  </CardDescription>
-                </CardHeader>
-                <form onSubmit={handleRegister}>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="register-email">Email</Label>
-                      <Input id="register-email" type="email" placeholder="name@example.com" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="register-password">Password</Label>
-                      <Input id="register-password" type="password" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirm-password">Confirm Password</Label>
-                      <Input id="confirm-password" type="password" required />
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? 'Creating Account...' : 'Create Account'}
-                    </Button>
-                  </CardFooter>
-                </form>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          {/* Login Form */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Login</CardTitle>
+              <CardDescription>
+                Enter your credentials to access your account
+              </CardDescription>
+            </CardHeader>
+            <form onSubmit={handleLogin}>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" placeholder="name@example.com" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input id="password" type="password" required />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? 'Logging in...' : 'Login'}
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
         </div>
       </main>
 
