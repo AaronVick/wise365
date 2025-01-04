@@ -1,16 +1,11 @@
 // api/server/api/index.ts
-import { Request, Response, NextFunction, Express } from 'express';
+import type { ErrorRequestHandler, Request, Response, Express } from 'express';
 
 import publicExpressRoutes from './public';
 import teamMemberExpressRoutes from './team-member';
 import teamLeaderApi from './team-leader';
 
-const handleError = (
-  err: Error,
-  _req: Request,
-  res: Response,
-  _next: NextFunction
-): void => {
+const handleError: ErrorRequestHandler = (err, _req, res, _next) => {
   console.error(err.stack);
   res.status(500).json({ error: err.message || 'Internal Server Error' });
 };
