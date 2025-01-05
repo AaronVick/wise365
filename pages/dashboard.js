@@ -82,6 +82,15 @@ const Dashboard = () => {
   const [goals, setGoals] = useState([]);
   const [showGoalModal, setShowGoalModal] = useState(false);
 
+  // Logging function to help debug
+  const logState = () => {
+    console.log('currentUser:', currentUser);
+    console.log('recentActivity:', recentActivity);
+    console.log('goals:', goals);
+    console.log('showGoalModal:', showGoalModal);
+  };
+
+  // Fetch recent activity
   const fetchRecentActivity = async (userId) => {
     try {
       const conversationsQuery = query(
@@ -93,7 +102,6 @@ const Dashboard = () => {
       const conversationsSnapshot = await getDocs(conversationsQuery);
 
       const activity = [];
-
       conversationsSnapshot.forEach(doc => {
         activity.push({
           id: doc.id,
@@ -108,6 +116,7 @@ const Dashboard = () => {
     }
   };
 
+  // Fetch goals for the user
   const fetchGoals = async () => {
     try {
       const goalsRef = collection(db, 'goals');
@@ -127,6 +136,7 @@ const Dashboard = () => {
     }
   };
 
+  // Handle goal creation
   const handleGoalCreate = async (goalData) => {
     try {
       const goalsRef = collection(db, 'goals');
@@ -146,6 +156,7 @@ const Dashboard = () => {
     }
   };
 
+  // Handle goal status update
   const handleStatusUpdate = async (goalId, newStatus) => {
     try {
       const goalRef = doc(db, 'goals', goalId);
@@ -159,6 +170,7 @@ const Dashboard = () => {
     }
   };
 
+  // Check auth state on load and update user data
   useEffect(() => {
     let unsubscribe;
 
@@ -225,6 +237,19 @@ const Dashboard = () => {
     };
   }, []);
 
+  // Force relogin after rebuilds
+  useEffect(() => {
+    const forceRelogin = () => {
+      localStorage.removeItem('hasSeenWelcome');
+      auth.signOut().then(() => {
+        router.replace('/');
+      });
+    };
+
+    forceRelogin(); // Call to force relogin on every rebuild
+  }, []);
+
+  // Handle navigation between views
   const handleNavigation = (view, chatData = null) => {
     setCurrentView(view);
     setCurrentChat(chatData);
@@ -269,6 +294,7 @@ const Dashboard = () => {
     }
   };
 
+  // Show loading state if authentication is not checked
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -280,9 +306,13 @@ const Dashboard = () => {
     );
   }
 
+  // If no currentUser, return null
   if (!currentUser) {
     return null;
   }
+
+  // Log state on each render
+  logState();
 
   return (
     <div className="flex h-screen bg-gray-50">
