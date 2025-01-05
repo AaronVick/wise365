@@ -13,7 +13,7 @@ import ChatInterface from '../components/ChatInterface';
 import DashboardContent from '../components/DashboardContent';
 import { DashboardProvider } from '../contexts/DashboardContext';
 
-// Keep the agents array at the top level so it can be exported and used by other components
+// agents array at the top level so it can be exported and used by other components
 export const agents = [
   { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist' },
   { id: 'shawn', name: 'Shawn', role: 'Tool Guidance Assistant' },
@@ -47,6 +47,7 @@ const Dashboard = () => {
   const [userTeam, setUserTeam] = useState(null);
   const [currentView, setCurrentView] = useState('dashboard');
   const [currentChat, setCurrentChat] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -83,6 +84,7 @@ const Dashboard = () => {
         }
       } catch (error) {
         console.error('Error loading user data:', error);
+        setError(error.message);
         router.replace('/');
       } finally {
         setAuthChecked(true);
@@ -91,6 +93,17 @@ const Dashboard = () => {
 
     return () => unsubscribe();
   }, [router]);
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-4">
+          <h2 className="text-xl font-semibold text-red-600 mb-2">Something went wrong</h2>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!authChecked) {
     return (
@@ -114,7 +127,7 @@ const Dashboard = () => {
         <div className="p-4 border-b border-gray-700">
           <h1 className="text-xl font-bold">Business Wise365</h1>
         </div>
-  
+
         <ScrollArea className="flex-1">
           <nav className="p-2">
             <Button 
@@ -127,7 +140,7 @@ const Dashboard = () => {
             </Button>
           </nav>
         </ScrollArea>
-  
+
         <div className="p-4 border-t border-gray-700">
           <Button variant="ghost" className="w-full justify-start">
             <Settings className="h-4 w-4 mr-2" />
@@ -135,30 +148,30 @@ const Dashboard = () => {
           </Button>
         </div>
       </div>
-  
+
       {/* Main Content */}
-<div className="flex-1 flex flex-col">
-  {currentView === 'dashboard' ? (
-    <DashboardContent 
-      currentUser={currentUser}
-      userTeam={userTeam}
-    />
-  ) : currentChat ? (
-    <ChatInterface
-      chatId={currentChat?.id ?? ''}
-      chatType={currentChat?.type ?? 'default'}
-      participants={currentChat?.participants ?? []}
-      title={currentChat?.title ?? 'New Chat'}
-      userId={currentUser?.uid ?? ''}
-      agentId={currentChat?.agentId ?? ''}
-    />
-  ) : (
-    <DashboardContent 
-      currentUser={currentUser}
-      userTeam={userTeam}
-    />
-  )}
-</div>
+      <div className="flex-1 flex flex-col">
+        {currentView === 'dashboard' ? (
+          <DashboardContent 
+            currentUser={currentUser}
+            userTeam={userTeam}
+          />
+        ) : currentChat ? (
+          <ChatInterface
+            chatId={currentChat?.id || ''}
+            chatType={currentChat?.type || 'default'}
+            participants={currentChat?.participants || []}
+            title={currentChat?.title || 'New Chat'}
+            userId={currentUser?.uid || ''}
+            agentId={currentChat?.agentId || ''}
+          />
+        ) : (
+          <DashboardContent 
+            currentUser={currentUser}
+            userTeam={userTeam}
+          />
+        )}
+      </div>
     </div>
   );
 };

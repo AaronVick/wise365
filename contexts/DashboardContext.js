@@ -1,7 +1,20 @@
 // contexts/DashboardContext.js
 import { createContext, useContext, useState } from 'react';
 
-export const DashboardContext = createContext();
+const defaultContextValue = {
+  isLoading: false,
+  setIsLoading: () => {},
+  error: null,
+  setError: () => {},
+  goals: [],
+  setGoals: () => {},
+  recentActivity: [],
+  setRecentActivity: () => {},
+  showGoalModal: false,
+  setShowGoalModal: () => {}
+};
+
+export const DashboardContext = createContext(defaultContextValue);
 
 export function DashboardProvider({ children }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,19 +36,14 @@ export function DashboardProvider({ children }) {
     setShowGoalModal
   };
 
-  return (
-    <DashboardContext.Provider value={value}>
-      {children}
-    </DashboardContext.Provider>
-  );
+  return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
 }
-
-
 
 export function useDashboard() {
   const context = useContext(DashboardContext);
-  if (context === undefined) {
-    throw new Error('useDashboard must be used within a DashboardProvider');
+  if (!context) {
+    console.warn('useDashboard must be used within a DashboardProvider');
+    return defaultContextValue;
   }
   return context;
 }
