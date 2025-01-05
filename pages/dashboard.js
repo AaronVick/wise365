@@ -151,7 +151,7 @@ const Dashboard = () => {
                       <Button
                         variant="ghost"
                         className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
-                        onClick={() => handleAgentClick(agent)}
+                        onClick={() => handleAgentClick(agent)} // Dummy click handler
                       >
                         <div className="flex items-center w-full">
                           <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
