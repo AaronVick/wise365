@@ -80,9 +80,8 @@ const Dashboard = () => {
   const [showWelcome, setShowWelcome] = useState(false);
   const [recentActivity, setRecentActivity] = useState([]);
   const [goals, setGoals] = useState([]);
-  const [showGoalModal, setShowGoalModal] = useState(false); // Goal modal state
+  const [showGoalModal, setShowGoalModal] = useState(false); // Modal state
 
-  // Logging function to help debug
   const logState = () => {
     console.log('currentUser:', currentUser);
     console.log('recentActivity:', recentActivity);
@@ -90,7 +89,6 @@ const Dashboard = () => {
     console.log('showGoalModal:', showGoalModal);
   };
 
-  // Fetch recent activity
   const fetchRecentActivity = async (userId) => {
     try {
       const conversationsQuery = query(
@@ -116,11 +114,10 @@ const Dashboard = () => {
     }
   };
 
-  // Fetch goals for the user
   const fetchGoals = async () => {
     if (!currentUser || !currentUser.uid) {
       console.error('User is not authenticated or currentUser uid is null');
-      return;  // Ensure that we don't proceed if currentUser is not set
+      return;  // Prevent fetching if currentUser is null
     }
 
     try {
@@ -141,7 +138,6 @@ const Dashboard = () => {
     }
   };
 
-  // Handle goal creation
   const handleGoalCreate = async (goalData) => {
     try {
       const goalsRef = collection(db, 'goals');
@@ -154,14 +150,13 @@ const Dashboard = () => {
         updatedAt: serverTimestamp(),
         autoCreated: false
       });
-      setShowGoalModal(false); // Close the modal after creating the goal
-      fetchGoals(); // Refresh goals after creating
+      setShowGoalModal(false); // Close the modal after goal creation
+      fetchGoals(); // Refresh goals list after creating
     } catch (error) {
       console.error('Error creating goal:', error);
     }
   };
 
-  // Handle goal status update
   const handleStatusUpdate = async (goalId, newStatus) => {
     try {
       const goalRef = doc(db, 'goals', goalId);
@@ -169,13 +164,12 @@ const Dashboard = () => {
         status: newStatus,
         updatedAt: serverTimestamp()
       });
-      fetchGoals(); // Refresh goals after updating status
+      fetchGoals(); // Refresh the goals after updating the status
     } catch (error) {
       console.error('Error updating goal status:', error);
     }
   };
 
-  // Check auth state on load and update user data
   useEffect(() => {
     let unsubscribe;
 
@@ -204,9 +198,8 @@ const Dashboard = () => {
             };
 
             console.log('User data loaded:', userData);
-            setCurrentUser(userData); // Make sure to update the state
+            setCurrentUser(userData); // Set the current user
 
-            // Check if user has teamId and set user team data
             if (userData.teamId) {
               const teamDoc = await getDoc(doc(db, 'teams', userData.teamId));
               if (teamDoc.exists()) {
@@ -215,14 +208,12 @@ const Dashboard = () => {
               }
             }
 
-            // Handle welcome screen
             const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
             if (!hasSeenWelcome) {
               setShowWelcome(true);
               localStorage.setItem('hasSeenWelcome', 'true');
             }
 
-            // Fetch recent activity and goals after user is loaded
             await fetchRecentActivity(user.uid);
             await fetchGoals();
           } catch (error) {
@@ -234,7 +225,7 @@ const Dashboard = () => {
         console.error('Auth check error:', error);
         router.replace('/');
       } finally {
-        setAuthChecked(true); // Mark the auth check as complete
+        setAuthChecked(true);
       }
     };
 
@@ -245,9 +236,8 @@ const Dashboard = () => {
         unsubscribe();
       }
     };
-  }, []); // Empty dependency array to run only on mount
+  }, []);
 
-  // Show loading state if authentication is not checked
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -259,81 +249,29 @@ const Dashboard = () => {
     );
   }
 
-  // If no currentUser, return null
   if (!currentUser) {
     return null;
   }
 
-  // Log state on each render
   logState();
 
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <div className="w-64 bg-gray-900 text-white flex flex-col">
-        {/* Company Header */}
-        <div 
-          className="p-4 border-b border-gray-700 cursor-pointer"
-          onClick={() => handleNavigation('dashboard')}
-        >
+        <div className="p-4 border-b border-gray-700 cursor-pointer">
           <h1 className="text-xl font-bold">Business Wise365</h1>
         </div>
 
-        {/* Main Navigation */}
         <ScrollArea className="flex-1">
           <nav className="p-2">
-            <Button 
-              variant={selectedItem === 'dashboard' ? "secondary" : "ghost"}
-              className="w-full justify-start mb-1"
-              onClick={() => handleNavigation('dashboard')}
-            >
+            <Button variant="ghost" className="w-full justify-start mb-1" onClick={() => setSelectedItem('dashboard')}>
               <Home className="mr-2 h-4 w-4" />
               Dashboard
             </Button>
-
-            {/* The Team Section */}
-            <div className="mt-4">
-              <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">
-                THE TEAM
-              </div>
-              <div>
-                {agents.map((agent) => (
-                  <div key={agent.id}>
-                    <Button
-                      variant="ghost"
-                      className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
-                      onClick={() => handleAgentClick(agent)}
-                    >
-                      <div className="flex items-center w-full">
-                        <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
-                        <span className="truncate text-sm">{agent.name}</span>
-                        <Plus className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100" />
-                      </div>
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Projects Section */}
-            <div className="mt-4">
-              <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">
-                PROJECTS
-              </div>
-              <Button
-                variant="ghost"
-                className="w-full h-8 justify-start text-gray-400 px-2 py-1"
-              >
-                <div className="flex items-center w-full">
-                  <Plus className="h-4 w-4 min-w-4 mr-1" />
-                  <span className="text-sm">New Project</span>
-                </div>
-              </Button>
-            </div>
           </nav>
         </ScrollArea>
 
-        {/* User Settings */}
         <div className="p-4 border-t border-gray-700">
           <Button variant="ghost" className="w-full justify-start">
             <Settings className="h-4 w-4 mr-2" />
@@ -342,16 +280,15 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {currentView === 'dashboard' ? (
           <DashboardContent
             showWelcome={showWelcome}
             recentActivity={recentActivity}
             currentUser={currentUser}
-            goals={goals} // pass goals as a prop
-            setGoals={setGoals} // pass setGoals as a prop
-            setShowGoalModal={setShowGoalModal} // pass modal handler as a prop
+            goals={goals}
+            setGoals={setGoals}
+            setShowGoalModal={setShowGoalModal} // Modal handler passed down
           />
         ) : (
           <ChatInterface
@@ -364,6 +301,14 @@ const Dashboard = () => {
           />
         )}
       </div>
+
+      {/* Goal Creation Modal */}
+      <GoalCreationModal
+        isOpen={showGoalModal} // Ensure modal visibility state is passed properly
+        onClose={() => setShowGoalModal(false)} // Function to close the modal
+        onSubmit={handleGoalCreate}
+        agents={agents}
+      />
     </div>
   );
 };
@@ -398,7 +343,6 @@ const DashboardContent = ({ showWelcome, recentActivity, currentUser, goals, set
       </div>
       <ScrollArea className="flex-1 p-6">
         <div className="space-y-6 max-w-5xl mx-auto">
-          {/* Shawn's Welcome Message */}
           {!hasShawnChat && (
             <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
               <div className="flex items-start space-x-4">
@@ -412,7 +356,7 @@ const DashboardContent = ({ showWelcome, recentActivity, currentUser, goals, set
                     platform and connect you with the right experts for your business needs.
                   </p>
                   <Button 
-                    onClick={() => handleAgentClick({ id: 'shawn', name: 'Shawn' })}
+                    onClick={() => setShowGoalModal(true)}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     Chat with Shawn
@@ -421,6 +365,7 @@ const DashboardContent = ({ showWelcome, recentActivity, currentUser, goals, set
               </div>
             </Card>
           )}
+
 
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
