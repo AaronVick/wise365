@@ -32,10 +32,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import GoalCreationModal from './GoalCreationModal';
 import { useDashboard } from '../contexts/DashboardContext';
-import { agents } from '../pages/dashboard'; // Import the agents array
+import { agents } from '../pages/dashboard';
 
 export const DashboardContent = ({ currentUser, userTeam }) => {
   const router = useRouter();
+  const [hasShawnChat, setHasShawnChat] = useState(false); // Initialize the state
   const { 
     goals = [],
     setGoals,
@@ -43,9 +44,8 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
     showGoalModal = false,
     setShowGoalModal,
     isLoading = false
-  } = useDashboard();
+  } = useDashboard() || {};
 
-  // Add null checks for currentUser
   useEffect(() => {
     if (!currentUser?.uid) return;
 
@@ -61,16 +61,13 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
         setHasShawnChat(!querySnapshot.empty);
       } catch (error) {
         console.error('Error checking Shawn chat:', error);
+        setHasShawnChat(false);
       }
     };
 
     checkShawnChat();
   }, [currentUser?.uid]);
 
-  // Add safety check at the start
-  if (!currentUser) {
-    return <div>Loading user data...</div>;
-  }
   const handleGoalCreate = async (goalData) => {
     try {
       const goalsRef = collection(db, 'goals');
@@ -121,32 +118,8 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
     }
   };
 
-  useEffect(() => {
-    const checkShawnChat = async () => {
-      try {
-        const conversationsRef = collection(db, 'conversations');
-        const q = query(
-          conversationsRef,
-          where('agentId', '==', 'shawn'),
-          where('participants', 'array-contains', currentUser.uid)
-        );
-        const querySnapshot = await getDocs(q);
-        setHasShawnChat(!querySnapshot.empty);
-      } catch (error) {
-        console.error('Error checking Shawn chat:', error);
-      }
-    };
-
-    checkShawnChat();
-  }, [currentUser]);
-
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+  if (!currentUser) {
+    return <div>Loading user data...</div>;
   }
 
   return (
@@ -170,11 +143,11 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                     platform and connect you with the right experts for your business needs.
                   </p>
                   <Button 
-  onClick={() => handleAgentClick({ id: 'shawn', name: 'Shawn' })}
-  className="bg-blue-600 hover:bg-blue-700"
->
-  Chat with Shawn
-</Button>
+                    onClick={() => handleAgentClick({ id: 'shawn', name: 'Shawn' })}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Chat with Shawn
+                  </Button>
                 </div>
               </div>
             </Card>
