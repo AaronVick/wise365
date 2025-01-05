@@ -40,7 +40,7 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import ChatInterface from '../components/ChatInterface';
-import GoalCreationModal from '../components/GoalCreationModal';
+import GoalCreationModal from '../components/GoalCreationModal'; // Goal Creation Modal import
 
 const agents = [
   { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist' },
@@ -80,8 +80,7 @@ const Dashboard = () => {
   const [showWelcome, setShowWelcome] = useState(false);
   const [recentActivity, setRecentActivity] = useState([]);
   const [goals, setGoals] = useState([]);
-  const [showGoalModal, setShowGoalModal] = useState(false); // Ensure it's initialized here
-
+  const [showGoalModal, setShowGoalModal] = useState(false); // Goal modal state
 
   // Logging function to help debug
   const logState = () => {
@@ -155,7 +154,7 @@ const Dashboard = () => {
         updatedAt: serverTimestamp(),
         autoCreated: false
       });
-      setShowGoalModal(false); // Make sure this is set to false after goal creation
+      setShowGoalModal(false); // Close the modal after creating the goal
       fetchGoals(); // Refresh goals after creating
     } catch (error) {
       console.error('Error creating goal:', error);
@@ -582,53 +581,11 @@ const DashboardContent = ({ showWelcome, recentActivity, currentUser, goals, set
 
           {/* Goal Creation Modal */}
           <GoalCreationModal
-            isOpen={showGoalModal}
-            onClose={() => setShowGoalModal(false)}
+            isOpen={showGoalModal} // pass the state to control visibility
+            onClose={() => setShowGoalModal(false)} // close function
             onSubmit={handleGoalCreate}
             agents={agents}
           />
-
-          {/* Recent Activity */}
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center">
-                <Clock className="h-5 w-5 mr-2 text-gray-500" />
-                <h3 className="text-lg font-semibold">Recent Activity</h3>
-              </div>
-            </div>
-            <div className="space-y-4">
-              {recentActivity.length > 0 ? (
-                recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded-lg">
-                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                      {activity.type === 'conversation' ? (
-                        <MessageSquare className="h-4 w-4 text-gray-600" />
-                      ) : (
-                        <Users className="h-4 w-4 text-gray-600" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium">{activity.name || activity.title}</h4>
-                        <span className="text-sm text-gray-500">
-                          {activity.lastUpdatedAt?.toDate().toLocaleString()}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        {activity.type === 'conversation' 
-                          ? `Conversation with ${activity.agentId}`
-                          : `Project with ${activity.participants?.join(', ')}`}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center text-gray-500 py-4">
-                  No recent activity to show
-                </div>
-              )}
-            </div>
-          </Card>
         </div>
       </ScrollArea>
     </>
