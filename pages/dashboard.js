@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ChatInterface from '../components/ChatInterface';
+import DashboardContent from '../components/DashboardContent'; // Ensure this is correctly imported
 
 const agents = [
   { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist' },
