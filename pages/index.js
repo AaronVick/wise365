@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "../components/ui/alert";
 
 const HomePage = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthChecking, setIsAuthChecking] = useState(true); // New state for auth check
+  const [isAuthChecking, setIsAuthChecking] = useState(true); 
   const [error, setError] = useState('');
   const router = useRouter();
 
@@ -21,15 +21,16 @@ const HomePage = () => {
       try {
         if (user) {
           console.log('User found:', user);
+          console.log('Fetching user document...');
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
             console.log('User document exists, redirecting...');
             router.push('/dashboard');
           } else {
-            console.log('User document does not exist');
+            console.log('User document not found');
           }
         } else {
-          console.log('No user found');
+          console.log('No user found, redirecting to login');
         }
       } catch (error) {
         console.error('Auth check error:', error);
@@ -66,16 +67,18 @@ const HomePage = () => {
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
-        console.log('Creating new user document');
+        console.log('Creating new user document for', user.uid);
         await setDoc(userDocRef, {
           email: user.email,
           createdAt: serverTimestamp(),
           uid: user.uid,
           role: 'user'
         });
+      } else {
+        console.log('User document already exists');
       }
 
-      // Directly navigate without localStorage usage
+      localStorage.setItem('userId', user.uid);
       console.log('Redirecting to dashboard...');
       router.push('/dashboard');
     } catch (error) {
@@ -98,7 +101,6 @@ const HomePage = () => {
 
   // Show loading state while checking authentication
   if (isAuthChecking) {
-    console.log('Loading auth check...');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
