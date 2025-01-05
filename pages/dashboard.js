@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import DashboardContent from '../components/DashboardContent';
 import { ChevronRight, Home, Settings } from 'lucide-react';
+import ChatInterface from '../components/ChatInterface';  // Ensure this is correctly imported
 
 // Agents data with categories
 const agents = [
@@ -47,6 +48,7 @@ const Dashboard = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [userTeam, setUserTeam] = useState(null);
   const [hasShawnChat, setHasShawnChat] = useState(false); // Check if Shawn's chat exists
+  const [currentChat, setCurrentChat] = useState(null); // Manage the current chat session
 
   // Authentication and data loading
   useEffect(() => {
@@ -157,7 +159,7 @@ const Dashboard = () => {
                     key={agent.id} 
                     variant="ghost" 
                     className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
-                    onClick={() => router.push(`/chat/${agent.id}`)}
+                    onClick={() => setCurrentChat({ id: agent.id, title: `Chat with ${agent.name}`, agentId: agent.id, participants: [currentUser.uid] })}
                   >
                     <div className="flex items-center w-full">
                       <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
@@ -191,7 +193,7 @@ const Dashboard = () => {
                       key={agent.id} 
                       variant="ghost" 
                       className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
-                      onClick={() => router.push(`/chat/${agent.id}`)}
+                      onClick={() => setCurrentChat({ id: agent.id, title: `Chat with ${agent.name}`, agentId: agent.id, participants: [currentUser.uid] })}
                     >
                       <div className="flex items-center w-full">
                         <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
@@ -215,7 +217,18 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        <DashboardContent currentUser={currentUser} userTeam={userTeam} />
+        {currentChat ? (
+          <ChatInterface
+            chatId={currentChat.id}
+            chatType="agent_chat"
+            participants={currentChat.participants}
+            title={currentChat.title}
+            userId={currentUser.uid}
+            agentId={currentChat.agentId}
+          />
+        ) : (
+          <DashboardContent currentUser={currentUser} userTeam={userTeam} />
+        )}
       </div>
     </div>
   );
