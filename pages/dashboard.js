@@ -199,7 +199,7 @@ const Dashboard = () => {
       <div className="flex-1 flex flex-col">
         {currentView === 'dashboard' ? (
           <>
-            {/* Projects Section Before Goals */}
+            {/* Projects Section */}
             <Card className="p-6 mb-4">
               <h3 className="text-lg font-semibold mb-4">Projects</h3>
               <p className="text-gray-600">Here you can manage your active projects.</p>
