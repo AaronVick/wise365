@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card } from "@/components/ui/card";  // Add this import for Card
 import DashboardContent from '../components/DashboardContent'; 
 import ChatInterface from '../components/ChatInterface';
 
