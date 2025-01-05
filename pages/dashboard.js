@@ -5,7 +5,7 @@ import {
   ChevronRight, 
   Home, 
   Settings, 
-  Plus // Make sure Plus is imported here
+  Plus // Ensure Plus is imported here
 } from 'lucide-react'; // Import icons from lucide-react
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -45,6 +45,7 @@ const Dashboard = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [currentChat, setCurrentChat] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [error, setError] = useState(null); // To catch any errors
 
   // Authentication and data loading
   useEffect(() => {
@@ -79,7 +80,7 @@ const Dashboard = () => {
         await fetchRecentActivity(user.uid);
       } catch (error) {
         console.error('Error loading user data:', error);
-        router.replace('/');
+        setError('Failed to load user data'); // Set error state
       } finally {
         setAuthChecked(true);
       }
@@ -100,18 +101,9 @@ const Dashboard = () => {
       setRecentActivity(activity);
     } catch (error) {
       console.error('Error fetching recent activity:', error);
+      setError('Failed to fetch activity');
     }
   };
-
-  // Categorize agents by category
-  const categorizedAgents = agents.reduce((categories, agent) => {
-    const category = agent.category;
-    if (!categories[category]) {
-      categories[category] = [];
-    }
-    categories[category].push(agent);
-    return categories;
-  }, {});
 
   // Show loading state while checking auth
   if (!authChecked) {
@@ -120,6 +112,17 @@ const Dashboard = () => {
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle if there's an error during data fetching
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center text-red-600">
+          <p>{error}</p>
         </div>
       </div>
     );
