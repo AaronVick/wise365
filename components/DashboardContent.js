@@ -36,9 +36,6 @@ import { agents } from '../pages/dashboard'; // Import the agents array
 
 export const DashboardContent = ({ currentUser, userTeam }) => {
   const router = useRouter();
- 
-  const [hasShawnChat, setHasShawnChat] = useState(false);
-
   const { 
     goals = [],
     setGoals,
@@ -46,8 +43,34 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
     showGoalModal = false,
     setShowGoalModal,
     isLoading = false
-  } = useDashboard() || {};
+  } = useDashboard();
 
+  // Add null checks for currentUser
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+
+    const checkShawnChat = async () => {
+      try {
+        const conversationsRef = collection(db, 'conversations');
+        const q = query(
+          conversationsRef,
+          where('agentId', '==', 'shawn'),
+          where('participants', 'array-contains', currentUser.uid)
+        );
+        const querySnapshot = await getDocs(q);
+        setHasShawnChat(!querySnapshot.empty);
+      } catch (error) {
+        console.error('Error checking Shawn chat:', error);
+      }
+    };
+
+    checkShawnChat();
+  }, [currentUser?.uid]);
+
+  // Add safety check at the start
+  if (!currentUser) {
+    return <div>Loading user data...</div>;
+  }
   const handleGoalCreate = async (goalData) => {
     try {
       const goalsRef = collection(db, 'goals');

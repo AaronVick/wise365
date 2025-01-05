@@ -143,14 +143,19 @@ const Dashboard = () => {
             currentUser={currentUser}
             userTeam={userTeam}
           />
-        ) : (
+        ) : {currentChat ? (
           <ChatInterface
-            chatId={currentChat?.id}
-            chatType={currentChat?.type}
-            participants={currentChat?.participants}
-            title={currentChat?.title}
-            userId={currentUser?.uid}
-            agentId={currentChat?.agentId}
+            chatId={currentChat?.id ?? ''}
+            chatType={currentChat?.type ?? 'default'}
+            participants={currentChat?.participants ?? []}
+            title={currentChat?.title ?? 'New Chat'}
+            userId={currentUser?.uid ?? ''}
+            agentId={currentChat?.agentId ?? ''}
+          />
+        ) : (
+          <DashboardContent 
+            currentUser={currentUser}
+            userTeam={userTeam}
           />
         )}
       </div>
