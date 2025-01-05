@@ -134,20 +134,20 @@ const Dashboard = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className="w-64 bg-gray-900 text-white flex flex-col">
+      <div className="w-64 bg-gray-900 text-white flex flex-col font-medium text-sm">
         <div className="p-4 border-b border-gray-700">
           <h1 className="text-xl font-bold">Business Wise365</h1>
         </div>
 
         <ScrollArea className="flex-1">
           <nav className="p-2">
+            {/* Home Button */}
             <Button 
               variant="ghost" 
               className="w-full justify-start mb-1"
               onClick={() => router.push('/dashboard')}
             >
               <Home className="mr-2 h-4 w-4" />
-              Dashboard
             </Button>
 
             {/* Admin Group First */}
@@ -170,22 +170,9 @@ const Dashboard = () => {
               </div>
             )}
 
-            {/* Projects */}
-            <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">Projects</div>
-            <Button 
-              variant="ghost" 
-              className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
-              onClick={() => router.push('/projects')}
-            >
-              <div className="flex items-center w-full">
-                <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
-                <span className="text-sm">Manage Projects</span>
-              </div>
-            </Button>
-
             {/* Other Categories */}
             {Object.keys(categorizedAgents).map((category) => (
-              category !== 'Administrative' && (
+              category !== 'Administrative' && category !== 'Projects' && (
                 <div key={category}>
                   <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">{category}</div>
                   {categorizedAgents[category].map((agent) => (
@@ -204,6 +191,19 @@ const Dashboard = () => {
                 </div>
               )
             ))}
+
+            {/* Projects */}
+            <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">Projects</div>
+            <Button 
+              variant="ghost" 
+              className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
+              onClick={() => router.push('/projects')}
+            >
+              <div className="flex items-center w-full">
+                <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
+                <span className="text-sm">Manage Projects</span>
+              </div>
+            </Button>
           </nav>
         </ScrollArea>
 
