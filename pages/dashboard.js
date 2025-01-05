@@ -137,28 +137,28 @@ const Dashboard = () => {
       </div>
   
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {currentView === 'dashboard' ? (
-          <DashboardContent 
-            currentUser={currentUser}
-            userTeam={userTeam}
-          />
-        ) : {currentChat ? (
-          <ChatInterface
-            chatId={currentChat?.id ?? ''}
-            chatType={currentChat?.type ?? 'default'}
-            participants={currentChat?.participants ?? []}
-            title={currentChat?.title ?? 'New Chat'}
-            userId={currentUser?.uid ?? ''}
-            agentId={currentChat?.agentId ?? ''}
-          />
-        ) : (
-          <DashboardContent 
-            currentUser={currentUser}
-            userTeam={userTeam}
-          />
-        )}
-      </div>
+<div className="flex-1 flex flex-col">
+  {currentView === 'dashboard' ? (
+    <DashboardContent 
+      currentUser={currentUser}
+      userTeam={userTeam}
+    />
+  ) : currentChat ? (
+    <ChatInterface
+      chatId={currentChat?.id ?? ''}
+      chatType={currentChat?.type ?? 'default'}
+      participants={currentChat?.participants ?? []}
+      title={currentChat?.title ?? 'New Chat'}
+      userId={currentUser?.uid ?? ''}
+      agentId={currentChat?.agentId ?? ''}
+    />
+  ) : (
+    <DashboardContent 
+      currentUser={currentUser}
+      userTeam={userTeam}
+    />
+  )}
+</div>
     </div>
   );
 };
