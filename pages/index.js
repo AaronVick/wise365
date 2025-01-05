@@ -1,4 +1,3 @@
-// pages/index.js
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db, signInWithEmailAndPassword } from '../lib/firebase';
@@ -26,7 +25,11 @@ const HomePage = () => {
           if (userDoc.exists()) {
             console.log('User document exists, redirecting...');
             router.push('/dashboard');
+          } else {
+            console.log('User document does not exist');
           }
+        } else {
+          console.log('No user found');
         }
       } catch (error) {
         console.error('Auth check error:', error);
@@ -73,6 +76,7 @@ const HomePage = () => {
       }
 
       localStorage.setItem('userId', user.uid);
+      console.log('Redirecting to dashboard');
       router.push('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
