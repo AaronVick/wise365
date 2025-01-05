@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
-import { ChevronRight, Home, Settings } from 'lucide-react';
+import { 
+  ChevronRight, 
+  Home, 
+  Settings, 
+  Plus // Make sure Plus is imported here
+} from 'lucide-react'; // Import icons from lucide-react
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import DashboardContent from '../components/DashboardContent'; // Import the DashboardContent component
