@@ -3,3 +3,4 @@ node_modules
 yarn-error.log
 production-server/
 .vercel
+.env*.local

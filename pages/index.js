@@ -11,47 +11,54 @@ import { Alert, AlertDescription } from "../components/ui/alert";
 
 const HomePage = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isAuthChecking, setIsAuthChecking] = useState(true); // New state for auth check
   const [error, setError] = useState('');
   const router = useRouter();
 
   // Check for existing auth session
   useEffect(() => {
-    const checkAuth = async () => {
-      const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    console.log('Starting auth check...');
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      try {
         if (user) {
-          console.log('User already authenticated:', user.email);
-          router.push('/dashboard');
+          console.log('User found, checking document...');
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            console.log('User document exists, redirecting...');
+            router.push('/dashboard');
+          }
         }
-      });
+      } catch (error) {
+        console.error('Auth check error:', error);
+      } finally {
+        console.log('Auth check complete');
+        setIsAuthChecking(false);
+      }
+    });
 
-      return () => unsubscribe();
+    return () => {
+      console.log('Cleaning up auth listener');
+      unsubscribe();
     };
-
-    checkAuth();
   }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (isLoading) return;
+    
     setIsLoading(true);
     setError('');
 
     const email = e.target.email.value.trim();
     const password = e.target.password.value;
 
-    // Debug log
-    console.log('Firebase Config:', {
-      hasAuth: !!auth,
-      email: email,
-      projectId: process.env.FIREBASE_PROJECT_ID
-    });
+    console.log('Starting login attempt...');
 
     try {
-      console.log('Attempting login...');
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      console.log('Login successful:', user.email);
+      console.log('Login successful');
 
-      // Check/create user document in Firestore
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
 
@@ -65,16 +72,10 @@ const HomePage = () => {
         });
       }
 
-      // Store auth data
       localStorage.setItem('userId', user.uid);
-      
-      console.log('Redirecting to dashboard...');
       router.push('/dashboard');
-
     } catch (error) {
       console.error('Login error:', error);
-      
-      // More specific error handling
       const errorMessages = {
         'auth/invalid-email': 'Invalid email format',
         'auth/user-disabled': 'This account has been disabled',
@@ -91,8 +92,21 @@ const HomePage = () => {
     }
   };
 
+  // Show loading state while checking authentication
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      {/* Rest of your component JSX... */}
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-16">
@@ -139,6 +153,7 @@ const HomePage = () => {
                       type="email"
                       placeholder="name@example.com"
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -147,6 +162,7 @@ const HomePage = () => {
                       id="password"
                       type="password"
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   {error && (
@@ -169,6 +185,7 @@ const HomePage = () => {
                       variant="link"
                       className="p-0 h-auto font-normal"
                       onClick={() => router.push('/register')}
+                      disabled={isLoading}
                     >
                       Create one
                     </Button>
