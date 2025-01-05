@@ -220,7 +220,7 @@ const Dashboard = () => {
         )}
 
         {/* Chat with Shawn in Dashboard */}
-        {currentView === 'dashboard' && !hasShawnChat && (
+        {currentView === 'dashboard' && (
           <Card className="p-6">
             <div className="flex items-start space-x-4">
               <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
