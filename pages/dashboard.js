@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import DashboardContent from '../components/DashboardContent'; // Ensure this is correctly imported
+import DashboardContent from '../components/DashboardContent'; 
 import ChatInterface from '../components/ChatInterface';
 
 // Updated agents array with categories
@@ -144,9 +144,9 @@ const Dashboard = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className="w-64 bg-gray-900 text-white flex flex-col">
+      <div className="w-72 bg-gray-900 text-white flex flex-col overflow-auto">
         <div className="p-4 border-b border-gray-700">
-          <h1 className="text-xl font-bold">Business Wise365</h1>
+          <h1 className="text-xl font-semibold text-sm">Business Wise365</h1>
         </div>
 
         <ScrollArea className="flex-1">
