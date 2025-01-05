@@ -1,4 +1,3 @@
-// pages/dashboard.js
 import ErrorBoundary from '../components/ErrorBoundary';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
