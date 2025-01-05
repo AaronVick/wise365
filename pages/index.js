@@ -20,7 +20,7 @@ const HomePage = () => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       try {
         if (user) {
-          console.log('User found, checking document...');
+          console.log('User found:', user);
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
             console.log('User document exists, redirecting...');
@@ -60,7 +60,7 @@ const HomePage = () => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      console.log('Login successful', user);
+      console.log('Login successful for user:', user);
 
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
@@ -75,8 +75,8 @@ const HomePage = () => {
         });
       }
 
-      localStorage.setItem('userId', user.uid);
-      console.log('Redirecting to dashboard');
+      // Directly navigate without localStorage usage
+      console.log('Redirecting to dashboard...');
       router.push('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
