@@ -1,4 +1,3 @@
-// pages/dashboard.js
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
@@ -12,7 +11,8 @@ import {
   addDoc,
   serverTimestamp,
   orderBy,
-  limit
+  limit,
+  updateDoc
 } from 'firebase/firestore';
 import { 
   ChevronDown, 
@@ -22,14 +22,26 @@ import {
   Users, 
   MessageSquare, 
   Settings,
-  Clock
+  Clock,
+  Target,
+  MoreVertical
 } from 'lucide-react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { format } from "date-fns";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 import ChatInterface from '../components/ChatInterface';
+import GoalCreationModal from '../components/GoalCreationModal';
 
-// All agents list
 const agents = [
   { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist' },
   { id: 'shawn', name: 'Shawn', role: 'Tool Guidance Assistant' },
@@ -67,6 +79,8 @@ const Dashboard = () => {
   const [currentChat, setCurrentChat] = useState(null);
   const [showWelcome, setShowWelcome] = useState(false);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [goals, setGoals] = useState([]);
+  const [showGoalModal, setShowGoalModal] = useState(false);
 
   const fetchRecentActivity = async (userId) => {
     try {
@@ -94,9 +108,60 @@ const Dashboard = () => {
     }
   };
 
+  const fetchGoals = async () => {
+    try {
+      const goalsRef = collection(db, 'goals');
+      const q = query(
+        goalsRef,
+        where('userId', '==', currentUser.uid),
+        orderBy('updatedAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      const goalsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setGoals(goalsData);
+    } catch (error) {
+      console.error('Error fetching goals:', error);
+    }
+  };
+
+  const handleGoalCreate = async (goalData) => {
+    try {
+      const goalsRef = collection(db, 'goals');
+      await addDoc(goalsRef, {
+        ...goalData,
+        userId: currentUser.uid,
+        teamId: currentUser.teamId,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        autoCreated: false
+      });
+      setShowGoalModal(false);
+      fetchGoals(); // Refresh goals after creating
+    } catch (error) {
+      console.error('Error creating goal:', error);
+    }
+  };
+
+  const handleStatusUpdate = async (goalId, newStatus) => {
+    try {
+      const goalRef = doc(db, 'goals', goalId);
+      await updateDoc(goalRef, {
+        status: newStatus,
+        updatedAt: serverTimestamp()
+      });
+      fetchGoals(); // Refresh goals after updating status
+    } catch (error) {
+      console.error('Error updating goal status:', error);
+    }
+  };
+
   useEffect(() => {
     let unsubscribe;
-    
+
     const checkAuth = async () => {
       try {
         unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -138,6 +203,7 @@ const Dashboard = () => {
             }
 
             await fetchRecentActivity(user.uid);
+            await fetchGoals();
           } catch (error) {
             console.error('Error loading user data:', error);
             router.replace('/');
@@ -244,20 +310,22 @@ const Dashboard = () => {
 
             {/* The Team Section */}
             <div className="mt-4">
-              <div className="px-2 mb-2 text-sm text-gray-400 font-semibold">
+              <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">
                 THE TEAM
               </div>
-              <div className="space-y-1">
+              <div>
                 {agents.map((agent) => (
                   <div key={agent.id}>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start group"
+                      className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
                       onClick={() => handleAgentClick(agent)}
                     >
-                      <ChevronRight className="h-4 w-4 mr-1" />
-                      <span className="truncate">{agent.name}</span>
-                      <Plus className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100" />
+                      <div className="flex items-center w-full">
+                        <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
+                        <span className="truncate text-sm">{agent.name}</span>
+                        <Plus className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100" />
+                      </div>
                     </Button>
                   </div>
                 ))}
@@ -266,15 +334,17 @@ const Dashboard = () => {
 
             {/* Projects Section */}
             <div className="mt-4">
-              <div className="px-2 mb-2 text-sm text-gray-400 font-semibold">
+              <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">
                 PROJECTS
               </div>
               <Button
                 variant="ghost"
-                className="w-full justify-start text-gray-400"
+                className="w-full h-8 justify-start text-gray-400 px-2 py-1"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                New Project
+                <div className="flex items-center w-full">
+                  <Plus className="h-4 w-4 min-w-4 mr-1" />
+                  <span className="text-sm">New Project</span>
+                </div>
               </Button>
             </div>
           </nav>
@@ -296,6 +366,9 @@ const Dashboard = () => {
             showWelcome={showWelcome}
             recentActivity={recentActivity}
             currentUser={currentUser}
+            goals={goals} // pass goals as a prop
+            setGoals={setGoals} // pass setGoals as a prop
+            setShowGoalModal={setShowGoalModal} // pass modal handler as a prop
           />
         ) : (
           <ChatInterface
@@ -312,70 +385,266 @@ const Dashboard = () => {
   );
 };
 
-// Separate component for dashboard content
-const DashboardContent = ({ showWelcome, recentActivity, currentUser }) => (
-  <>
-    <div className="bg-white border-b h-16 flex items-center px-6">
-      <h2 className="text-xl font-semibold">Dashboard</h2>
-    </div>
-    <ScrollArea className="flex-1 p-6">
-      <div className="space-y-6 max-w-5xl mx-auto">
-        {showWelcome && (
+const DashboardContent = ({ showWelcome, recentActivity, currentUser, goals, setGoals, setShowGoalModal }) => {
+  const [hasShawnChat, setHasShawnChat] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkShawnChat = async () => {
+      try {
+        const conversationsRef = collection(db, 'conversations');
+        const q = query(
+          conversationsRef,
+          where('agentId', '==', 'shawn'),
+          where('participants', 'array-contains', currentUser.uid)
+        );
+        const querySnapshot = await getDocs(q);
+        setHasShawnChat(!querySnapshot.empty);
+      } catch (error) {
+        console.error('Error checking Shawn chat:', error);
+      }
+    };
+
+    checkShawnChat();
+  }, [currentUser]);
+
+  return (
+    <>
+      <div className="bg-white border-b h-16 flex items-center px-6">
+        <h2 className="text-xl font-semibold">Dashboard</h2>
+      </div>
+      <ScrollArea className="flex-1 p-6">
+        <div className="space-y-6 max-w-5xl mx-auto">
+          {/* Shawn's Welcome Message */}
+          {!hasShawnChat && (
+            <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-blue-600 font-semibold">S</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Welcome to Business Wise365!</h3>
+                  <p className="text-gray-600 mb-4">
+                    Hi, I'm Shawn, your personal guide to our AI team. I'll help you navigate our
+                    platform and connect you with the right experts for your business needs.
+                  </p>
+                  <Button 
+                    onClick={() => handleAgentClick({ id: 'shawn', name: 'Shawn' })}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Chat with Shawn
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="p-4">
+              <h4 className="text-sm font-semibold text-gray-500 mb-2">Active Conversations</h4>
+              <div className="flex items-baseline">
+                <span className="text-2xl font-bold">{recentActivity.length}</span>
+                <span className="text-sm text-gray-500 ml-2">conversations</span>
+              </div>
+            </Card>
+            <Card className="p-4">
+              <h4 className="text-sm font-semibold text-gray-500 mb-2">Team Members</h4>
+              <div className="flex items-baseline">
+                <span className="text-2xl font-bold">
+                  {currentUser?.teamMembers?.length || 0}
+                </span>
+                <span className="text-sm text-gray-500 ml-2">members</span>
+              </div>
+            </Card>
+            <Card className="p-4">
+              <h4 className="text-sm font-semibold text-gray-500 mb-2">Active Projects</h4>
+              <div className="flex items-baseline">
+                <span className="text-2xl font-bold">0</span>
+                <span className="text-sm text-gray-500 ml-2">projects</span>
+              </div>
+            </Card>
+          </div>
+
+          {/* Suggested Actions */}
           <Card className="p-6">
-            <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                <span className="text-blue-600 font-semibold">S</span>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Welcome to Business Wise365!</h3>
-                <p className="text-gray-600">
-                  Hi, I'm Shawn, your personal guide to our AI team. I'll help you navigate our
-                  platform and connect you with the right experts for your business needs.
-                  Let me know what you'd like to achieve, and I'll point you in the right direction.
-                </p>
-              </div>
+            <h3 className="text-lg font-semibold mb-4">Suggested Next Steps</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button 
+                variant="outline" 
+                className="h-auto p-4 flex items-start text-left"
+                onClick={() => handleAgentClick({ id: 'mike', name: 'Mike' })}
+              >
+                <div>
+                  <h4 className="font-semibold mb-1">Develop Marketing Strategy</h4>
+                  <p className="text-sm text-gray-500">Chat with Mike to create a comprehensive marketing plan</p>
+                </div>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-auto p-4 flex items-start text-left"
+                onClick={() => handleAgentClick({ id: 'alex', name: 'Alex' })}
+              >
+                <div>
+                  <h4 className="font-semibold mb-1">Define Target Audience</h4>
+                  <p className="text-sm text-gray-500">Work with Alex to create detailed buyer personas</p>
+                </div>
+              </Button>
             </div>
           </Card>
-        )}
 
-        {/* Recent Activity */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <Clock className="h-5 w-5 mr-2 text-gray-500" />
-              <h3 className="text-lg font-semibold">Recent Activity</h3>
-            </div>
-          </div>
-          <div className="space-y-4">
-            {recentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded-lg">
-                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                  {activity.type === 'conversation' ? (
-                    <MessageSquare className="h-4 w-4 text-gray-600" />
-                  ) : (
-                    <Users className="h-4 w-4 text-gray-600" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">{activity.name || activity.title}</h4>
-                    <span className="text-sm text-gray-500">
-                      {activity.lastUpdatedAt?.toDate().toLocaleString()}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    {activity.type === 'conversation' 
-                      ? `Conversation with ${activity.agentId}`
-                      : `Project with ${activity.participants?.join(', ')}`}
-                  </p>
-                </div>
+          {/* Goals Progress Section */}
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-2">
+                <Target className="h-5 w-5 text-blue-500" />
+                <h3 className="text-lg font-semibold">Current Goals</h3>
               </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-    </ScrollArea>
-  </>
-);
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowGoalModal(true)}
+                className="flex items-center space-x-2"
+              >
+                <Plus className="h-4 w-4" />
+                <span>New Goal</span>
+              </Button>
+            </div>
+
+            <div className="space-y-4">
+              {goals.slice(0, 3).map((goal) => (
+                <div 
+                  key={goal.id} 
+                  className="p-4 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Badge 
+                        variant={
+                          goal.status === 'completed' ? 'success' :
+                          goal.status === 'in_progress' ? 'default' :
+                          'secondary'
+                        }
+                      >
+                        {goal.status.replace('_', ' ')}
+                      </Badge>
+                      <span className="text-sm text-gray-500">
+                        Due {format(new Date(goal.dueDate.seconds * 1000), 'MMM d, yyyy')}
+                      </span>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleStatusUpdate(goal.id, 'in_progress')}>
+                          Mark In Progress
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusUpdate(goal.id, 'completed')}>
+                          Mark Complete
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => router.push('/goals')}>
+                          View Details
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <h4 className="font-medium mb-1">{goal.title}</h4>
+                  <p className="text-sm text-gray-600 mb-3">{goal.description}</p>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-sm text-gray-500">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={`/agents/${goal.agentId}.avatar.png`} />
+                        <AvatarFallback>{goal.agentId[0].toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <span>with {goal.agentId}</span>
+                    </div>
+                    
+                    {goal.progress !== undefined && (
+                      <div className="flex items-center space-x-2">
+                        <div className="h-2 w-24 bg-gray-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-blue-500 transition-all duration-300"
+                            style={{ width: `${goal.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-sm text-gray-500">{goal.progress}%</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {goals.length > 3 && (
+                <Button 
+                  variant="link" 
+                  className="w-full mt-2"
+                  onClick={() => router.push('/goals')}
+                >
+                  View All Goals
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          {/* Goal Creation Modal */}
+          <GoalCreationModal
+            isOpen={showGoalModal}
+            onClose={() => setShowGoalModal(false)}
+            onSubmit={handleGoalCreate}
+            agents={agents}
+          />
+
+          {/* Recent Activity */}
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <Clock className="h-5 w-5 mr-2 text-gray-500" />
+                <h3 className="text-lg font-semibold">Recent Activity</h3>
+              </div>
+            </div>
+            <div className="space-y-4">
+              {recentActivity.length > 0 ? (
+                recentActivity.map((activity) => (
+                  <div key={activity.id} className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded-lg">
+                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                      {activity.type === 'conversation' ? (
+                        <MessageSquare className="h-4 w-4 text-gray-600" />
+                      ) : (
+                        <Users className="h-4 w-4 text-gray-600" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">{activity.name || activity.title}</h4>
+                        <span className="text-sm text-gray-500">
+                          {activity.lastUpdatedAt?.toDate().toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {activity.type === 'conversation' 
+                          ? `Conversation with ${activity.agentId}`
+                          : `Project with ${activity.participants?.join(', ')}`}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 py-4">
+                  No recent activity to show
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      </ScrollArea>
+    </>
+  );
+};
 
 export default Dashboard;
