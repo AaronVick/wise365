@@ -36,14 +36,7 @@ import { agents } from '../pages/dashboard'; // Import the agents array
 
 export const DashboardContent = ({ currentUser, userTeam }) => {
   const router = useRouter();
-  const { 
-    goals,
-    setGoals,
-    recentActivity,
-    showGoalModal,
-    setShowGoalModal,
-    isLoading
-  } = useDashboard();
+ 
   const [hasShawnChat, setHasShawnChat] = useState(false);
 
   const { 
