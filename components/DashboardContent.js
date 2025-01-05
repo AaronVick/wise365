@@ -46,6 +46,17 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
     isLoading = false
   } = useDashboard() || {};
 
+   // Add safety check for currentUser
+   if (!currentUser?.uid) {
+    console.warn('No user data available');
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-gray-600">Loading user data...</div>
+      </div>
+    );
+  }
+
+
   useEffect(() => {
     if (!currentUser?.uid) return;
 
@@ -153,12 +164,12 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
             </Card>
           )}
 
-          {/* Quick Stats */}
+          {/* Quick Stats - with null checks */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="p-4">
               <h4 className="text-sm font-semibold text-gray-500 mb-2">Active Conversations</h4>
               <div className="flex items-baseline">
-                <span className="text-2xl font-bold">{recentActivity.length}</span>
+                <span className="text-2xl font-bold">{recentActivity?.length || 0}</span>
                 <span className="text-sm text-gray-500 ml-2">conversations</span>
               </div>
             </Card>

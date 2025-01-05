@@ -1,4 +1,5 @@
 // pages/dashboard.js
+import ErrorBoundary from '../components/ErrorBoundary';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
@@ -11,9 +12,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ChatInterface from '../components/ChatInterface';
 import DashboardContent from '../components/DashboardContent';
-import { DashboardProvider } from '../contexts/DashboardContext';
 
-// agents array at the top level so it can be exported and used by other components
+// Keep the agents array at the top level so it can be exported and used by other components
 export const agents = [
   { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist' },
   { id: 'shawn', name: 'Shawn', role: 'Tool Guidance Assistant' },
@@ -121,58 +121,66 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <div className="w-64 bg-gray-900 text-white flex flex-col">
-        <div className="p-4 border-b border-gray-700">
-          <h1 className="text-xl font-bold">Business Wise365</h1>
-        </div>
+    <ErrorBoundary>
+      <div className="flex h-screen bg-gray-50">
+        {/* Sidebar */}
+        <div className="w-64 bg-gray-900 text-white flex flex-col">
+          <div className="p-4 border-b border-gray-700">
+            <h1 className="text-xl font-bold">Business Wise365</h1>
+          </div>
 
-        <ScrollArea className="flex-1">
-          <nav className="p-2">
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start mb-1" 
-              onClick={() => setCurrentView('dashboard')}
-            >
-              <Home className="mr-2 h-4 w-4" />
-              Dashboard
+          <ScrollArea className="flex-1">
+            <nav className="p-2">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start mb-1" 
+                onClick={() => setCurrentView('dashboard')}
+              >
+                <Home className="mr-2 h-4 w-4" />
+                Dashboard
+              </Button>
+            </nav>
+          </ScrollArea>
+
+          <div className="p-4 border-t border-gray-700">
+            <Button variant="ghost" className="w-full justify-start">
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
             </Button>
-          </nav>
-        </ScrollArea>
+          </div>
+        </div>
 
-        <div className="p-4 border-t border-gray-700">
-          <Button variant="ghost" className="w-full justify-start">
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </Button>
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+          {currentView === 'dashboard' ? (
+            <ErrorBoundary>
+              <DashboardContent 
+                currentUser={currentUser || {}}
+                userTeam={userTeam || {}}
+              />
+            </ErrorBoundary>
+          ) : currentChat ? (
+            <ErrorBoundary>
+              <ChatInterface
+                chatId={currentChat?.id || ''}
+                chatType={currentChat?.type || 'default'}
+                participants={currentChat?.participants || []}
+                title={currentChat?.title || 'New Chat'}
+                userId={currentUser?.uid || ''}
+                agentId={currentChat?.agentId || ''}
+              />
+            </ErrorBoundary>
+          ) : (
+            <ErrorBoundary>
+              <DashboardContent 
+                currentUser={currentUser || {}}
+                userTeam={userTeam || {}}
+              />
+            </ErrorBoundary>
+          )}
         </div>
       </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {currentView === 'dashboard' ? (
-          <DashboardContent 
-            currentUser={currentUser}
-            userTeam={userTeam}
-          />
-        ) : currentChat ? (
-          <ChatInterface
-            chatId={currentChat?.id || ''}
-            chatType={currentChat?.type || 'default'}
-            participants={currentChat?.participants || []}
-            title={currentChat?.title || 'New Chat'}
-            userId={currentUser?.uid || ''}
-            agentId={currentChat?.agentId || ''}
-          />
-        ) : (
-          <DashboardContent 
-            currentUser={currentUser}
-            userTeam={userTeam}
-          />
-        )}
-      </div>
-    </div>
+    </ErrorBoundary>
   );
 };
 
