@@ -99,6 +99,16 @@ const Dashboard = () => {
     }
   };
 
+  // Categorize agents by category
+  const categorizedAgents = agents.reduce((categories, agent) => {
+    const category = agent.category;
+    if (!categories[category]) {
+      categories[category] = [];
+    }
+    categories[category].push(agent);
+    return categories;
+  }, {});
+
   // Show loading state while checking auth
   if (!authChecked) {
     return (
@@ -134,7 +144,7 @@ const Dashboard = () => {
               Dashboard
             </Button>
 
-            {/* Agents Section */}
+            {/* Categorized Agents */}
             {Object.keys(categorizedAgents).map((category) => (
               <div key={category}>
                 <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">{category}</div>
