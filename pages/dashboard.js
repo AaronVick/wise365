@@ -118,6 +118,11 @@ const Dashboard = () => {
 
   // Fetch goals for the user
   const fetchGoals = async () => {
+    if (!currentUser || !currentUser.uid) {
+      console.error('User is not authenticated or currentUser uid is null');
+      return;  // Ensure that we don't proceed if currentUser is not set
+    }
+
     try {
       const goalsRef = collection(db, 'goals');
       const q = query(
