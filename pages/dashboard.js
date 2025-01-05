@@ -80,7 +80,8 @@ const Dashboard = () => {
   const [showWelcome, setShowWelcome] = useState(false);
   const [recentActivity, setRecentActivity] = useState([]);
   const [goals, setGoals] = useState([]);
-  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false); // Ensure it's initialized here
+
 
   // Logging function to help debug
   const logState = () => {
@@ -154,7 +155,7 @@ const Dashboard = () => {
         updatedAt: serverTimestamp(),
         autoCreated: false
       });
-      setShowGoalModal(false);
+      setShowGoalModal(false); // Make sure this is set to false after goal creation
       fetchGoals(); // Refresh goals after creating
     } catch (error) {
       console.error('Error creating goal:', error);
