@@ -148,11 +148,11 @@ const Dashboard = () => {
               Dashboard
             </Button>
 
-            {/* Agents Categorized */}
-            {Object.keys(categorizedAgents).map((category) => (
-              <div key={category}>
-                <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">{category}</div>
-                {categorizedAgents[category].map((agent) => (
+            {/* Admin Group First */}
+            {categorizedAgents['Administrative'] && (
+              <div>
+                <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">Admin</div>
+                {categorizedAgents['Administrative'].map((agent) => (
                   <Button 
                     key={agent.id} 
                     variant="ghost" 
@@ -166,7 +166,7 @@ const Dashboard = () => {
                   </Button>
                 ))}
               </div>
-            ))}
+            )}
 
             {/* Projects */}
             <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">Projects</div>
@@ -180,6 +180,28 @@ const Dashboard = () => {
                 <span className="text-sm">Manage Projects</span>
               </div>
             </Button>
+
+            {/* Other Categories */}
+            {Object.keys(categorizedAgents).map((category) => (
+              category !== 'Administrative' && (
+                <div key={category}>
+                  <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">{category}</div>
+                  {categorizedAgents[category].map((agent) => (
+                    <Button 
+                      key={agent.id} 
+                      variant="ghost" 
+                      className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
+                      onClick={() => router.push(`/chat/${agent.id}`)}
+                    >
+                      <div className="flex items-center w-full">
+                        <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
+                        <span className="truncate text-sm">{`${agent.name} - ${agent.role}`}</span>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              )
+            ))}
           </nav>
         </ScrollArea>
 
