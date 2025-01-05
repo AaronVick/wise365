@@ -198,7 +198,15 @@ const Dashboard = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {currentView === 'dashboard' ? (
-          <DashboardContent currentUser={currentUser} userTeam={userTeam} recentActivity={recentActivity} />
+          <>
+            {/* Projects Section Before Goals */}
+            <Card className="p-6 mb-4">
+              <h3 className="text-lg font-semibold mb-4">Projects</h3>
+              <p className="text-gray-600">Here you can manage your active projects.</p>
+            </Card>
+
+            <DashboardContent currentUser={currentUser} userTeam={userTeam} recentActivity={recentActivity} />
+          </>
         ) : (
           <ChatInterface
             chatId={currentChat?.id || ''}
