@@ -83,7 +83,7 @@ const Dashboard = () => {
         }
       } catch (error) {
         console.error('Error loading user data:', error);
-        setError(error.message);
+        setError(error.message); // Handle error gracefully
         router.replace('/');
       } finally {
         setAuthChecked(true);
