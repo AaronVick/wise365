@@ -108,56 +108,53 @@ const Dashboard = () => {
   }
 
   return (
-    <DashboardProvider>
-      <div className="flex h-screen bg-gray-50">
-        {/* Sidebar */}
-        <div className="w-64 bg-gray-900 text-white flex flex-col">
-          <div className="p-4 border-b border-gray-700">
-            <h1 className="text-xl font-bold">Business Wise365</h1>
-          </div>
-
-          <ScrollArea className="flex-1">
-            <nav className="p-2">
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start mb-1" 
-                onClick={() => setCurrentView('dashboard')}
-              >
-                <Home className="mr-2 h-4 w-4" />
-                Dashboard
-              </Button>
-            </nav>
-          </ScrollArea>
-
-          <div className="p-4 border-t border-gray-700">
-            <Button variant="ghost" className="w-full justify-start">
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </Button>
-          </div>
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar */}
+      <div className="w-64 bg-gray-900 text-white flex flex-col">
+        <div className="p-4 border-b border-gray-700">
+          <h1 className="text-xl font-bold">Business Wise365</h1>
         </div>
-
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          {currentView === 'dashboard' ? (
-            <DashboardContent 
-              currentUser={currentUser}
-              userTeam={userTeam}
-            />
-          ) : (
-            <ChatInterface
-              chatId={currentChat.id}
-              chatType={currentChat.type}
-              participants={currentChat.participants}
-              title={currentChat.title}
-              userId={currentUser.uid}
-              agentId={currentChat.agentId}
-            />
-          )}
+  
+        <ScrollArea className="flex-1">
+          <nav className="p-2">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start mb-1" 
+              onClick={() => setCurrentView('dashboard')}
+            >
+              <Home className="mr-2 h-4 w-4" />
+              Dashboard
+            </Button>
+          </nav>
+        </ScrollArea>
+  
+        <div className="p-4 border-t border-gray-700">
+          <Button variant="ghost" className="w-full justify-start">
+            <Settings className="h-4 w-4 mr-2" />
+            Settings
+          </Button>
         </div>
       </div>
-    </DashboardProvider>
+  
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {currentView === 'dashboard' ? (
+          <DashboardContent 
+            currentUser={currentUser}
+            userTeam={userTeam}
+          />
+        ) : (
+          <ChatInterface
+            chatId={currentChat?.id}
+            chatType={currentChat?.type}
+            participants={currentChat?.participants}
+            title={currentChat?.title}
+            userId={currentUser?.uid}
+            agentId={currentChat?.agentId}
+          />
+        )}
+      </div>
+    </div>
   );
-};
 
 export default Dashboard;

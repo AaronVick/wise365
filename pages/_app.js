@@ -12,4 +12,14 @@ function MyApp({ Component, pageProps }) {
   );
 }
 
+import { DashboardProvider } from '../contexts/DashboardContext';
+
+function MyApp({ Component, pageProps }) {
+  return (
+    <DashboardProvider>
+      <Component {...pageProps} />
+    </DashboardProvider>
+  );
+}
+
 export default MyApp;

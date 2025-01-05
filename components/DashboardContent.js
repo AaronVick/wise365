@@ -46,6 +46,15 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
   } = useDashboard();
   const [hasShawnChat, setHasShawnChat] = useState(false);
 
+  const { 
+    goals = [],
+    setGoals,
+    recentActivity = [],
+    showGoalModal = false,
+    setShowGoalModal,
+    isLoading = false
+  } = useDashboard() || {};
+
   const handleGoalCreate = async (goalData) => {
     try {
       const goalsRef = collection(db, 'goals');
