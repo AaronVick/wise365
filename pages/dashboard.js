@@ -204,7 +204,7 @@ useEffect(() => {
           };
 
           console.log('User data loaded:', userData);
-          setCurrentUser(userData);
+          setCurrentUser(userData); // Make sure to update the state
 
           // Check if user has teamId and set user team data
           if (userData.teamId) {
@@ -225,7 +225,6 @@ useEffect(() => {
           // Fetch recent activity and goals after user is loaded
           await fetchRecentActivity(user.uid);
           await fetchGoals();
-
         } catch (error) {
           console.error('Error loading user data:', error);
           router.replace('/');
@@ -248,18 +247,7 @@ useEffect(() => {
   };
 }, []);
 
-// Force relogin after rebuilds
-useEffect(() => {
-  const forceRelogin = () => {
-    console.log('Force relogin triggered');
-    localStorage.removeItem('hasSeenWelcome');
-    auth.signOut().then(() => {
-      router.replace('/');
-    });
-  };
 
-  forceRelogin(); // Call to force relogin on every rebuild
-}, []);
 
   // Handle navigation between views
   const handleNavigation = (view, chatData = null) => {
