@@ -14,8 +14,8 @@ import {
   ChevronRight, 
   Plus, 
   Home, 
-  Settings,
-  ChevronLeft
+  Settings, 
+  ChevronLeft 
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -57,7 +57,7 @@ const Dashboard = () => {
   const [currentChat, setCurrentChat] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
   const [hasShawnChat, setHasShawnChat] = useState(false); 
-  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true); // Default sidebar expanded
 
   // Authentication and data loading
   useEffect(() => {
@@ -151,8 +151,10 @@ const Dashboard = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className={`w-${sidebarExpanded ? '72' : '20'} bg-gray-900 text-white flex flex-col overflow-auto`}>
-        <div className="p-4 border-b border-gray-700">
+      <div 
+        className={`transition-all duration-300 ease-in-out ${sidebarExpanded ? 'w-72' : 'w-20'} bg-gray-900 text-white flex flex-col overflow-auto`}
+      >
+        <div className="p-4 border-b border-gray-700 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-sm">Business Wise365</h1>
           <Button variant="ghost" onClick={() => setSidebarExpanded(!sidebarExpanded)} className="text-gray-400">
             {sidebarExpanded ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
