@@ -43,7 +43,8 @@ const agents = [
   { id: 'sadie', name: 'Sadie', role: 'Ad Copy Maestro', category: 'Copy Editing' },
   { id: 'jesse', name: 'Jesse', role: 'Email Marketing Maestro', category: 'Marketing' },
   { id: 'caner', name: 'Caner', role: 'InsightPulse AI', category: 'Administrative' },
-  { id: 'jr', name: 'JR', role: 'Audience Gap Genius', category: 'Sales' }
+  { id: 'jr', name: 'JR', role: 'Audience Gap Genius', category: 'Sales' },
+  { id: 'projects', name: 'Projects', role: 'Manage Projects', category: 'Projects' }, // New Project category
 ];
 
 const Dashboard = () => {
@@ -164,10 +165,10 @@ const Dashboard = () => {
             </Button>
 
             {/* Categorized Agents */}
-            {['Administrative', 'Marketing', 'Sales', 'Social Media', 'Copy Editing'].map((category) => (
+            {['Administrative', 'Marketing', 'Sales', 'Social Media', 'Copy Editing', 'Projects'].map((category) => (
               <div key={category}>
                 <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">{category}</div>
-                {categorizedAgents[category].map((agent) => (
+                {categorizedAgents[category]?.map((agent) => (
                   <Button
                     key={agent.id}
                     variant="ghost"
@@ -199,7 +200,7 @@ const Dashboard = () => {
       <div className="flex-1 flex flex-col">
         {currentView === 'dashboard' ? (
           <>
-            {/* Projects Section */}
+            {/* Projects Section Before Goals */}
             <Card className="p-6 mb-4">
               <h3 className="text-lg font-semibold mb-4">Projects</h3>
               <p className="text-gray-600">Here you can manage your active projects.</p>
