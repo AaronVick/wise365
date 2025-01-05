@@ -5,7 +5,9 @@ import { auth, db } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { 
   Home, 
-  Settings
+  Settings,
+  ChevronRight,
+  Plus
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -138,6 +140,29 @@ const Dashboard = () => {
                 <Home className="mr-2 h-4 w-4" />
                 Dashboard
               </Button>
+
+              <div className="mt-4">
+                <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">
+                  THE TEAM
+                </div>
+                <div>
+                  {agents.map((agent) => (
+                    <div key={agent.id}>
+                      <Button
+                        variant="ghost"
+                        className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
+                        onClick={() => handleAgentClick(agent)}
+                      >
+                        <div className="flex items-center w-full">
+                          <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
+                          <span className="truncate text-sm">{agent.name}</span>
+                          <Plus className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100" />
+                        </div>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </nav>
           </ScrollArea>
 
