@@ -176,123 +176,76 @@ const Dashboard = () => {
   };
 
   // Check auth state on load and update user data
-useEffect(() => {
-  let unsubscribe;
+  useEffect(() => {
+    let unsubscribe;
 
-  const checkAuth = async () => {
-    try {
-      unsubscribe = auth.onAuthStateChanged(async (user) => {
-        if (!user) {
-          console.log('No user found, redirecting to login');
-          router.replace('/');
-          return;
-        }
-
-        try {
-          console.log('Fetching user document...');
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-
-          if (!userDoc.exists()) {
-            console.log('No user document found');
+    const checkAuth = async () => {
+      try {
+        unsubscribe = auth.onAuthStateChanged(async (user) => {
+          if (!user) {
+            console.log('No user found, redirecting to login');
             router.replace('/');
             return;
           }
 
-          const userData = {
-            uid: user.uid,
-            ...userDoc.data()
-          };
+          try {
+            console.log('Fetching user document...');
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
 
-          console.log('User data loaded:', userData);
-          setCurrentUser(userData); // Make sure to update the state
-
-          // Check if user has teamId and set user team data
-          if (userData.teamId) {
-            const teamDoc = await getDoc(doc(db, 'teams', userData.teamId));
-            if (teamDoc.exists()) {
-              setUserTeam(teamDoc.data());
-              console.log('User team data loaded');
+            if (!userDoc.exists()) {
+              console.log('No user document found');
+              router.replace('/');
+              return;
             }
+
+            const userData = {
+              uid: user.uid,
+              ...userDoc.data()
+            };
+
+            console.log('User data loaded:', userData);
+            setCurrentUser(userData); // Make sure to update the state
+
+            // Check if user has teamId and set user team data
+            if (userData.teamId) {
+              const teamDoc = await getDoc(doc(db, 'teams', userData.teamId));
+              if (teamDoc.exists()) {
+                setUserTeam(teamDoc.data());
+                console.log('User team data loaded');
+              }
+            }
+
+            // Handle welcome screen
+            const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
+            if (!hasSeenWelcome) {
+              setShowWelcome(true);
+              localStorage.setItem('hasSeenWelcome', 'true');
+            }
+
+            // Fetch recent activity and goals after user is loaded
+            await fetchRecentActivity(user.uid);
+            await fetchGoals();
+          } catch (error) {
+            console.error('Error loading user data:', error);
+            router.replace('/');
           }
-
-          // Handle welcome screen
-          const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
-          if (!hasSeenWelcome) {
-            setShowWelcome(true);
-            localStorage.setItem('hasSeenWelcome', 'true');
-          }
-
-          // Fetch recent activity and goals after user is loaded
-          await fetchRecentActivity(user.uid);
-          await fetchGoals();
-        } catch (error) {
-          console.error('Error loading user data:', error);
-          router.replace('/');
-        }
-      });
-    } catch (error) {
-      console.error('Auth check error:', error);
-      router.replace('/');
-    } finally {
-      setAuthChecked(true);
-    }
-  };
-
-  checkAuth();
-
-  return () => {
-    if (unsubscribe) {
-      unsubscribe();
-    }
-  };
-}, []);
-
-
-
-  // Handle navigation between views
-  const handleNavigation = (view, chatData = null) => {
-    setCurrentView(view);
-    setCurrentChat(chatData);
-    setSelectedItem(view);
-  };
-
-  const handleAgentClick = async (agent) => {
-    try {
-      const conversationsRef = collection(db, 'conversations');
-      const q = query(
-        conversationsRef,
-        where('agentId', '==', agent.id),
-        where('participants', 'array-contains', currentUser.uid)
-      );
-      
-      const querySnapshot = await getDocs(q);
-      let chatId;
-      
-      if (querySnapshot.empty) {
-        const newChatRef = await addDoc(conversationsRef, {
-          agentId: agent.id,
-          participants: [currentUser.uid],
-          name: `Chat with ${agent.name}`,
-          createdAt: serverTimestamp(),
-          lastUpdatedAt: serverTimestamp(),
-          messages: []
         });
-        chatId = newChatRef.id;
-      } else {
-        chatId = querySnapshot.docs[0].id;
+      } catch (error) {
+        console.error('Auth check error:', error);
+        router.replace('/');
+      } finally {
+        setAuthChecked(true); // Mark the auth check as complete
       }
+    };
 
-      handleNavigation('chat', {
-        id: chatId,
-        type: 'conversation',
-        title: `Chat with ${agent.name}`,
-        participants: [agent.name],
-        agentId: agent.id
-      });
-    } catch (error) {
-      console.error('Error starting chat:', error);
-    }
-  };
+    checkAuth();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, []); // Empty dependency array to run only on mount
 
   // Show loading state if authentication is not checked
   if (!authChecked) {
