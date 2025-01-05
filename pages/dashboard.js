@@ -176,83 +176,90 @@ const Dashboard = () => {
   };
 
   // Check auth state on load and update user data
-  useEffect(() => {
-    let unsubscribe;
+useEffect(() => {
+  let unsubscribe;
 
-    const checkAuth = async () => {
-      try {
-        unsubscribe = auth.onAuthStateChanged(async (user) => {
-          if (!user) {
-            console.log('No user found, redirecting to login');
+  const checkAuth = async () => {
+    try {
+      unsubscribe = auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+          console.log('No user found, redirecting to login');
+          router.replace('/');
+          return;
+        }
+
+        try {
+          console.log('Fetching user document...');
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+
+          if (!userDoc.exists()) {
+            console.log('No user document found');
             router.replace('/');
             return;
           }
 
-          try {
-            console.log('Fetching user document...');
-            const userDoc = await getDoc(doc(db, 'users', user.uid));
-            
-            if (!userDoc.exists()) {
-              console.log('No user document found');
-              router.replace('/');
-              return;
+          const userData = {
+            uid: user.uid,
+            ...userDoc.data()
+          };
+
+          console.log('User data loaded:', userData);
+          setCurrentUser(userData);
+
+          // Check if user has teamId and set user team data
+          if (userData.teamId) {
+            const teamDoc = await getDoc(doc(db, 'teams', userData.teamId));
+            if (teamDoc.exists()) {
+              setUserTeam(teamDoc.data());
+              console.log('User team data loaded');
             }
-
-            const userData = {
-              uid: user.uid,
-              ...userDoc.data()
-            };
-
-            console.log('User data loaded');
-            setCurrentUser(userData);
-
-            if (userData.teamId) {
-              const teamDoc = await getDoc(doc(db, 'teams', userData.teamId));
-              if (teamDoc.exists()) {
-                setUserTeam(teamDoc.data());
-              }
-            }
-
-            const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
-            if (!hasSeenWelcome) {
-              setShowWelcome(true);
-              localStorage.setItem('hasSeenWelcome', 'true');
-            }
-
-            await fetchRecentActivity(user.uid);
-            await fetchGoals();
-          } catch (error) {
-            console.error('Error loading user data:', error);
-            router.replace('/');
           }
-        });
-      } catch (error) {
-        console.error('Auth check error:', error);
-        router.replace('/');
-      } finally {
-        setAuthChecked(true);
-      }
-    };
 
-    checkAuth();
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, []);
+          // Handle welcome screen
+          const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
+          if (!hasSeenWelcome) {
+            setShowWelcome(true);
+            localStorage.setItem('hasSeenWelcome', 'true');
+          }
 
-  // Force relogin after rebuilds
-  useEffect(() => {
-    const forceRelogin = () => {
-      localStorage.removeItem('hasSeenWelcome');
-      auth.signOut().then(() => {
-        router.replace('/');
+          // Fetch recent activity and goals after user is loaded
+          await fetchRecentActivity(user.uid);
+          await fetchGoals();
+
+        } catch (error) {
+          console.error('Error loading user data:', error);
+          router.replace('/');
+        }
       });
-    };
+    } catch (error) {
+      console.error('Auth check error:', error);
+      router.replace('/');
+    } finally {
+      setAuthChecked(true);
+    }
+  };
 
-    forceRelogin(); // Call to force relogin on every rebuild
-  }, []);
+  checkAuth();
+
+  return () => {
+    if (unsubscribe) {
+      unsubscribe();
+    }
+  };
+}, []);
+
+// Force relogin after rebuilds
+useEffect(() => {
+  const forceRelogin = () => {
+    console.log('Force relogin triggered');
+    localStorage.removeItem('hasSeenWelcome');
+    auth.signOut().then(() => {
+      router.replace('/');
+    });
+  };
+
+  forceRelogin(); // Call to force relogin on every rebuild
+}, []);
 
   // Handle navigation between views
   const handleNavigation = (view, chatData = null) => {
