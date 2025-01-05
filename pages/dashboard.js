@@ -2,15 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
 import { 
-  ChevronRight, 
-  Home, 
-  Settings, 
-  Plus // Ensure Plus is imported here
-} from 'lucide-react'; // Import icons from lucide-react
+  collection, 
+  getDocs, 
+  getDoc, 
+  query, 
+  where, 
+  doc
+} from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import DashboardContent from '../components/DashboardContent'; // Import the DashboardContent component
+import DashboardContent from '../components/DashboardContent';
+import { ChevronRight, Home, Settings } from 'lucide-react';
 
+// Agents data with categories
 const agents = [
   { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist', category: 'Marketing' },
   { id: 'shawn', name: 'Shawn', role: 'Tool Guidance Assistant', category: 'Administrative' },
@@ -34,7 +38,7 @@ const agents = [
   { id: 'sadie', name: 'Sadie', role: 'Ad Copy Maestro', category: 'Copy Editing' },
   { id: 'jesse', name: 'Jesse', role: 'Email Marketing Maestro', category: 'Marketing' },
   { id: 'caner', name: 'Caner', role: 'InsightPulse AI', category: 'Administrative' },
-  { id: 'jr', name: 'JR', role: 'Audience Gap Genius', category: 'Sales' }
+  { id: 'jr', name: 'JR', role: 'Audience Gap Genius', category: 'Sales' },
 ];
 
 const Dashboard = () => {
@@ -42,26 +46,23 @@ const Dashboard = () => {
   const [authChecked, setAuthChecked] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [userTeam, setUserTeam] = useState(null);
-  const [currentView, setCurrentView] = useState('dashboard');
-  const [currentChat, setCurrentChat] = useState(null);
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [error, setError] = useState(null); // To catch any errors
+  const [hasShawnChat, setHasShawnChat] = useState(false); // Check if Shawn's chat exists
 
   // Authentication and data loading
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      try {
-        if (!user) {
-          console.log('No user found, redirecting to login');
-          router.replace('/');
-          return;
-        }
+      if (!user) {
+        console.log('No user found, redirecting to login');
+        router.replace('/');
+        return;
+      }
 
+      try {
         console.log('Fetching user document...');
         const userDoc = await getDoc(doc(db, 'users', user.uid));
 
         if (!userDoc.exists()) {
-          console.log('No user document found');
+          console.log('User document not found in Firestore');
           router.replace('/');
           return;
         }
@@ -69,6 +70,7 @@ const Dashboard = () => {
         const userData = { uid: user.uid, ...userDoc.data() };
         setCurrentUser(userData);
 
+        // Fetch user team data if available
         if (userData.teamId) {
           const teamDoc = await getDoc(doc(db, 'teams', userData.teamId));
           if (teamDoc.exists()) {
@@ -76,11 +78,10 @@ const Dashboard = () => {
           }
         }
 
-        // Load recent activity
-        await fetchRecentActivity(user.uid);
-      } catch (error) {
-        console.error('Error loading user data:', error);
-        setError('Failed to load user data'); // Set error state
+        await checkShawnChat(user.uid);
+      } catch (err) {
+        console.error('Error loading user data:', err);
+        router.replace('/');
       } finally {
         setAuthChecked(true);
       }
@@ -89,19 +90,16 @@ const Dashboard = () => {
     return () => unsubscribe();
   }, []);
 
-  // Fetch recent activity
-  const fetchRecentActivity = async (userId) => {
+  // Check if the user has a chat with Shawn
+  const checkShawnChat = async (userId) => {
     try {
-      const activityQuery = query(
-        collection(db, 'conversations'),
-        where('participants', 'array-contains', userId)
-      );
-      const snapshot = await getDocs(activityQuery);
-      const activity = snapshot.docs.map(doc => doc.data());
-      setRecentActivity(activity);
+      const conversationsRef = collection(db, 'conversations');
+      const q = query(conversationsRef, where('agentId', '==', 'shawn'), where('participants', 'array-contains', userId));
+      const querySnapshot = await getDocs(q);
+      setHasShawnChat(!querySnapshot.empty);
     } catch (error) {
-      console.error('Error fetching recent activity:', error);
-      setError('Failed to fetch activity');
+      console.error('Error checking Shawn chat:', error);
+      setHasShawnChat(false);
     }
   };
 
@@ -117,20 +115,19 @@ const Dashboard = () => {
     );
   }
 
-  // Handle if there's an error during data fetching
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center text-red-600">
-          <p>{error}</p>
-        </div>
-      </div>
-    );
-  }
-
   if (!currentUser) {
     return null;
   }
+
+  // Categorize agents by category
+  const categorizedAgents = agents.reduce((categories, agent) => {
+    const category = agent.category;
+    if (!categories[category]) {
+      categories[category] = [];
+    }
+    categories[category].push(agent);
+    return categories;
+  }, {});
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -144,23 +141,23 @@ const Dashboard = () => {
           <nav className="p-2">
             <Button 
               variant="ghost" 
-              className="w-full justify-start mb-1" 
-              onClick={() => setCurrentView('dashboard')}
+              className="w-full justify-start mb-1"
+              onClick={() => router.push('/dashboard')}
             >
               <Home className="mr-2 h-4 w-4" />
               Dashboard
             </Button>
 
-            {/* Categorized Agents */}
+            {/* Agents Categorized */}
             {Object.keys(categorizedAgents).map((category) => (
               <div key={category}>
                 <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">{category}</div>
                 {categorizedAgents[category].map((agent) => (
-                  <Button
-                    key={agent.id}
-                    variant="ghost"
+                  <Button 
+                    key={agent.id} 
+                    variant="ghost" 
                     className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
-                    onClick={() => setCurrentView('chat')}
+                    onClick={() => router.push(`/chat/${agent.id}`)}
                   >
                     <div className="flex items-center w-full">
                       <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
@@ -171,19 +168,18 @@ const Dashboard = () => {
               </div>
             ))}
 
-            {/* Projects Section */}
-            <div className="mt-4">
-              <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">PROJECTS</div>
-              <Button
-                variant="ghost"
-                className="w-full h-8 justify-start text-gray-400 px-2 py-1"
-              >
-                <div className="flex items-center w-full">
-                  <Plus className="h-4 w-4 min-w-4 mr-1" />
-                  <span className="text-sm">New Project</span>
-                </div>
-              </Button>
-            </div>
+            {/* Projects */}
+            <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">Projects</div>
+            <Button 
+              variant="ghost" 
+              className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
+              onClick={() => router.push('/projects')}
+            >
+              <div className="flex items-center w-full">
+                <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
+                <span className="text-sm">Manage Projects</span>
+              </div>
+            </Button>
           </nav>
         </ScrollArea>
 
@@ -197,11 +193,7 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        <DashboardContent 
-          currentUser={currentUser}
-          userTeam={userTeam}
-          recentActivity={recentActivity}
-        />
+        <DashboardContent currentUser={currentUser} userTeam={userTeam} />
       </div>
     </div>
   );
