@@ -1,18 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  doc, 
+  getDoc 
+} from 'firebase/firestore';
+import { 
+  ChevronDown, 
   ChevronRight, 
+  Plus, 
   Home, 
-  Settings 
+  Settings,
+  ChevronLeft
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import DashboardContent from '../components/DashboardContent'; 
 import ChatInterface from '../components/ChatInterface';
 
-// Updated agents array with categories
 const agents = [
   { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist', category: 'Marketing' },
   { id: 'shawn', name: 'Shawn', role: 'Tool Guidance Assistant', category: 'Administrative' },
@@ -47,7 +56,8 @@ const Dashboard = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [currentChat, setCurrentChat] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
-  const [hasShawnChat, setHasShawnChat] = useState(false); // Check for chat with Shawn
+  const [hasShawnChat, setHasShawnChat] = useState(false); 
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
   // Authentication and data loading
   useEffect(() => {
@@ -90,7 +100,6 @@ const Dashboard = () => {
     return () => unsubscribe();
   }, []);
 
-  // Check if the user has an ongoing chat with Shawn
   const checkShawnChat = async (userId) => {
     try {
       const conversationsRef = collection(db, 'conversations');
@@ -103,7 +112,6 @@ const Dashboard = () => {
     }
   };
 
-  // Fetch recent activity
   const fetchRecentActivity = async (userId) => {
     try {
       const activityQuery = query(collection(db, 'conversations'), where('participants', 'array-contains', userId));
@@ -115,7 +123,6 @@ const Dashboard = () => {
     }
   };
 
-  // Show loading state while checking auth
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -144,9 +151,12 @@ const Dashboard = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className="w-72 bg-gray-900 text-white flex flex-col overflow-auto">
+      <div className={`w-${sidebarExpanded ? '72' : '20'} bg-gray-900 text-white flex flex-col overflow-auto`}>
         <div className="p-4 border-b border-gray-700">
           <h1 className="text-xl font-semibold text-sm">Business Wise365</h1>
+          <Button variant="ghost" onClick={() => setSidebarExpanded(!sidebarExpanded)} className="text-gray-400">
+            {sidebarExpanded ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </Button>
         </div>
 
         <ScrollArea className="flex-1">
@@ -169,12 +179,23 @@ const Dashboard = () => {
                   >
                     <div className="flex items-center w-full">
                       <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
-                      <span className="truncate text-sm">{`${agent.name} - ${agent.role}`}</span>
+                      <span className="truncate text-xs">{`${agent.name} - ${agent.role}`}</span>
                     </div>
                   </Button>
                 ))}
               </div>
             ))}
+
+            {/* Projects Section */}
+            <div className="mt-4">
+              <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">PROJECTS</div>
+              <Button variant="ghost" className="w-full h-8 justify-start text-gray-400 px-2 py-1">
+                <div className="flex items-center w-full">
+                  <Plus className="h-4 w-4 min-w-4 mr-1" />
+                  <span className="text-sm">New Project</span>
+                </div>
+              </Button>
+            </div>
           </nav>
         </ScrollArea>
 
