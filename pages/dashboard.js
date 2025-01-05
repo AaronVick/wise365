@@ -9,12 +9,9 @@ import {
   doc, 
   getDoc 
 } from 'firebase/firestore';
-import { 
-  ChevronRight, 
-  Home, 
-  Settings, 
-  ChevronLeft 
-} from 'lucide-react';
+
+import { Plus, ChevronRight, Home, Settings, ChevronLeft } from 'lucide-react';
+
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import DashboardContent from '../components/DashboardContent'; 
