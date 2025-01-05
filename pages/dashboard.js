@@ -542,73 +542,77 @@ const DashboardContent = ({ showWelcome, recentActivity, currentUser, goals, set
             </div>
 
             <div className="space-y-4">
-              {goals.slice(0, 3).map((goal) => (
-                <div 
-                  key={goal.id} 
-                  className="p-4 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                      <Badge 
-                        variant={
-                          goal.status === 'completed' ? 'success' :
-                          goal.status === 'in_progress' ? 'default' :
-                          'secondary'
-                        }
-                      >
-                        {goal.status.replace('_', ' ')}
-                      </Badge>
-                      <span className="text-sm text-gray-500">
-                        Due {format(new Date(goal.dueDate.seconds * 1000), 'MMM d, yyyy')}
-                      </span>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleStatusUpdate(goal.id, 'in_progress')}>
-                          Mark In Progress
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusUpdate(goal.id, 'completed')}>
-                          Mark Complete
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => router.push('/goals')}>
-                          View Details
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  <h4 className="font-medium mb-1">{goal.title}</h4>
-                  <p className="text-sm text-gray-600 mb-3">{goal.description}</p>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2 text-sm text-gray-500">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={`/agents/${goal.agentId}.avatar.png`} />
-                        <AvatarFallback>{goal.agentId[0].toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <span>with {goal.agentId}</span>
-                    </div>
-                    
-                    {goal.progress !== undefined && (
+              {goals.length === 0 ? (
+                <div className="text-center text-gray-500 py-4">No goals found</div>
+              ) : (
+                goals.slice(0, 3).map((goal) => (
+                  <div 
+                    key={goal.id} 
+                    className="p-4 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
-                        <div className="h-2 w-24 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-blue-500 transition-all duration-300"
-                            style={{ width: `${goal.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-sm text-gray-500">{goal.progress}%</span>
+                        <Badge 
+                          variant={
+                            goal.status === 'completed' ? 'success' :
+                            goal.status === 'in_progress' ? 'default' :
+                            'secondary'
+                          }
+                        >
+                          {goal.status.replace('_', ' ')}
+                        </Badge>
+                        <span className="text-sm text-gray-500">
+                          Due {format(new Date(goal.dueDate.seconds * 1000), 'MMM d, yyyy')}
+                        </span>
                       </div>
-                    )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleStatusUpdate(goal.id, 'in_progress')}>
+                            Mark In Progress
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleStatusUpdate(goal.id, 'completed')}>
+                            Mark Complete
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => router.push('/goals')}>
+                            View Details
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <h4 className="font-medium mb-1">{goal.title}</h4>
+                    <p className="text-sm text-gray-600 mb-3">{goal.description}</p>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 text-sm text-gray-500">
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={`/agents/${goal.agentId}.avatar.png`} />
+                          <AvatarFallback>{goal.agentId[0].toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span>with {goal.agentId}</span>
+                      </div>
+                      
+                      {goal.progress !== undefined && (
+                        <div className="flex items-center space-x-2">
+                          <div className="h-2 w-24 bg-gray-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-blue-500 transition-all duration-300"
+                              style={{ width: `${goal.progress}%` }}
+                            />
+                          </div>
+                          <span className="text-sm text-gray-500">{goal.progress}%</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
 
               {goals.length > 3 && (
                 <Button 
