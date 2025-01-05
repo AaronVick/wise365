@@ -10,9 +10,7 @@ import {
   getDoc 
 } from 'firebase/firestore';
 import { 
-  ChevronDown, 
   ChevronRight, 
-  Plus, 
   Home, 
   Settings, 
   ChevronLeft 
@@ -22,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import DashboardContent from '../components/DashboardContent'; 
 import ChatInterface from '../components/ChatInterface';
 
+// Updated agents array with categories
 const agents = [
   { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist', category: 'Marketing' },
   { id: 'shawn', name: 'Shawn', role: 'Tool Guidance Assistant', category: 'Administrative' },
@@ -56,8 +55,8 @@ const Dashboard = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [currentChat, setCurrentChat] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
-  const [hasShawnChat, setHasShawnChat] = useState(false); 
-  const [sidebarExpanded, setSidebarExpanded] = useState(true); // Default sidebar expanded
+  const [hasShawnChat, setHasShawnChat] = useState(true); // Persist Shawn chat for storyboard
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
 
   // Authentication and data loading
   useEffect(() => {
@@ -168,16 +167,17 @@ const Dashboard = () => {
               Dashboard
             </Button>
 
-            {/* Categorized Agents */}
-            {Object.keys(categorizedAgents).map((category) => (
+            {/* Categorized Agents - Admin first */}
+            {['Administrative', 'Sales', 'Marketing', 'Social Media', 'Copy Editing'].map((category) => (
               <div key={category}>
                 <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">{category}</div>
-                {categorizedAgents[category].map((agent) => (
+                {categorizedAgents[category]?.map((agent) => (
                   <Button
                     key={agent.id}
                     variant="ghost"
                     className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
                     onClick={() => setCurrentView('chat')}
+                    title={`${agent.name} - ${agent.role}`} // Tooltip for full name and role
                   >
                     <div className="flex items-center w-full">
                       <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
@@ -224,8 +224,8 @@ const Dashboard = () => {
           />
         )}
 
-        {/* Chat with Shawn in Dashboard */}
-        {!hasShawnChat && currentView === 'dashboard' && (
+        {/* Chat with Shawn in Dashboard - Now persistent */}
+        {hasShawnChat && currentView === 'dashboard' && (
           <Button 
             variant="ghost" 
             className="w-full justify-start mb-1" 
