@@ -7,7 +7,7 @@ import {
   where, 
   getDocs, 
   doc, 
-  getDoc
+  getDoc 
 } from 'firebase/firestore';
 import { 
   ChevronRight, 
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card";  // Add this import for Card
+import { Card } from "@/components/ui/card";  // Ensure Card is imported
 import DashboardContent from '../components/DashboardContent'; 
 import ChatInterface from '../components/ChatInterface';
 
@@ -56,6 +56,7 @@ const Dashboard = () => {
   const [recentActivity, setRecentActivity] = useState([]);
   const [hasShawnChat, setHasShawnChat] = useState(false); // Check for chat with Shawn
 
+  // Authentication and data loading
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -163,7 +164,7 @@ const Dashboard = () => {
             </Button>
 
             {/* Categorized Agents */}
-            {Object.keys(categorizedAgents).map((category) => (
+            {['Administrative', 'Marketing', 'Sales', 'Social Media', 'Copy Editing'].map((category) => (
               <div key={category}>
                 <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">{category}</div>
                 {categorizedAgents[category].map((agent) => (
@@ -175,7 +176,9 @@ const Dashboard = () => {
                   >
                     <div className="flex items-center w-full">
                       <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
-                      <span className="truncate text-sm">{`${agent.name} - ${agent.role}`}</span>
+                      <span className="truncate text-sm" title={`${agent.name} - ${agent.role}`}>
+                        {`${agent.name} - ${agent.role}`}
+                      </span>
                     </div>
                   </Button>
                 ))}
@@ -208,7 +211,7 @@ const Dashboard = () => {
         )}
 
         {/* Chat with Shawn in Dashboard */}
-        {!hasShawnChat && currentView === 'dashboard' && (
+        {currentView === 'dashboard' && !hasShawnChat && (
           <Card className="p-6">
             <div className="flex items-start space-x-4">
               <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
