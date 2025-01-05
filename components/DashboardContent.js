@@ -138,58 +138,29 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
       </div>
       <ScrollArea className="flex-1 p-6">
         <div className="space-y-6 max-w-5xl mx-auto">
-          {/* Welcome Card */}
-          {!hasShawnChat && (
-            <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                  <span className="text-blue-600 font-semibold">S</span>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Welcome to Business Wise365!</h3>
-                  <p className="text-gray-600 mb-4">
-                    Hi, I'm Shawn, your personal guide to our AI team. I'll help you navigate our
-                    platform and connect you with the right experts for your business needs.
-                  </p>
-                  <Button 
-                    onClick={() => handleAgentClick({ id: 'shawn', name: 'Shawn' })}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    Chat with Shawn
-                  </Button>
-                </div>
+          {/* Chat with Shawn */}
+          <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
+            <div className="flex items-start space-x-4">
+              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                <span className="text-blue-600 font-semibold">S</span>
               </div>
-            </Card>
-          )}
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Welcome to Business Wise365!</h3>
+                <p className="text-gray-600 mb-4">
+                  Hi, I'm Shawn, your personal guide to our AI team. I'll help you navigate our
+                  platform and connect you with the right experts for your business needs.
+                </p>
+                <Button 
+                  onClick={() => handleAgentClick({ id: 'shawn', name: 'Shawn' })}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Chat with Shawn
+                </Button>
+              </div>
+            </div>
+          </Card>
 
-          {/* Quick Stats - with null checks */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="p-4">
-              <h4 className="text-sm font-semibold text-gray-500 mb-2">Active Conversations</h4>
-              <div className="flex items-baseline">
-                <span className="text-2xl font-bold">{recentActivity?.length || 0}</span>
-                <span className="text-sm text-gray-500 ml-2">conversations</span>
-              </div>
-            </Card>
-            <Card className="p-4">
-              <h4 className="text-sm font-semibold text-gray-500 mb-2">Team Members</h4>
-              <div className="flex items-baseline">
-                <span className="text-2xl font-bold">
-                  {currentUser?.teamMembers?.length || 0}
-                </span>
-                <span className="text-sm text-gray-500 ml-2">members</span>
-              </div>
-            </Card>
-            <Card className="p-4">
-              <h4 className="text-sm font-semibold text-gray-500 mb-2">Active Projects</h4>
-              <div className="flex items-baseline">
-                <span className="text-2xl font-bold">0</span>
-                <span className="text-sm text-gray-500 ml-2">projects</span>
-              </div>
-            </Card>
-          </div>
-
-          {/* Suggested Actions */}
+          {/* Suggested Next Steps */}
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4">Suggested Next Steps</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -216,14 +187,19 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
             </div>
           </Card>
 
-          {/* Goals Progress Section */}
+          {/* Projects */}
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Projects</h3>
+            <div className="text-gray-600">Here you can manage your active projects.</div>
+          </Card>
+
+          {/* Current Goals */}
           <Card className="p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-2">
                 <Target className="h-5 w-5 text-blue-500" />
                 <h3 className="text-lg font-semibold">Current Goals</h3>
               </div>
-              {/* Temporarily removed Goal modal button */}
             </div>
 
             <div className="space-y-4">
@@ -310,16 +286,14 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
               )}
             </div>
           </Card>
+
+          {/* Resources */}
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Resources</h3>
+            <div className="text-gray-600">Here are some helpful resources for your business journey.</div>
+          </Card>
         </div>
       </ScrollArea>
-
-      {/* Goal Creation Modal */}
-      {/* <GoalCreationModal
-        isOpen={showGoalModal}
-        onClose={() => setShowGoalModal(false)}
-        onSubmit={handleGoalCreate}
-        agents={agents}
-      /> */}
     </>
   );
 };

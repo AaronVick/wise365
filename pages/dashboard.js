@@ -1,24 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  doc, 
-  getDoc 
-} from 'firebase/firestore';
-import { 
-  ChevronRight, 
-  Home, 
-  Settings 
-} from 'lucide-react';
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { ChevronRight, Home, Settings } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card";  // Ensure Card is imported
-import DashboardContent from '../components/DashboardContent'; 
-import ChatInterface from '../components/ChatInterface';
+import DashboardContent from '../components/DashboardContent'; // Import the DashboardContent component
 
 const agents = [
   { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist', category: 'Marketing' },
@@ -43,8 +30,7 @@ const agents = [
   { id: 'sadie', name: 'Sadie', role: 'Ad Copy Maestro', category: 'Copy Editing' },
   { id: 'jesse', name: 'Jesse', role: 'Email Marketing Maestro', category: 'Marketing' },
   { id: 'caner', name: 'Caner', role: 'InsightPulse AI', category: 'Administrative' },
-  { id: 'jr', name: 'JR', role: 'Audience Gap Genius', category: 'Sales' },
-  { id: 'projects', name: 'Projects', role: 'Manage Projects', category: 'Projects' }, // New Project category
+  { id: 'jr', name: 'JR', role: 'Audience Gap Genius', category: 'Sales' }
 ];
 
 const Dashboard = () => {
@@ -55,18 +41,18 @@ const Dashboard = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [currentChat, setCurrentChat] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
-  const [hasShawnChat, setHasShawnChat] = useState(false); // Check for chat with Shawn
 
   // Authentication and data loading
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        console.log('No user found, redirecting to login');
-        router.replace('/');
-        return;
-      }
-
       try {
+        if (!user) {
+          console.log('No user found, redirecting to login');
+          router.replace('/');
+          return;
+        }
+
+        console.log('Fetching user document...');
         const userDoc = await getDoc(doc(db, 'users', user.uid));
 
         if (!userDoc.exists()) {
@@ -85,8 +71,8 @@ const Dashboard = () => {
           }
         }
 
+        // Load recent activity
         await fetchRecentActivity(user.uid);
-        checkShawnChat(user.uid);
       } catch (error) {
         console.error('Error loading user data:', error);
         router.replace('/');
@@ -98,25 +84,15 @@ const Dashboard = () => {
     return () => unsubscribe();
   }, []);
 
-  // Check if the user has an ongoing chat with Shawn
-  const checkShawnChat = async (userId) => {
-    try {
-      const conversationsRef = collection(db, 'conversations');
-      const q = query(conversationsRef, where('agentId', '==', 'shawn'), where('participants', 'array-contains', userId));
-      const querySnapshot = await getDocs(q);
-      setHasShawnChat(!querySnapshot.empty);
-    } catch (error) {
-      console.error('Error checking Shawn chat:', error);
-      setHasShawnChat(false);
-    }
-  };
-
   // Fetch recent activity
   const fetchRecentActivity = async (userId) => {
     try {
-      const activityQuery = query(collection(db, 'conversations'), where('participants', 'array-contains', userId));
+      const activityQuery = query(
+        collection(db, 'conversations'),
+        where('participants', 'array-contains', userId)
+      );
       const snapshot = await getDocs(activityQuery);
-      const activity = snapshot.docs.map((doc) => doc.data());
+      const activity = snapshot.docs.map(doc => doc.data());
       setRecentActivity(activity);
     } catch (error) {
       console.error('Error fetching recent activity:', error);
@@ -139,16 +115,6 @@ const Dashboard = () => {
     return null;
   }
 
-  // Categorize agents by category
-  const categorizedAgents = agents.reduce((categories, agent) => {
-    const category = agent.category;
-    if (!categories[category]) {
-      categories[category] = [];
-    }
-    categories[category].push(agent);
-    return categories;
-  }, {});
-
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
@@ -159,16 +125,20 @@ const Dashboard = () => {
 
         <ScrollArea className="flex-1">
           <nav className="p-2">
-            <Button variant="ghost" className="w-full justify-start mb-1" onClick={() => setCurrentView('dashboard')}>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start mb-1" 
+              onClick={() => setCurrentView('dashboard')}
+            >
               <Home className="mr-2 h-4 w-4" />
               Dashboard
             </Button>
 
-            {/* Categorized Agents */}
-            {['Administrative', 'Marketing', 'Sales', 'Social Media', 'Copy Editing', 'Projects'].map((category) => (
+            {/* Agents Section */}
+            {Object.keys(categorizedAgents).map((category) => (
               <div key={category}>
                 <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">{category}</div>
-                {categorizedAgents[category]?.map((agent) => (
+                {categorizedAgents[category].map((agent) => (
                   <Button
                     key={agent.id}
                     variant="ghost"
@@ -177,14 +147,26 @@ const Dashboard = () => {
                   >
                     <div className="flex items-center w-full">
                       <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
-                      <span className="truncate text-sm" title={`${agent.name} - ${agent.role}`}>
-                        {`${agent.name} - ${agent.role}`}
-                      </span>
+                      <span className="truncate text-sm">{`${agent.name} - ${agent.role}`}</span>
                     </div>
                   </Button>
                 ))}
               </div>
             ))}
+
+            {/* Projects Section */}
+            <div className="mt-4">
+              <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">PROJECTS</div>
+              <Button
+                variant="ghost"
+                className="w-full h-8 justify-start text-gray-400 px-2 py-1"
+              >
+                <div className="flex items-center w-full">
+                  <Plus className="h-4 w-4 min-w-4 mr-1" />
+                  <span className="text-sm">New Project</span>
+                </div>
+              </Button>
+            </div>
           </nav>
         </ScrollArea>
 
@@ -198,49 +180,11 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {currentView === 'dashboard' ? (
-          <>
-            {/* Projects Section Before Goals */}
-            <Card className="p-6 mb-4">
-              <h3 className="text-lg font-semibold mb-4">Projects</h3>
-              <p className="text-gray-600">Here you can manage your active projects.</p>
-            </Card>
-
-            <DashboardContent currentUser={currentUser} userTeam={userTeam} recentActivity={recentActivity} />
-          </>
-        ) : (
-          <ChatInterface
-            chatId={currentChat?.id || ''}
-            chatType={currentChat?.type || 'default'}
-            participants={currentChat?.participants || []}
-            title={currentChat?.title || 'New Chat'}
-            userId={currentUser?.uid || ''}
-            agentId={currentChat?.agentId || ''}
-          />
-        )}
-
-        {/* Chat with Shawn in Dashboard */}
-        {currentView === 'dashboard' && (
-          <Card className="p-6">
-            <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                <span className="text-blue-600 font-semibold">S</span>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Welcome to Business Wise365!</h3>
-                <p className="text-gray-600">
-                  Hi, I'm Shawn, your personal guide to our AI team. I'll help you navigate our platform and connect you with the right experts for your business needs.
-                </p>
-                <Button 
-                  onClick={() => setCurrentView('chat')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Start Chat with Shawn
-                </Button>
-              </div>
-            </div>
-          </Card>
-        )}
+        <DashboardContent 
+          currentUser={currentUser}
+          userTeam={userTeam}
+          recentActivity={recentActivity}
+        />
       </div>
     </div>
   );
