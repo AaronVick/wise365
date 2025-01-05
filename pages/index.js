@@ -60,7 +60,7 @@ const HomePage = () => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      console.log('Login successful');
+      console.log('Login successful', user);
 
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
@@ -98,6 +98,7 @@ const HomePage = () => {
 
   // Show loading state while checking authentication
   if (isAuthChecking) {
+    console.log('Loading auth check...');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
