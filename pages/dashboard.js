@@ -10,7 +10,9 @@ import {
   doc, 
   getDoc,
   addDoc,
-  serverTimestamp
+  serverTimestamp,
+  orderBy,
+  limit
 } from 'firebase/firestore';
 import { 
   ChevronDown, 
@@ -27,11 +29,38 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ChatInterface from '../components/ChatInterface';
 
+// All agents list
+const agents = [
+  { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist' },
+  { id: 'shawn', name: 'Shawn', role: 'Tool Guidance Assistant' },
+  { id: 'alex', name: 'Alex', role: 'Persona Pilot Pro' },
+  { id: 'sylvester', name: 'Sylvester', role: 'Marketing Success Wheel Optimizer' },
+  { id: 'ally', name: 'Ally', role: 'Positioning Factors Accelerator' },
+  { id: 'aaron', name: 'Aaron', role: 'T.I.N.B. Builder' },
+  { id: 'deborah', name: "De'Borah", role: 'Facebook Marketing Maestro' },
+  { id: 'claire', name: 'Claire', role: 'LinkedIn Messaging Maestro' },
+  { id: 'ej', name: 'EJ', role: 'TikTok Marketing Maestro' },
+  { id: 'lisa', name: 'Lisa', role: 'Instagram Marketing Maestro' },
+  { id: 'troy', name: 'Troy', role: 'CrossSell Catalyst' },
+  { id: 'rom', name: 'Rom', role: 'PitchPerfect AI' },
+  { id: 'larry', name: 'Larry', role: 'Market Edge AI' },
+  { id: 'jen', name: 'Jen', role: 'CloseMaster AI' },
+  { id: 'daniela', name: 'Daniela', role: 'Reputation Builder AI' },
+  { id: 'antonio', name: 'Antonio', role: 'Video Story Architect' },
+  { id: 'mason', name: 'Mason', role: 'StoryAlign AI' },
+  { id: 'gabriel', name: 'Gabriel', role: 'Blog Blueprint' },
+  { id: 'orion', name: 'Orion', role: 'PersonaLead Magnet Maker' },
+  { id: 'sadie', name: 'Sadie', role: 'Ad Copy Maestro' },
+  { id: 'jesse', name: 'Jesse', role: 'Email Marketing Maestro' },
+  { id: 'caner', name: 'Caner', role: 'InsightPulse AI' },
+  { id: 'jr', name: 'JR', role: 'Audience Gap Genius' }
+];
+
 const Dashboard = () => {
   const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [userTeam, setUserTeam] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [expandedAgents, setExpandedAgents] = useState({});
   const [selectedItem, setSelectedItem] = useState('dashboard');
   const [currentView, setCurrentView] = useState('dashboard');
@@ -39,31 +68,51 @@ const Dashboard = () => {
   const [showWelcome, setShowWelcome] = useState(false);
   const [recentActivity, setRecentActivity] = useState([]);
 
-  // Authentication and data loading
+  const fetchRecentActivity = async (userId) => {
+    try {
+      const conversationsQuery = query(
+        collection(db, 'conversations'),
+        where('participants', 'array-contains', userId),
+        orderBy('lastUpdatedAt', 'desc'),
+        limit(10)
+      );
+      const conversationsSnapshot = await getDocs(conversationsQuery);
+
+      const activity = [];
+
+      conversationsSnapshot.forEach(doc => {
+        activity.push({
+          id: doc.id,
+          type: 'conversation',
+          ...doc.data()
+        });
+      });
+
+      setRecentActivity(activity);
+    } catch (error) {
+      console.error('Error fetching recent activity:', error);
+    }
+  };
+
   useEffect(() => {
+    let unsubscribe;
+    
     const checkAuth = async () => {
       try {
-        // Get stored user ID from login
-        const storedUserId = localStorage.getItem('userId');
-        
-        if (!storedUserId) {
-          router.push('/');
-          return;
-        }
-
-        const unsubscribe = auth.onAuthStateChanged(async (user) => {
+        unsubscribe = auth.onAuthStateChanged(async (user) => {
           if (!user) {
-            localStorage.removeItem('userId');
-            router.push('/');
+            console.log('No user found, redirecting to login');
+            router.replace('/');
             return;
           }
 
           try {
+            console.log('Fetching user document...');
             const userDoc = await getDoc(doc(db, 'users', user.uid));
             
             if (!userDoc.exists()) {
-              console.error('User document not found');
-              router.push('/');
+              console.log('No user document found');
+              router.replace('/');
               return;
             }
 
@@ -72,9 +121,9 @@ const Dashboard = () => {
               ...userDoc.data()
             };
 
+            console.log('User data loaded');
             setCurrentUser(userData);
 
-            // Get team data if user has a team
             if (userData.teamId) {
               const teamDoc = await getDoc(doc(db, 'teams', userData.teamId));
               if (teamDoc.exists()) {
@@ -82,35 +131,40 @@ const Dashboard = () => {
               }
             }
 
-            // Check for first visit
             const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
             if (!hasSeenWelcome) {
               setShowWelcome(true);
               localStorage.setItem('hasSeenWelcome', 'true');
             }
 
-            // Load recent activity
             await fetchRecentActivity(user.uid);
-            
           } catch (error) {
             console.error('Error loading user data:', error);
-            router.push('/');
-          } finally {
-            setIsLoading(false);
+            router.replace('/');
           }
         });
-
-        return () => unsubscribe();
       } catch (error) {
         console.error('Auth check error:', error);
-        router.push('/');
+        router.replace('/');
+      } finally {
+        setAuthChecked(true);
       }
     };
 
     checkAuth();
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
-  // Handle new conversation with agent
+  const handleNavigation = (view, chatData = null) => {
+    setCurrentView(view);
+    setCurrentChat(chatData);
+    setSelectedItem(view);
+  };
+
   const handleAgentClick = async (agent) => {
     try {
       const conversationsRef = collection(db, 'conversations');
@@ -124,7 +178,6 @@ const Dashboard = () => {
       let chatId;
       
       if (querySnapshot.empty) {
-        // Create new conversation
         const newChatRef = await addDoc(conversationsRef, {
           agentId: agent.id,
           participants: [currentUser.uid],
@@ -150,11 +203,7 @@ const Dashboard = () => {
     }
   };
 
-  // Rest of your component code...
-  // (Keep the existing agents array, handleNavigation, toggleAgent, etc.)
-
-  // Loading state
-  if (isLoading) {
+  if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -165,9 +214,7 @@ const Dashboard = () => {
     );
   }
 
-  // No user state (shouldn't normally be seen due to redirect)
   if (!currentUser) {
-    router.push('/');
     return null;
   }
 
@@ -313,7 +360,7 @@ const DashboardContent = ({ showWelcome, recentActivity, currentUser }) => (
                   <div className="flex items-center justify-between">
                     <h4 className="font-medium">{activity.name || activity.title}</h4>
                     <span className="text-sm text-gray-500">
-                      {new Date(activity.lastUpdatedAt?.toDate()).toLocaleString()}
+                      {activity.lastUpdatedAt?.toDate().toLocaleString()}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600">
