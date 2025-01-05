@@ -225,15 +225,17 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                 <Target className="h-5 w-5 text-blue-500" />
                 <h3 className="text-lg font-semibold">Current Goals</h3>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowGoalModal(true)}
-                className="flex items-center space-x-2"
-              >
-                <Plus className="h-4 w-4" />
-                <span>New Goal</span>
-              </Button>
+              {/* Temporarily remove this button in the Goals section
+  <Button 
+    variant="outline" 
+    size="sm" 
+    onClick={() => setShowGoalModal(true)}
+    className="flex items-center space-x-2"
+  >
+    <Plus className="h-4 w-4" />
+    <span>New Goal</span>
+  </Button>
+*/}
             </div>
 
             <div className="space-y-4">
@@ -323,15 +325,15 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
         </div>
       </ScrollArea>
 
-      {/* Goal Creation Modal */}
-      <GoalCreationModal
-        isOpen={showGoalModal}
-        onClose={() => setShowGoalModal(false)}
-        onSubmit={handleGoalCreate}
-        agents={agents}
-      />
-    </>
-  );
-};
+      
+   {/* Goal Creation Modal */}
+{/* 
+  <GoalCreationModal
+    isOpen={showGoalModal}
+    onClose={() => setShowGoalModal(false)}
+    onSubmit={handleGoalCreate}
+    agents={agents}
+  />
+*/}
 
 export default DashboardContent;
