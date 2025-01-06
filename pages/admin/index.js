@@ -1,5 +1,3 @@
-// pages/admin/inde.js
-
 import { useEffect, useState } from 'react';
 import AdminLayout from '@/components/AdminLayout';
 import AgentCard from '@/components/AgentCard';
@@ -17,6 +15,7 @@ export default function AdminDashboard() {
   const [chatMessages, setChatMessages] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
 
+  // Fetch tab-specific data
   useEffect(() => {
     async function fetchData() {
       const res = await fetch(`/api/admin?tab=${activeTab}`);
@@ -26,6 +25,7 @@ export default function AdminDashboard() {
     fetchData();
   }, [activeTab]);
 
+  // Add new knowledge to agentData
   const handleAddKnowledge = async () => {
     const res = await fetch('/api/admin/training', {
       method: 'POST',
@@ -36,7 +36,6 @@ export default function AdminDashboard() {
     if (res.ok) {
       alert('Knowledge added successfully!');
       setNewKnowledge({ agentId: '', dataType: 'knowledge_base', description: '', data: '' });
-      // Refresh the training data
       const updatedData = await fetch(`/api/admin?tab=training`).then((res) => res.json());
       setData(updatedData);
     } else {
@@ -44,48 +43,41 @@ export default function AdminDashboard() {
     }
   };
 
+  // Handle chat message sending
   const handleSendMessage = async () => {
     if (!selectedAgent) {
       alert('Please select an agent to chat with.');
       return;
     }
-  
-    // Fetch agent data
+
     const agentRes = await fetch(`/api/admin/agents/${selectedAgent}`);
     const agentData = await agentRes.json();
-  
-    // Fetch training data
+
     const trainingRes = await fetch(`/api/admin/training?agentId=${selectedAgent}`);
     const trainingData = await trainingRes.json();
-  
-    // Construct the prompt
+
     const prompt = `
       You are ${agentData.agentName}, a ${agentData.Role} at Business Wise365.
       Your role is: ${agentData.RoleInfo}.
       You are described as: ${agentData.personality}.
       Here are your tasks: ${agentData.tasks.join(', ')}.
-      Your knowledge base includes: ${trainingData.map(data => data.data).join(' ')}.
-      
-      Respond to the following user message:
-      "${chatInput}"`;
-  
-    // Send the prompt to OpenAI
+      Your knowledge base includes: ${trainingData.map((data) => data.data).join(' ')}.
+      Respond to the following user message: "${chatInput}"`;
+
     const res = await fetch('/api/admin/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt }),
     });
-  
+
     if (res.ok) {
       const { reply } = await res.json();
-  
-      // Update chat state
+
       const userMessage = { user: chatInput, timestamp: new Date() };
       const botMessage = { bot: reply, timestamp: new Date() };
-  
+
       setChatMessages((prev) => [...prev, userMessage, botMessage]);
-  
-      // Save conversation to Firebase
+
       await fetch('/api/admin/conversations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -95,33 +87,14 @@ export default function AdminDashboard() {
           participants: ['admin', selectedAgent],
         }),
       });
-  
-      setChatInput('');
-    } else {
-      alert('Failed to send message.');
-    }
-  };
-  
-  
 
-    const res = await fetch('/api/admin/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: chatInput, agentId: selectedAgent }),
-    });
-
-    if (res.ok) {
-      const { reply } = await res.json();
-      setChatMessages((prev) => [
-        ...prev,
-        { user: chatInput, bot: reply },
-      ]);
       setChatInput('');
     } else {
       alert('Failed to send message.');
     }
   };
 
+  // Render content for each tab
   const renderContent = () => {
     if (activeTab === 'agents') {
       return (
@@ -130,7 +103,7 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {data.map((agent) => (
               <AgentCard
-                key={agent.id}
+                key={agent.agentId}
                 agent={agent}
                 onEdit={(agent) => alert(`Edit agent: ${agent.agentName}`)}
               />
@@ -152,7 +125,6 @@ export default function AdminDashboard() {
               </div>
             ))}
           </div>
-
           <div className="p-4 bg-white shadow rounded">
             <h3 className="text-lg font-bold mb-2">Add New Knowledge</h3>
             <input
@@ -208,8 +180,12 @@ export default function AdminDashboard() {
           <div className="p-4 bg-gray-100 shadow rounded mb-4">
             {chatMessages.map((msg, idx) => (
               <div key={idx} className="mb-2">
-                <p><strong>You:</strong> {msg.user}</p>
-                <p><strong>{selectedAgent}:</strong> {msg.bot}</p>
+                <p>
+                  <strong>You:</strong> {msg.user}
+                </p>
+                <p>
+                  <strong>{selectedAgent}:</strong> {msg.bot}
+                </p>
               </div>
             ))}
           </div>
@@ -231,7 +207,6 @@ export default function AdminDashboard() {
         </div>
       );
     }
-    
 
     return <div>Other Tab Content Here</div>;
   };
@@ -264,7 +239,6 @@ export default function AdminDashboard() {
           Chat
         </button>
       </div>
-
       <div className="bg-white shadow rounded p-6">{renderContent()}</div>
     </AdminLayout>
   );
