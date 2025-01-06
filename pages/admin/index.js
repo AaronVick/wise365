@@ -130,122 +130,292 @@ export default function AdminDashboard() {
   };
 
   // Render content based on the active tab
-  const renderContent = () => {
-    if (activeTab === 'agents') {
-      return (
-        <div>
-          <h2 className="text-xl font-bold mb-4">Manage Agents</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {data.map((agent) => (
-              <AgentCard
-                key={agent.agentId}
-                agent={agent}
-                onEdit={(agent) => alert(`Edit agent functionality for ${agent.agentName} is pending.`)}
-              />
-            ))}
-          </div>
-          <div className="p-4 bg-white shadow rounded mt-6">
-            <h3 className="text-lg font-bold mb-2">Add New Agent</h3>
-            <input
-              type="text"
-              className="p-2 border rounded w-full mb-2"
-              placeholder="Agent ID (e.g., mike)"
-              value={newAgent.agentId}
-              onChange={(e) => setNewAgent({ ...newAgent, agentId: e.target.value })}
+const renderContent = () => {
+  if (activeTab === 'agents') {
+    return (
+      <div>
+        <h2 className="text-xl font-bold mb-4">Manage Agents</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {data.map((agent) => (
+            <AgentCard
+              key={agent.agentId}
+              agent={agent}
+              onEdit={() => setEditingAgent(agent)} // Open the edit form
             />
+          ))}
+        </div>
+
+        {/* Edit Agent Form */}
+        {editingAgent && (
+          <div className="p-4 bg-white shadow rounded mt-6">
+            <h3 className="text-lg font-bold mb-2">Edit Agent: {editingAgent.agentName}</h3>
             <input
               type="text"
               className="p-2 border rounded w-full mb-2"
               placeholder="Agent Name"
-              value={newAgent.agentName}
-              onChange={(e) => setNewAgent({ ...newAgent, agentName: e.target.value })}
+              value={editingAgent.agentName}
+              onChange={(e) =>
+                setEditingAgent({ ...editingAgent, agentName: e.target.value })
+              }
             />
             <input
               type="text"
               className="p-2 border rounded w-full mb-2"
               placeholder="Role"
-              value={newAgent.Role}
-              onChange={(e) => setNewAgent({ ...newAgent, Role: e.target.value })}
+              value={editingAgent.Role}
+              onChange={(e) => setEditingAgent({ ...editingAgent, Role: e.target.value })}
             />
             <textarea
               className="p-2 border rounded w-full mb-2"
               placeholder="Role Info"
-              value={newAgent.RoleInfo}
-              onChange={(e) => setNewAgent({ ...newAgent, RoleInfo: e.target.value })}
+              value={editingAgent.RoleInfo}
+              onChange={(e) =>
+                setEditingAgent({ ...editingAgent, RoleInfo: e.target.value })
+              }
             />
             <input
               type="text"
               className="p-2 border rounded w-full mb-2"
               placeholder="Type"
-              value={newAgent.Type}
-              onChange={(e) => setNewAgent({ ...newAgent, Type: e.target.value })}
+              value={editingAgent.Type}
+              onChange={(e) => setEditingAgent({ ...editingAgent, Type: e.target.value })}
             />
             <textarea
               className="p-2 border rounded w-full mb-2"
               placeholder="Personality"
-              value={newAgent.personality}
-              onChange={(e) => setNewAgent({ ...newAgent, personality: e.target.value })}
+              value={editingAgent.personality}
+              onChange={(e) =>
+                setEditingAgent({ ...editingAgent, personality: e.target.value })
+              }
             />
-            <button
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              onClick={handleAddAgent}
-            >
-              Add Agent
-            </button>
+            <div className="flex space-x-4">
+              <button
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                onClick={handleSaveAgent}
+              >
+                Save
+              </button>
+              <button
+                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                onClick={() => setEditingAgent(null)} // Cancel editing
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        </div>
-      );
-    }
+        )}
 
-    if (activeTab === 'training') {
-      return (
-        <div>
-          <h2 className="text-xl font-bold mb-4">Training Data</h2>
+        {/* Add New Agent */}
+        <div className="p-4 bg-white shadow rounded mt-6">
+          <h3 className="text-lg font-bold mb-2">Add New Agent</h3>
+          <input
+            type="text"
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Agent ID (e.g., mike)"
+            value={newAgent.agentId}
+            onChange={(e) => setNewAgent({ ...newAgent, agentId: e.target.value })}
+          />
+          <input
+            type="text"
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Agent Name"
+            value={newAgent.agentName}
+            onChange={(e) => setNewAgent({ ...newAgent, agentName: e.target.value })}
+          />
+          <input
+            type="text"
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Role"
+            value={newAgent.Role}
+            onChange={(e) => setNewAgent({ ...newAgent, Role: e.target.value })}
+          />
+          <textarea
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Role Info"
+            value={newAgent.RoleInfo}
+            onChange={(e) => setNewAgent({ ...newAgent, RoleInfo: e.target.value })}
+          />
+          <input
+            type="text"
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Type"
+            value={newAgent.Type}
+            onChange={(e) => setNewAgent({ ...newAgent, Type: e.target.value })}
+          />
+          <textarea
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Personality"
+            value={newAgent.personality}
+            onChange={(e) => setNewAgent({ ...newAgent, personality: e.target.value })}
+          />
+          <button
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            onClick={handleAddAgent}
+          >
+            Add Agent
+          </button>
+        </div>
+      </div>
+    );
+  }
+};
+
+
+if (activeTab === 'training') {
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-4">Training Data</h2>
+      
+      {/* Agent Selection */}
+      <select
+        className="p-2 border rounded w-full mb-4"
+        value={selectedAgent || ''}
+        onChange={async (e) => {
+          const agentId = e.target.value;
+          setSelectedAgent(agentId);
+          
+          // Fetch training data for the selected agent
+          const res = await fetch(`/api/admin/training?agentId=${agentId}`);
+          const trainingData = await res.json();
+          setData(trainingData);
+        }}
+      >
+        <option value="" disabled>
+          Select an Agent
+        </option>
+        {agents.map((agent) => (
+          <option key={agent.agentId} value={agent.agentId}>
+            {agent.agentName}
+          </option>
+        ))}
+      </select>
+
+      {/* Display Existing Training Data */}
+      {selectedAgent ? (
+        data.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             {data.map((training) => (
               <div key={training.id} className="p-4 bg-gray-100 shadow rounded">
                 <h3 className="text-lg font-semibold">{training.dataType}</h3>
                 <p className="text-sm text-gray-600">{training.description}</p>
+                {/* Render nested Q&A or sections */}
+                {training.data.qa && (
+                  <div className="mt-4">
+                    <h4 className="text-md font-bold">Q&A:</h4>
+                    {training.data.qa.map((qaItem, idx) => (
+                      <div key={idx} className="p-2 bg-gray-200 rounded mb-2">
+                        <p><strong>Question:</strong> {qaItem.question}</p>
+                        <p><strong>Guidance:</strong> {qaItem.guidance}</p>
+                        <p><strong>Feedback Example:</strong> {qaItem.feedbackExample}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
-          <div className="p-4 bg-white shadow rounded">
-            <h3 className="text-lg font-bold mb-2">Add New Knowledge</h3>
-            <input
-              type="text"
-              className="p-2 border rounded w-full mb-2"
-              placeholder="Agent ID (e.g., mike)"
-              value={newKnowledge.agentId}
-              onChange={(e) => setNewKnowledge({ ...newKnowledge, agentId: e.target.value })}
-            />
-            <textarea
-              className="p-2 border rounded w-full mb-2"
-              placeholder="Description of the knowledge"
-              value={newKnowledge.description}
-              onChange={(e) => setNewKnowledge({ ...newKnowledge, description: e.target.value })}
-            />
-            <textarea
-              className="p-2 border rounded w-full mb-2"
-              placeholder="Knowledge data (e.g., facts, context)"
-              value={newKnowledge.data}
-              onChange={(e) => setNewKnowledge({ ...newKnowledge, data: e.target.value })}
-            />
-            <button
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              onClick={handleAddKnowledge}
-            >
-              Add Knowledge
-            </button>
-          </div>
+        ) : (
+          <p className="text-gray-600">No training data found for this agent.</p>
+        )
+      ) : (
+        <p className="text-gray-600">Please select an agent to view their training data.</p>
+      )}
+      
+      {/* Add New Knowledge Form */}
+      <div className="p-4 bg-white shadow rounded mt-6">
+        <h3 className="text-lg font-bold mb-2">Add New Knowledge</h3>
+        
+        {/* Agent Dropdown */}
+        <select
+          className="p-2 border rounded w-full mb-2"
+          value={newKnowledge.agentId}
+          onChange={(e) => setNewKnowledge({ ...newKnowledge, agentId: e.target.value })}
+        >
+          <option value="" disabled>
+            Select an Agent
+          </option>
+          {agents.map((agent) => (
+            <option key={agent.agentId} value={agent.agentId}>
+              {agent.agentName}
+            </option>
+          ))}
+        </select>
+        
+        <textarea
+          className="p-2 border rounded w-full mb-2"
+          placeholder="Description of the knowledge"
+          value={newKnowledge.description}
+          onChange={(e) => setNewKnowledge({ ...newKnowledge, description: e.target.value })}
+        />
+        
+        {/* Add Q&A Section */}
+        <div className="mb-4">
+          <h4 className="text-md font-bold mb-2">Add Q&A</h4>
+          {newKnowledge.data.qa?.map((qa, idx) => (
+            <div key={idx} className="mb-2 p-2 bg-gray-100 rounded">
+              <input
+                type="text"
+                className="p-2 border rounded w-full mb-2"
+                placeholder="Question"
+                value={qa.question}
+                onChange={(e) => {
+                  const updatedQa = [...newKnowledge.data.qa];
+                  updatedQa[idx].question = e.target.value;
+                  setNewKnowledge({ ...newKnowledge, data: { ...newKnowledge.data, qa: updatedQa } });
+                }}
+              />
+              <textarea
+                className="p-2 border rounded w-full mb-2"
+                placeholder="Guidance"
+                value={qa.guidance}
+                onChange={(e) => {
+                  const updatedQa = [...newKnowledge.data.qa];
+                  updatedQa[idx].guidance = e.target.value;
+                  setNewKnowledge({ ...newKnowledge, data: { ...newKnowledge.data, qa: updatedQa } });
+                }}
+              />
+              <textarea
+                className="p-2 border rounded w-full mb-2"
+                placeholder="Feedback Example"
+                value={qa.feedbackExample}
+                onChange={(e) => {
+                  const updatedQa = [...newKnowledge.data.qa];
+                  updatedQa[idx].feedbackExample = e.target.value;
+                  setNewKnowledge({ ...newKnowledge, data: { ...newKnowledge.data, qa: updatedQa } });
+                }}
+              />
+            </div>
+          ))}
+          <button
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            onClick={() => {
+              const updatedQa = newKnowledge.data.qa || [];
+              updatedQa.push({ question: '', guidance: '', feedbackExample: '' });
+              setNewKnowledge({ ...newKnowledge, data: { ...newKnowledge.data, qa: updatedQa } });
+            }}
+          >
+            Add Q&A
+          </button>
         </div>
-      );
-    }
+        
+        <button
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          onClick={handleAddKnowledge}
+        >
+          Add Knowledge
+        </button>
+      </div>
+    </div>
+  );
+}
 
+    
     if (activeTab === 'chat') {
       return (
         <div>
           <h2 className="text-xl font-bold mb-4">Chat with Agents</h2>
           <div className="mb-4">
+            {/* Agent Dropdown */}
             <select
               className="p-2 border rounded w-full"
               value={selectedAgent || ''}
@@ -254,25 +424,37 @@ export default function AdminDashboard() {
               <option value="" disabled>
                 Select an agent
               </option>
-              {data.map((agent) => (
-                <option key={agent.agentId} value={agent.agentId}>
-                  {agent.agentName}
-                </option>
-              ))}
+              {Array.isArray(data) && data.length > 0 ? (
+                data.map((agent) => (
+                  <option key={agent.agentId} value={agent.agentId}>
+                    {agent.agentName}
+                  </option>
+                ))
+              ) : (
+                <option disabled>No agents available</option>
+              )}
             </select>
           </div>
+    
+          {/* Chat Messages */}
           <div className="p-4 bg-gray-100 shadow rounded mb-4">
-            {chatMessages.map((msg, idx) => (
-              <div key={idx} className="mb-2">
-                <p>
-                  <strong>You:</strong> {msg.user}
-                </p>
-                <p>
-                  <strong>{selectedAgent}:</strong> {msg.bot}
-                </p>
-              </div>
-            ))}
+            {chatMessages && chatMessages.length > 0 ? (
+              chatMessages.map((msg, idx) => (
+                <div key={idx} className="mb-2">
+                  <p>
+                    <strong>You:</strong> {msg.user}
+                  </p>
+                  <p>
+                    <strong>{selectedAgent}:</strong> {msg.bot}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500">No messages yet. Start the conversation!</p>
+            )}
           </div>
+    
+          {/* Chat Input */}
           <div className="flex">
             <input
               type="text"
@@ -291,9 +473,7 @@ export default function AdminDashboard() {
         </div>
       );
     }
-
-    return <div>Other Tab Content Here</div>;
-  };
+    
 
   return (
     <AdminLayout>
