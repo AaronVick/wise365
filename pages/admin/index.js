@@ -5,6 +5,16 @@ import AgentCard from '@/components/AgentCard';
 export default function AdminDashboard() {
   const [data, setData] = useState([]);
   const [activeTab, setActiveTab] = useState('agents');
+  const [newAgent, setNewAgent] = useState({
+    agentId: '',
+    agentName: '',
+    Role: '',
+    RoleInfo: '',
+    Type: '',
+    language: 'English',
+    personality: '',
+    tasks: [],
+  });
   const [newKnowledge, setNewKnowledge] = useState({
     agentId: '',
     dataType: 'knowledge_base',
@@ -15,15 +25,42 @@ export default function AdminDashboard() {
   const [chatMessages, setChatMessages] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
 
-  // Fetch tab-specific data
+  // Fetch data when activeTab changes
   useEffect(() => {
     async function fetchData() {
       const res = await fetch(`/api/admin?tab=${activeTab}`);
       const result = await res.json();
-      setData(result);
+      setData(result || []);
     }
     fetchData();
   }, [activeTab]);
+
+  // Add new agent
+  const handleAddAgent = async () => {
+    const res = await fetch('/api/admin/agents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newAgent),
+    });
+
+    if (res.ok) {
+      alert('Agent added successfully!');
+      setNewAgent({
+        agentId: '',
+        agentName: '',
+        Role: '',
+        RoleInfo: '',
+        Type: '',
+        language: 'English',
+        personality: '',
+        tasks: [],
+      });
+      const updatedData = await fetch(`/api/admin?tab=agents`).then((res) => res.json());
+      setData(updatedData);
+    } else {
+      alert('Failed to add agent.');
+    }
+  };
 
   // Add new knowledge to agentData
   const handleAddKnowledge = async () => {
@@ -43,7 +80,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Handle chat message sending
+  // Send message in chat
   const handleSendMessage = async () => {
     if (!selectedAgent) {
       alert('Please select an agent to chat with.');
@@ -72,10 +109,8 @@ export default function AdminDashboard() {
 
     if (res.ok) {
       const { reply } = await res.json();
-
       const userMessage = { user: chatInput, timestamp: new Date() };
       const botMessage = { bot: reply, timestamp: new Date() };
-
       setChatMessages((prev) => [...prev, userMessage, botMessage]);
 
       await fetch('/api/admin/conversations', {
@@ -94,7 +129,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Render content for each tab
+  // Render content based on the active tab
   const renderContent = () => {
     if (activeTab === 'agents') {
       return (
@@ -105,9 +140,58 @@ export default function AdminDashboard() {
               <AgentCard
                 key={agent.agentId}
                 agent={agent}
-                onEdit={(agent) => alert(`Edit agent: ${agent.agentName}`)}
+                onEdit={(agent) => alert(`Edit agent functionality for ${agent.agentName} is pending.`)}
               />
             ))}
+          </div>
+          <div className="p-4 bg-white shadow rounded mt-6">
+            <h3 className="text-lg font-bold mb-2">Add New Agent</h3>
+            <input
+              type="text"
+              className="p-2 border rounded w-full mb-2"
+              placeholder="Agent ID (e.g., mike)"
+              value={newAgent.agentId}
+              onChange={(e) => setNewAgent({ ...newAgent, agentId: e.target.value })}
+            />
+            <input
+              type="text"
+              className="p-2 border rounded w-full mb-2"
+              placeholder="Agent Name"
+              value={newAgent.agentName}
+              onChange={(e) => setNewAgent({ ...newAgent, agentName: e.target.value })}
+            />
+            <input
+              type="text"
+              className="p-2 border rounded w-full mb-2"
+              placeholder="Role"
+              value={newAgent.Role}
+              onChange={(e) => setNewAgent({ ...newAgent, Role: e.target.value })}
+            />
+            <textarea
+              className="p-2 border rounded w-full mb-2"
+              placeholder="Role Info"
+              value={newAgent.RoleInfo}
+              onChange={(e) => setNewAgent({ ...newAgent, RoleInfo: e.target.value })}
+            />
+            <input
+              type="text"
+              className="p-2 border rounded w-full mb-2"
+              placeholder="Type"
+              value={newAgent.Type}
+              onChange={(e) => setNewAgent({ ...newAgent, Type: e.target.value })}
+            />
+            <textarea
+              className="p-2 border rounded w-full mb-2"
+              placeholder="Personality"
+              value={newAgent.personality}
+              onChange={(e) => setNewAgent({ ...newAgent, personality: e.target.value })}
+            />
+            <button
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              onClick={handleAddAgent}
+            >
+              Add Agent
+            </button>
           </div>
         </div>
       );
