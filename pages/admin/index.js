@@ -33,8 +33,8 @@ export default function AdminDashboard() {
       const res = await fetch(`/api/admin?tab=${activeTab}`);
       const result = await res.json();
       setData(result || []);
+
       if (activeTab === 'training' || activeTab === 'chat') {
-        // Fetch agents for dropdowns
         const agentsRes = await fetch('/api/admin/agents');
         const agentsData = await agentsRes.json();
         setAgents(agentsData || []);
@@ -43,6 +43,7 @@ export default function AdminDashboard() {
     fetchData();
   }, [activeTab]);
 
+  // Add new agent
   const handleAddAgent = async () => {
     const res = await fetch('/api/admin/agents', {
       method: 'POST',
@@ -62,13 +63,14 @@ export default function AdminDashboard() {
         personality: '',
         tasks: [],
       });
-      const updatedData = await fetch(`/api/admin?tab=agents`).then((res) => res.json());
+      const updatedData = await fetch('/api/admin?tab=agents').then((res) => res.json());
       setData(updatedData);
     } else {
       alert('Failed to add agent.');
     }
   };
 
+  // Edit existing agent
   const handleEditAgent = async () => {
     const res = await fetch(`/api/admin/agents/${editingAgent.agentId}`, {
       method: 'PUT',
@@ -79,13 +81,14 @@ export default function AdminDashboard() {
     if (res.ok) {
       alert('Agent updated successfully!');
       setEditingAgent(null);
-      const updatedData = await fetch(`/api/admin?tab=agents`).then((res) => res.json());
+      const updatedData = await fetch('/api/admin?tab=agents').then((res) => res.json());
       setData(updatedData);
     } else {
       alert('Failed to update agent.');
     }
   };
 
+  // Add new knowledge
   const handleAddKnowledge = async () => {
     const res = await fetch('/api/admin/training', {
       method: 'POST',
@@ -96,13 +99,14 @@ export default function AdminDashboard() {
     if (res.ok) {
       alert('Knowledge added successfully!');
       setNewKnowledge({ agentId: '', dataType: 'knowledge_base', description: '', data: '' });
-      const updatedData = await fetch(`/api/admin?tab=training`).then((res) => res.json());
+      const updatedData = await fetch('/api/admin?tab=training').then((res) => res.json());
       setData(updatedData);
     } else {
       alert('Failed to add knowledge.');
     }
   };
 
+  // Send a chat message
   const handleSendMessage = async () => {
     if (!selectedAgent) {
       alert('Please select an agent to chat with.');
@@ -135,16 +139,6 @@ export default function AdminDashboard() {
       const botMessage = { bot: reply, timestamp: new Date() };
       setChatMessages((prev) => [...prev, userMessage, botMessage]);
 
-      await fetch('/api/admin/conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentId: selectedAgent,
-          messages: [userMessage, botMessage],
-          participants: ['admin', selectedAgent],
-        }),
-      });
-
       setChatInput('');
     } else {
       alert('Failed to send message.');
@@ -152,117 +146,120 @@ export default function AdminDashboard() {
   };
 
   const renderContent = () => {
-    switch (activeTab) {
-      case 'agents':
-        return (
-          <div>
-            <h2 className="text-xl font-bold mb-4">Manage Agents</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {Array.isArray(data) && data.length > 0 ? (
-                data.map((agent) => (
-                  <AgentCard
-                    key={agent.agentId}
-                    agent={agent}
-                    onEdit={() => setEditingAgent(agent)}
-                  />
-                ))
-              ) : (
-                <p className="text-gray-500">No agents available. Add a new agent below.</p>
-              )}
-            </div>
-
-            {editingAgent && (
-              <div className="p-4 bg-white shadow rounded mt-6">
-                <h3 className="text-lg font-bold mb-2">Edit Agent: {editingAgent.agentName}</h3>
-                <input
-                  type="text"
-                  className="p-2 border rounded w-full mb-2"
-                  placeholder="Agent Name"
-                  value={editingAgent.agentName}
-                  onChange={(e) =>
-                    setEditingAgent({ ...editingAgent, agentName: e.target.value })
-                  }
-                />
-                <input
-                  type="text"
-                  className="p-2 border rounded w-full mb-2"
-                  placeholder="Role"
-                  value={editingAgent.Role}
-                  onChange={(e) =>
-                    setEditingAgent({ ...editingAgent, Role: e.target.value })
-                  }
-                />
-                <textarea
-                  className="p-2 border rounded w-full mb-2"
-                  placeholder="Role Info"
-                  value={editingAgent.RoleInfo}
-                  onChange={(e) =>
-                    setEditingAgent({ ...editingAgent, RoleInfo: e.target.value })
-                  }
-                />
-                <input
-                  type="text"
-                  className="p-2 border rounded w-full mb-2"
-                  placeholder="Type"
-                  value={editingAgent.Type}
-                  onChange={(e) =>
-                    setEditingAgent({ ...editingAgent, Type: e.target.value })
-                  }
-                />
-                <textarea
-                  className="p-2 border rounded w-full mb-2"
-                  placeholder="Personality"
-                  value={editingAgent.personality}
-                  onChange={(e) =>
-                    setEditingAgent({ ...editingAgent, personality: e.target.value })
-                  }
-                />
-                <div className="flex space-x-4">
-                  <button
-                    className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-                    onClick={handleEditAgent}
-                  >
-                    Save Changes
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-                    onClick={() => setEditingAgent(null)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-
+    if (activeTab === 'agents') {
+      return (
+        <div>
+          <h2 className="text-xl font-bold mb-4">Manage Agents</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {data.map((agent) => (
+              <AgentCard
+                key={agent.agentId}
+                agent={agent}
+                onEdit={() => setEditingAgent(agent)}
+              />
+            ))}
+          </div>
+          {editingAgent && (
             <div className="p-4 bg-white shadow rounded mt-6">
-              <h3 className="text-lg font-bold mb-2">Add New Agent</h3>
+              <h3 className="text-lg font-bold mb-2">Edit Agent: {editingAgent.agentName}</h3>
               <input
                 type="text"
                 className="p-2 border rounded w-full mb-2"
-                placeholder="Agent ID (e.g., mike)"
-                value={newAgent.agentId}
-                onChange={(e) => setNewAgent({ ...newAgent, agentId: e.target.value })}
+                placeholder="Agent Name"
+                value={editingAgent.agentName}
+                onChange={(e) =>
+                  setEditingAgent({ ...editingAgent, agentName: e.target.value })
+                }
               />
-              {/* Other fields */}
-              <button
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                onClick={handleAddAgent}
-              >
-                Add Agent
-              </button>
+              {/* Add other fields */}
+              <div className="flex space-x-4">
+                <button
+                  className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                  onClick={handleEditAgent}
+                >
+                  Save
+                </button>
+                <button
+                  className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                  onClick={() => setEditingAgent(null)}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
-          </div>
-        );
+          )}
+        </div>
+      );
+    }
 
-      case 'training':
-        return (
-          <div>
-            {/* Training UI */}
-          </div>
-        );
+    if (activeTab === 'training') {
+      return (
+        <div>
+          <h2 className="text-xl font-bold mb-4">Training Data</h2>
+          <select
+            className="p-2 border rounded w-full mb-4"
+            value={selectedAgent || ''}
+            onChange={async (e) => {
+              const agentId = e.target.value;
+              setSelectedAgent(agentId);
+              const res = await fetch(`/api/admin/training?agentId=${agentId}`);
+              const trainingData = await res.json();
+              setData(trainingData);
+            }}
+          >
+            <option value="" disabled>Select an Agent</option>
+            {agents.map((agent) => (
+              <option key={agent.agentId} value={agent.agentId}>
+                {agent.agentName}
+              </option>
+            ))}
+          </select>
+          {/* Display training data */}
+        </div>
+      );
+    }
 
-      default:
-        return <div>Unknown Tab</div>;
+    if (activeTab === 'chat') {
+      return (
+        <div>
+          <h2 className="text-xl font-bold mb-4">Chat with Agents</h2>
+          <select
+            className="p-2 border rounded w-full mb-4"
+            value={selectedAgent || ''}
+            onChange={(e) => setSelectedAgent(e.target.value)}
+          >
+            <option value="" disabled>Select an Agent</option>
+            {agents.map((agent) => (
+              <option key={agent.agentId} value={agent.agentId}>
+                {agent.agentName}
+              </option>
+            ))}
+          </select>
+          <div className="p-4 bg-gray-100 shadow rounded mb-4">
+            {chatMessages.map((msg, idx) => (
+              <div key={idx} className="mb-2">
+                <p><strong>You:</strong> {msg.user}</p>
+                <p><strong>{selectedAgent}:</strong> {msg.bot}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex">
+            <input
+              type="text"
+              className="p-2 border rounded w-full mr-2"
+              placeholder="Type a message..."
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+            />
+            <button
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              onClick={handleSendMessage}
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      );
     }
   };
 
@@ -285,8 +282,16 @@ export default function AdminDashboard() {
         >
           Training
         </button>
+        <button
+          onClick={() => setActiveTab('chat')}
+          className={`px-4 py-2 rounded ${
+            activeTab === 'chat' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+          }`}
+        >
+          Chat
+        </button>
       </div>
-      {renderContent()}
+      <div className="bg-white shadow rounded p-6">{renderContent()}</div>
     </AdminLayout>
   );
 }
