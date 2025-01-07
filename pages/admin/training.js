@@ -35,20 +35,24 @@ export default function Training() {
     fetchAgents();
   }, []);
 
-  // Fetch training data for selected agent
-  const handleAgentSelection = async (agentId) => {
-    setSelectedAgent(agentId);
-    setNewKnowledge({ ...newKnowledge, agentId });
-    try {
-      const res = await fetch(`/api/admin?tab=training&agentId=${agentId}`); // Adjusted query
-      if (!res.ok) throw new Error('Failed to fetch training data');
-      const trainingData = await res.json();
-      setData(trainingData || []);
-    } catch (error) {
-      console.error('Error fetching training data:', error);
-      setData([]); // Fallback to empty array
-    }
-  };
+ // Fetch training data for selected agent
+const handleAgentSelection = async (agentId) => {
+  setSelectedAgent(agentId); // Set the selected agent
+  setNewKnowledge({ ...newKnowledge, agentId }); // Update new knowledge's agentId
+  try {
+    const res = await fetch(`/api/admin?tab=training&agentId=${agentId}`); // Fetch data for the specific agent
+    if (!res.ok) throw new Error('Failed to fetch training data');
+    const trainingData = await res.json();
+
+    // Filter the training data to match the selected agentId (if server-side filtering is not in place)
+    const filteredData = trainingData.filter((item) => item.agentId === agentId);
+
+    setData(filteredData || []); // Set filtered data
+  } catch (error) {
+    console.error('Error fetching training data:', error);
+    setData([]); // Fallback to empty array
+  }
+};
 
   // Add new knowledge for the selected agent
   const handleAddKnowledge = async () => {

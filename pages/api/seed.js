@@ -160,6 +160,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('Seeding data into Firestore...');
+
     for (const item of dataToSeed) {
       const { agentId, dataType } = item;
       const collectionRef = db.collection('agentData');
@@ -170,16 +172,17 @@ export default async function handler(req, res) {
         .get();
 
       if (querySnapshot.empty) {
+        console.log(`Adding record for agentId: ${agentId}, dataType: ${dataType}`);
         await collectionRef.add(item);
-        console.log(`Added record for agentId: ${agentId}, dataType: ${dataType}`);
       } else {
         console.log(`Record for agentId: ${agentId}, dataType: ${dataType} already exists.`);
       }
     }
 
-    res.status(200).json({ message: 'Seeding complete.' });
+    console.log('Seeding completed successfully.');
+    return res.status(200).json({ message: 'Seeding complete.' });
   } catch (error) {
-    console.error('Error seeding data:', error);
-    res.status(500).json({ error: 'Error seeding data.' });
+    console.error('Error seeding data:', error.message, error.stack);
+    return res.status(500).json({ error: 'Error seeding data.', details: error.message });
   }
 }

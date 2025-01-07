@@ -1,3 +1,5 @@
+//  pages/admin/index.js
+
 import { useState } from 'react';
 import AdminLayout from '@/components/AdminLayout';
 import ManageAgents from './manage';

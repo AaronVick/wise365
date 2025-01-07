@@ -5,22 +5,51 @@ export default function Chat() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [agentPersona, setAgentPersona] = useState(null);
 
+  // Fetch agents on mount
   useEffect(() => {
     async function fetchAgents() {
       try {
-        const res = await fetch('/api/admin?tab=agents'); // Match the API logic
+        const res = await fetch('/api/admin?tab=agents');
         if (!res.ok) throw new Error('Failed to fetch agents');
         const agentsData = await res.json();
-        console.log("Fetched Agents:", agentsData); // Debugging line
         setAgents(agentsData || []);
       } catch (error) {
         console.error('Error fetching agents:', error);
-        setAgents([]); // Fallback to an empty array
+        setAgents([]);
       }
     }
     fetchAgents();
   }, []);
+
+  // Fetch agent persona and previous messages when agent changes
+  useEffect(() => {
+    if (!selectedAgent) {
+      setAgentPersona(null);
+      setChatMessages([]);
+      return;
+    }
+
+    async function fetchAgentDetails() {
+      try {
+        const personaRes = await fetch(`/api/admin/agentDetails?agentId=${selectedAgent}`);
+        if (!personaRes.ok) throw new Error('Failed to fetch agent persona');
+        const persona = await personaRes.json();
+        setAgentPersona(persona);
+
+        const chatRes = await fetch(`/api/admin/chat?agentId=${selectedAgent}`);
+        if (!chatRes.ok) throw new Error('Failed to fetch chat messages');
+        const messages = await chatRes.json();
+        setChatMessages(messages || []);
+      } catch (error) {
+        console.error('Error fetching agent details:', error);
+        setAgentPersona(null);
+        setChatMessages([]);
+      }
+    }
+    fetchAgentDetails();
+  }, [selectedAgent]);
 
   const handleSendMessage = async () => {
     if (!selectedAgent) {
@@ -29,10 +58,14 @@ export default function Chat() {
     }
 
     try {
+      const prompt = agentPersona
+        ? `${agentPersona.description}\n\nUser: ${chatInput}\nAgent:`
+        : `User: ${chatInput}\nAgent:`;
+
       const res = await fetch('/api/admin/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agentId: selectedAgent, message: chatInput }),
+        body: JSON.stringify({ agentId: selectedAgent, message: chatInput, prompt }),
       });
 
       if (!res.ok) throw new Error('Failed to send message');
@@ -68,6 +101,7 @@ export default function Chat() {
           </option>
         ))}
       </select>
+
       <div className="p-4 bg-gray-100 shadow rounded mb-4 h-64 overflow-y-auto">
         {chatMessages.map((msg, idx) => (
           <div key={idx}>
@@ -80,6 +114,7 @@ export default function Chat() {
           </div>
         ))}
       </div>
+
       <div className="flex">
         <input
           type="text"
