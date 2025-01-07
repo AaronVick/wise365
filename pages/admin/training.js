@@ -39,10 +39,13 @@ export default function Training() {
   const handleAgentSelection = async (agentId) => {
     setSelectedAgent(agentId);
     setNewKnowledge({ ...newKnowledge, agentId });
+
     try {
-      const res = await fetch(`/api/admin?tab=training&agentId=${agentId}`);
+      const res = await fetch(`/api/admin?tab=training&agentId=${agentId}`); // API call for agent-specific data
       if (!res.ok) throw new Error('Failed to fetch training data');
       const trainingData = await res.json();
+
+      // Ensure only training data related to the selected agent is shown
       const filteredData = trainingData.filter((item) => item.agentId === agentId);
       setData(filteredData || []);
     } catch (error) {
@@ -83,7 +86,7 @@ export default function Training() {
         },
       });
 
-      handleAgentSelection(selectedAgent);
+      handleAgentSelection(selectedAgent); // Refresh training data
     } catch (error) {
       console.error('Error adding knowledge:', error);
       alert('Failed to add knowledge. Please try again.');
