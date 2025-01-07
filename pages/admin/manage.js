@@ -319,7 +319,7 @@ export default function ManageAgents() {
       {/* FAQs Section */}
       {editingAgent.faqs && (
         <div>
-          <label className="block text-sm font-medium mb-1">FAQs</label>
+          <label className="block text-sm font-medium mb-1">faqs</label>
           {editingAgent.faqs.map((faq, idx) => (
             <div key={idx} className="mb-4 p-4 border rounded">
               <input
