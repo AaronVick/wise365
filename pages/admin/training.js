@@ -9,6 +9,8 @@ export default function Training() {
     dataType: 'knowledge_base',
     description: '',
     URL: '',
+    milestone: false,
+    order: 1,
     data: {
       introduction: { greeting: '' },
       context: { purpose: '' },
@@ -18,6 +20,14 @@ export default function Training() {
       additionalNotes: [],
     },
   });
+
+  const dataTypeOptions = [
+    'knowledge_base',
+    'personality',
+    'milestones',
+    'feedbackBank',
+    'faqs',
+  ];
 
   // Fetch agents on mount
   useEffect(() => {
@@ -41,13 +51,10 @@ export default function Training() {
     setNewKnowledge({ ...newKnowledge, agentId });
 
     try {
-      const res = await fetch(`/api/admin?tab=training&agentId=${agentId}`); // API call for agent-specific data
+      const res = await fetch(`/api/admin?tab=training&agentId=${agentId}`);
       if (!res.ok) throw new Error('Failed to fetch training data');
       const trainingData = await res.json();
-
-      // Ensure only training data related to the selected agent is shown
-      const filteredData = trainingData.filter((item) => item.agentId === agentId);
-      setData(filteredData || []);
+      setData(trainingData || []);
     } catch (error) {
       console.error('Error fetching training data:', error);
       setData([]);
@@ -76,6 +83,8 @@ export default function Training() {
         dataType: 'knowledge_base',
         description: '',
         URL: '',
+        milestone: false,
+        order: 1,
         data: {
           introduction: { greeting: '' },
           context: { purpose: '' },
@@ -128,6 +137,7 @@ export default function Training() {
                   Learn More
                 </a>
               )}
+              {item.milestone && <p className="text-green-600 font-semibold">Milestone</p>}
             </div>
           ))}
         </div>
@@ -141,13 +151,17 @@ export default function Training() {
       {selectedAgent && (
         <div className="p-4 bg-white shadow rounded mt-6">
           <h3 className="text-lg font-bold mb-2">Add New Knowledge</h3>
-          <input
-            type="text"
+          <select
             className="p-2 border rounded w-full mb-2"
-            placeholder="Data Type (e.g., knowledge_base)"
             value={newKnowledge.dataType}
             onChange={(e) => setNewKnowledge({ ...newKnowledge, dataType: e.target.value })}
-          />
+          >
+            {dataTypeOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
           <textarea
             className="p-2 border rounded w-full mb-2"
             placeholder="Description of the knowledge"
@@ -160,6 +174,21 @@ export default function Training() {
             placeholder="URL (Optional)"
             value={newKnowledge.URL}
             onChange={(e) => setNewKnowledge({ ...newKnowledge, URL: e.target.value })}
+          />
+          <div className="mb-2">
+            <label className="mr-2 font-bold">Milestone:</label>
+            <input
+              type="checkbox"
+              checked={newKnowledge.milestone}
+              onChange={(e) => setNewKnowledge({ ...newKnowledge, milestone: e.target.checked })}
+            />
+          </div>
+          <input
+            type="number"
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Order (e.g., 1)"
+            value={newKnowledge.order}
+            onChange={(e) => setNewKnowledge({ ...newKnowledge, order: Number(e.target.value) })}
           />
           <textarea
             className="p-2 border rounded w-full mb-2"
