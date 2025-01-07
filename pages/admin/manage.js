@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 
 export default function ManageAgents() {
   const [data, setData] = useState([]);
+  const [editingAgent, setEditingAgent] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [newAgent, setNewAgent] = useState({
     agentId: '',
     agentName: '',
@@ -10,9 +12,11 @@ export default function ManageAgents() {
     Type: '',
     language: 'English',
     personality: '',
+    tasks: '',
+    About: '',
   });
-  const [editingAgent, setEditingAgent] = useState(null);
 
+  // Fetch agents on mount
   useEffect(() => {
     async function fetchAgents() {
       const res = await fetch('/api/admin?tab=agents');
@@ -22,11 +26,15 @@ export default function ManageAgents() {
     fetchAgents();
   }, []);
 
+  // Handle adding a new agent
   const handleAddAgent = async () => {
+    const formattedTasks = newAgent.tasks.split(',').map((task) => task.trim());
+    const agentPayload = { ...newAgent, tasks: formattedTasks };
+
     const res = await fetch('/api/admin/agents', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newAgent),
+      body: JSON.stringify(agentPayload),
     });
 
     if (res.ok) {
@@ -39,7 +47,10 @@ export default function ManageAgents() {
         Type: '',
         language: 'English',
         personality: '',
+        tasks: '',
+        About: '',
       });
+      setShowAddForm(false);
       const updatedData = await fetch('/api/admin?tab=agents').then((res) => res.json());
       setData(updatedData);
     } else {
@@ -47,13 +58,17 @@ export default function ManageAgents() {
     }
   };
 
+  // Handle editing an agent
   const handleEditAgent = async () => {
     if (!editingAgent) return;
+
+    const formattedTasks = editingAgent.tasks.split(',').map((task) => task.trim());
+    const agentPayload = { ...editingAgent, tasks: formattedTasks };
 
     const res = await fetch(`/api/admin/agents/${editingAgent.agentId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editingAgent),
+      body: JSON.stringify(agentPayload),
     });
 
     if (res.ok) {
@@ -69,7 +84,7 @@ export default function ManageAgents() {
   return (
     <div>
       <h2 className="text-xl font-bold mb-4">Manage Agents</h2>
-
+      
       {/* Agents Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {data.map((agent) => (
@@ -79,24 +94,12 @@ export default function ManageAgents() {
             style={{ backgroundColor: '#f3f4f6' }}
           >
             <h3 className="text-md font-bold mb-2">{agent.agentName}</h3>
-            <p className="text-sm mb-1">
-              <strong>Agent ID:</strong> {agent.agentId}
-            </p>
-            <p className="text-sm mb-1">
-              <strong>Role:</strong> {agent.Role}
-            </p>
-            <p className="text-sm mb-1">
-              <strong>Role Info:</strong> {agent.RoleInfo}
-            </p>
-            <p className="text-sm mb-1">
-              <strong>Type:</strong> {agent.Type}
-            </p>
-            <p className="text-sm mb-1">
-              <strong>Language:</strong> {agent.language}
-            </p>
-            <p className="text-sm mb-1">
-              <strong>Personality:</strong> {agent.personality}
-            </p>
+            <p className="text-sm mb-1"><strong>Agent ID:</strong> {agent.agentId}</p>
+            <p className="text-sm mb-1"><strong>Role:</strong> {agent.Role}</p>
+            <p className="text-sm mb-1"><strong>Role Info:</strong> {agent.RoleInfo}</p>
+            <p className="text-sm mb-1"><strong>Type:</strong> {agent.Type}</p>
+            <p className="text-sm mb-1"><strong>Language:</strong> {agent.language}</p>
+            <p className="text-sm mb-1"><strong>Personality:</strong> {agent.personality}</p>
             <button
               onClick={() => setEditingAgent(agent)}
               className="px-3 py-1 mt-3 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
@@ -106,6 +109,54 @@ export default function ManageAgents() {
           </div>
         ))}
       </div>
+
+      {/* Add New Agent Section */}
+      {!editingAgent && !showAddForm && (
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="px-4 py-2 bg-green-500 text-white rounded mt-6 hover:bg-green-600"
+        >
+          Add New Agent
+        </button>
+      )}
+
+      {showAddForm && (
+        <div className="p-4 bg-white shadow rounded mt-6">
+          <h3 className="text-lg font-semibold mb-4">Add New Agent</h3>
+          <input
+            type="text"
+            placeholder="Agent ID"
+            value={newAgent.agentId}
+            onChange={(e) => setNewAgent({ ...newAgent, agentId: e.target.value })}
+            className="p-2 border rounded w-full mb-2"
+          />
+          <input
+            type="text"
+            placeholder="Agent Name"
+            value={newAgent.agentName}
+            onChange={(e) => setNewAgent({ ...newAgent, agentName: e.target.value })}
+            className="p-2 border rounded w-full mb-2"
+          />
+          <textarea
+            placeholder="About (Description)"
+            value={newAgent.About}
+            onChange={(e) => setNewAgent({ ...newAgent, About: e.target.value })}
+            className="p-2 border rounded w-full mb-2"
+          />
+          <textarea
+            placeholder="Tasks (comma-separated)"
+            value={newAgent.tasks}
+            onChange={(e) => setNewAgent({ ...newAgent, tasks: e.target.value })}
+            className="p-2 border rounded w-full mb-2"
+          />
+          <button
+            onClick={handleAddAgent}
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            Add Agent
+          </button>
+        </div>
+      )}
 
       {/* Edit Agent Section */}
       {editingAgent && (
@@ -120,20 +171,11 @@ export default function ManageAgents() {
             }
             className="p-2 border rounded w-full mb-2"
           />
-          <input
-            type="text"
-            placeholder="Role"
-            value={editingAgent.Role}
-            onChange={(e) =>
-              setEditingAgent({ ...editingAgent, Role: e.target.value })
-            }
-            className="p-2 border rounded w-full mb-2"
-          />
           <textarea
-            placeholder="Role Info"
-            value={editingAgent.RoleInfo}
+            placeholder="Tasks (comma-separated)"
+            value={editingAgent.tasks}
             onChange={(e) =>
-              setEditingAgent({ ...editingAgent, RoleInfo: e.target.value })
+              setEditingAgent({ ...editingAgent, tasks: e.target.value })
             }
             className="p-2 border rounded w-full mb-2"
           />
@@ -151,31 +193,6 @@ export default function ManageAgents() {
           </button>
         </div>
       )}
-
-      {/* Add New Agent Section */}
-      <div className="p-4 bg-white shadow rounded mt-6">
-        <h3 className="text-lg font-semibold mb-4">Add New Agent</h3>
-        <input
-          type="text"
-          placeholder="Agent ID"
-          value={newAgent.agentId}
-          onChange={(e) => setNewAgent({ ...newAgent, agentId: e.target.value })}
-          className="p-2 border rounded w-full mb-2"
-        />
-        <input
-          type="text"
-          placeholder="Agent Name"
-          value={newAgent.agentName}
-          onChange={(e) => setNewAgent({ ...newAgent, agentName: e.target.value })}
-          className="p-2 border rounded w-full mb-2"
-        />
-        <button
-          onClick={handleAddAgent}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Add Agent
-        </button>
-      </div>
     </div>
   );
 }
