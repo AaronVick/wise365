@@ -1,4 +1,4 @@
-// /pages/admin/api/admin.js
+// /pages/api/admin.js
 
 import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
@@ -18,36 +18,32 @@ export default async function handler(req, res) {
   try {
     if (tab === 'agents') {
       const agentsSnapshot = await getDocs(collection(db, 'agents'));
-      const agents = agentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const agents = agentsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       return res.status(200).json(agents);
     }
 
-    if (tab === 'conversations') {
-      const conversationsSnapshot = await getDocs(collection(db, 'conversations'));
-      const conversations = conversationsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      return res.status(200).json(conversations);
-    }
-
     if (tab === 'training') {
-      // Handle training data with optional agentId filter
       const agentDataCollection = collection(db, 'agentData');
 
-      let trainingQuery;
-      if (agentId) {
-        trainingQuery = query(agentDataCollection, where('agentId', '==', agentId));
-      } else {
-        trainingQuery = agentDataCollection;
-      }
+      // Apply query for specific agentId if provided
+      const trainingQuery = agentId
+        ? query(agentDataCollection, where('agentId', '==', agentId))
+        : agentDataCollection;
 
       const trainingSnapshot = await getDocs(trainingQuery);
-      const trainingData = trainingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      // Map the data
+      const trainingData = trainingSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
       return res.status(200).json(trainingData);
     }
 
     return res.status(400).json({ error: 'Invalid tab specified.' });
   } catch (error) {
-    console.error(error);
+    console.error('Error fetching data:', error);
     return res.status(500).json({ error: 'Internal server error.' });
   }
 }
