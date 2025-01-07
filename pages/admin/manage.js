@@ -357,3 +357,6 @@ export default function ManageAgents() {
     </div>
   </div>
 )}
+  </div> 
+  );
+}
