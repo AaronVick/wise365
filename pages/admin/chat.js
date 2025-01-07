@@ -9,12 +9,14 @@ export default function Chat() {
   useEffect(() => {
     async function fetchAgents() {
       try {
-        const res = await fetch('/api/admin/agents');
+        const res = await fetch('/api/admin?tab=agents'); // Match the API logic
+        if (!res.ok) throw new Error('Failed to fetch agents');
         const agentsData = await res.json();
+        console.log("Fetched Agents:", agentsData); // Debugging line
         setAgents(agentsData || []);
       } catch (error) {
         console.error('Error fetching agents:', error);
-        setAgents([]); // Fallback to an empty array if fetching fails
+        setAgents([]); // Fallback to an empty array
       }
     }
     fetchAgents();
@@ -58,10 +60,10 @@ export default function Chat() {
         onChange={(e) => setSelectedAgent(e.target.value)}
       >
         <option value="" disabled>
-          Select an Agent
+          {agents.length === 0 ? 'No agents available' : 'Select an Agent'}
         </option>
         {agents.map((agent) => (
-          <option key={agent.agentId} value={agent.agentId}>
+          <option key={agent.id} value={agent.id}>
             {agent.agentName}: {agent.Role}
           </option>
         ))}
@@ -69,8 +71,12 @@ export default function Chat() {
       <div className="p-4 bg-gray-100 shadow rounded mb-4 h-64 overflow-y-auto">
         {chatMessages.map((msg, idx) => (
           <div key={idx}>
-            <p><strong>You:</strong> {msg.user}</p>
-            <p><strong>Bot:</strong> {msg.bot}</p>
+            <p>
+              <strong>You:</strong> {msg.user}
+            </p>
+            <p>
+              <strong>Bot:</strong> {msg.bot}
+            </p>
           </div>
         ))}
       </div>

@@ -1,3 +1,5 @@
+// /pages/admin/api/admin.js
+
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
 

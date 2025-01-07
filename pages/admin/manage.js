@@ -10,8 +10,6 @@ export default function ManageAgents() {
     Type: '',
     language: 'English',
     personality: '',
-    tasks: [],
-    About: '',
   });
   const [editingAgent, setEditingAgent] = useState(null);
 
@@ -41,8 +39,6 @@ export default function ManageAgents() {
         Type: '',
         language: 'English',
         personality: '',
-        tasks: [],
-        About: '',
       });
       const updatedData = await fetch('/api/admin?tab=agents').then((res) => res.json());
       setData(updatedData);
@@ -74,35 +70,36 @@ export default function ManageAgents() {
     <div>
       <h2 className="text-xl font-bold mb-4">Manage Agents</h2>
 
-      {/* Agents Grid */}
+      {/* Agents Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {data.map((agent) => (
-          <div key={agent.agentId} className="p-4 bg-white shadow rounded">
-            <h3 className="text-lg font-bold">{agent.agentName}</h3>
-            <p>
+          <div
+            key={agent.agentId}
+            className="p-4 bg-gray-200 shadow rounded"
+            style={{ backgroundColor: '#f3f4f6' }}
+          >
+            <h3 className="text-md font-bold mb-2">{agent.agentName}</h3>
+            <p className="text-sm mb-1">
               <strong>Agent ID:</strong> {agent.agentId}
             </p>
-            <p>
+            <p className="text-sm mb-1">
               <strong>Role:</strong> {agent.Role}
             </p>
-            <p>
+            <p className="text-sm mb-1">
               <strong>Role Info:</strong> {agent.RoleInfo}
             </p>
-            <p>
+            <p className="text-sm mb-1">
               <strong>Type:</strong> {agent.Type}
             </p>
-            <p>
+            <p className="text-sm mb-1">
               <strong>Language:</strong> {agent.language}
             </p>
-            <p>
+            <p className="text-sm mb-1">
               <strong>Personality:</strong> {agent.personality}
-            </p>
-            <p>
-              <strong>About:</strong> {agent.About}
             </p>
             <button
               onClick={() => setEditingAgent(agent)}
-              className="px-4 py-2 mt-4 bg-blue-500 text-white rounded hover:bg-blue-600"
+              className="px-3 py-1 mt-3 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
             >
               Edit
             </button>

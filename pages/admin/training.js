@@ -5,10 +5,11 @@ export default function Training() {
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
 
+  // Fetch agents on mount
   useEffect(() => {
     async function fetchAgents() {
       try {
-        const res = await fetch('/api/admin/agents');
+        const res = await fetch('/api/admin?tab=agents'); // Match the API handler
         if (!res.ok) throw new Error('Failed to fetch agents');
         const result = await res.json();
         console.log("Fetched Agents:", result); // Debugging line
@@ -21,10 +22,11 @@ export default function Training() {
     fetchAgents();
   }, []);
 
+  // Fetch training data for selected agent
   const handleAgentSelection = async (agentId) => {
     setSelectedAgent(agentId);
     try {
-      const res = await fetch(`/api/admin/training?agentId=${agentId}`);
+      const res = await fetch(`/api/admin?tab=training&agentId=${agentId}`); // Adjusted query
       if (!res.ok) throw new Error('Failed to fetch training data');
       const trainingData = await res.json();
       setData(trainingData || []);
@@ -46,7 +48,7 @@ export default function Training() {
           {agents.length === 0 ? 'No agents available' : 'Select an Agent'}
         </option>
         {agents.map((agent) => (
-          <option key={agent.agentId} value={agent.agentId}>
+          <option key={agent.id} value={agent.id}>
             {agent.agentName}: {agent.Role}
           </option>
         ))}
