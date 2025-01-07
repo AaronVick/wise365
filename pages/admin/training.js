@@ -55,9 +55,8 @@ export default function Training() {
       if (!res.ok) throw new Error('Failed to fetch training data');
       const trainingData = await res.json();
 
-      // Filter the data on the client side to ensure it matches the selected agentId
-      const filteredData = trainingData.filter((item) => item.agentId === agentId);
-      setData(filteredData || []);
+      // Filter is unnecessary if the server-side API already filters by agentId
+      setData(trainingData || []);
     } catch (error) {
       console.error('Error fetching training data:', error);
       setData([]);
