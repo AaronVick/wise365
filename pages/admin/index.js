@@ -383,8 +383,9 @@ export default function AdminDashboard() {
         </div>
       );
     }
-    
+    }
 
+  // Main return statement
   return (
     <AdminLayout>
       <div className="flex space-x-4 mb-4">
