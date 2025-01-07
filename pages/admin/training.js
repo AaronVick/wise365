@@ -983,6 +983,7 @@ const renderDataTypeFields = () => {
         </button>
       </div>
     ))}
+    
     <button
       type="button"
       onClick={() => {
@@ -1015,8 +1016,7 @@ const renderDataTypeFields = () => {
   </div>
 )}
 
-      
-{/* Add New Knowledge Form */}
+  {/* Add New Knowledge Form */}
 {selectedAgent && !loading && (
   <div className="p-4 bg-white shadow rounded mt-6">
     <h3 className="text-lg font-bold mb-2">Add New Knowledge</h3>
@@ -1158,235 +1158,20 @@ const renderDataTypeFields = () => {
       </div>
     )}
 
-const renderDataTypeFields = () => {
-  switch (newKnowledge.dataType) {
-    case 'instructions':
-      return (
-        <>
-          <textarea
-            className="p-2 border rounded w-full mb-2"
-            placeholder="Purpose"
-            value={newKnowledge.data?.context?.purpose || ''}
-            onChange={(e) =>
-              setNewKnowledge({
-                ...newKnowledge,
-                data: {
-                  ...newKnowledge.data,
-                  context: { ...newKnowledge.data.context, purpose: e.target.value },
-                },
-              })
-            }
-          />
-          <div className="mb-2">
-            <label className="block font-bold mb-1">Approach Steps</label>
-            {(newKnowledge.data?.context?.approach || []).map((step, idx) => (
-              <div key={idx} className="flex mb-2">
-                <input
-                  type="text"
-                  className="p-2 border rounded flex-1 mr-2"
-                  value={step}
-                  onChange={(e) => {
-                    const updatedSteps = [...(newKnowledge.data?.context?.approach || [])];
-                    updatedSteps[idx] = e.target.value;
-                    setNewKnowledge({
-                      ...newKnowledge,
-                      data: { ...newKnowledge.data, context: { ...newKnowledge.data.context, approach: updatedSteps } },
-                    });
-                  }}
-                />
-                <button
-                  className="px-2 py-1 bg-red-500 text-white rounded"
-                  onClick={() => {
-                    const updatedSteps = [...(newKnowledge.data?.context?.approach || [])];
-                    updatedSteps.splice(idx, 1);
-                    setNewKnowledge({
-                      ...newKnowledge,
-                      data: { ...newKnowledge.data, context: { ...newKnowledge.data.context, approach: updatedSteps } },
-                    });
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-            <button
-              className="px-2 py-1 bg-blue-500 text-white rounded"
-              onClick={() => {
-                const updatedSteps = [...(newKnowledge.data?.context?.approach || []), ''];
-                setNewKnowledge({
-                  ...newKnowledge,
-                  data: { ...newKnowledge.data, context: { ...newKnowledge.data.context, approach: updatedSteps } },
-                });
-              }}
-            >
-              Add Step
-            </button>
-          </div>
-        </>
-      );
+    {/* Render dynamic fields */}
+    {renderDataTypeFields()}
 
-    case 'feedback_bank':
-      return (
-        <>
-          {(newKnowledge.data?.responses || []).map((response, idx) => (
-            <div key={idx} className="p-4 border rounded mb-4">
-              <textarea
-                className="p-2 border rounded w-full mb-2"
-                placeholder="Response"
-                value={response || ''}
-                onChange={(e) => {
-                  const updatedResponses = [...(newKnowledge.data.responses || [])];
-                  updatedResponses[idx] = e.target.value;
-                  setNewKnowledge({
-                    ...newKnowledge,
-                    data: { ...newKnowledge.data, responses: updatedResponses },
-                  });
-                }}
-              />
-              <button
-                className="px-2 py-1 bg-red-500 text-white rounded"
-                onClick={() => {
-                  const updatedResponses = [...newKnowledge.data.responses];
-                  updatedResponses.splice(idx, 1);
-                  setNewKnowledge({
-                    ...newKnowledge,
-                    data: { ...newKnowledge.data, responses: updatedResponses },
-                  });
-                }}
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-          <button
-            className="px-2 py-1 bg-blue-500 text-white rounded"
-            onClick={() => {
-              const updatedResponses = [...(newKnowledge.data.responses || []), ''];
-              setNewKnowledge({
-                ...newKnowledge,
-                data: { ...newKnowledge.data, responses: updatedResponses },
-              });
-            }}
-          >
-            Add Response
-          </button>
-        </>
-      );
-
-    case 'personality':
-      return (
-        <>
-          <textarea
-            className="p-2 border rounded w-full mb-2"
-            placeholder="Tone"
-            value={newKnowledge.data?.tone || ''}
-            onChange={(e) =>
-              setNewKnowledge({
-                ...newKnowledge,
-                data: { ...newKnowledge.data, tone: e.target.value },
-              })
-            }
-          />
-          <div className="mb-2">
-            <label className="block font-bold mb-1">Traits</label>
-            {(newKnowledge.data?.traits || []).map((trait, idx) => (
-              <div key={idx} className="flex mb-2">
-                <input
-                  type="text"
-                  className="p-2 border rounded flex-1 mr-2"
-                  value={trait}
-                  onChange={(e) => {
-                    const updatedTraits = [...newKnowledge.data.traits];
-                    updatedTraits[idx] = e.target.value;
-                    setNewKnowledge({
-                      ...newKnowledge,
-                      data: { ...newKnowledge.data, traits: updatedTraits },
-                    });
-                  }}
-                />
-                <button
-                  className="px-2 py-1 bg-red-500 text-white rounded"
-                  onClick={() => {
-                    const updatedTraits = [...newKnowledge.data.traits];
-                    updatedTraits.splice(idx, 1);
-                    setNewKnowledge({
-                      ...newKnowledge,
-                      data: { ...newKnowledge.data, traits: updatedTraits },
-                    });
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-            <button
-              className="px-2 py-1 bg-blue-500 text-white rounded"
-              onClick={() => {
-                const updatedTraits = [...(newKnowledge.data.traits || []), ''];
-                setNewKnowledge({
-                  ...newKnowledge,
-                  data: { ...newKnowledge.data, traits: updatedTraits },
-                });
-              }}
-            >
-              Add Trait
-            </button>
-          </div>
-        </>
-      );
-
-    case 'milestone':
-      return (
-        <>
-          <textarea
-            className="p-2 border rounded w-full mb-2"
-            placeholder="Question"
-            value={newKnowledge.data?.qa?.question || ''}
-            onChange={(e) =>
-              setNewKnowledge({
-                ...newKnowledge,
-                data: {
-                  ...newKnowledge.data,
-                  qa: { ...newKnowledge.data.qa, question: e.target.value },
-                },
-              })
-            }
-          />
-          <textarea
-  className="p-2 border rounded w-full mb-2"
-  placeholder="Feedback Example"
-  value={newKnowledge.data?.qa?.feedbackExample || ''}
-  onChange={(e) =>
-    setNewKnowledge({
-      ...newKnowledge,
-      data: {
-        ...newKnowledge.data,
-        qa: { ...newKnowledge.data.qa, feedbackExample: e.target.value },
-      },
-    })
-  }
-/>
-</>
-); 
-
-default:
-  return null;
-}
-}; 
-
-{/* Render the dynamic fields based on data type */}
-{renderDataTypeFields()}
-
-<button
-  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300"
-  onClick={handleAddKnowledge}
-  disabled={loading}
->
-  Add Knowledge
-</button>
-</div>
+    <button
+      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300"
+      onClick={handleAddKnowledge}
+      disabled={loading}
+    >
+     Add Knowledge
+    </button>
+  </div>
 )}
 
 </div>
 ); 
+
 } 
