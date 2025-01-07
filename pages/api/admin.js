@@ -1,6 +1,6 @@
 // /pages/admin/api/admin.js
 
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
 
 const firebaseConfig = {
@@ -13,7 +13,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 export default async function handler(req, res) {
-  const { tab } = req.query;
+  const { tab, agentId } = req.query;
 
   try {
     if (tab === 'agents') {
@@ -29,8 +29,19 @@ export default async function handler(req, res) {
     }
 
     if (tab === 'training') {
-      const trainingSnapshot = await getDocs(collection(db, 'agentData'));
+      // Handle training data with optional agentId filter
+      const agentDataCollection = collection(db, 'agentData');
+
+      let trainingQuery;
+      if (agentId) {
+        trainingQuery = query(agentDataCollection, where('agentId', '==', agentId));
+      } else {
+        trainingQuery = agentDataCollection;
+      }
+
+      const trainingSnapshot = await getDocs(trainingQuery);
       const trainingData = trainingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
       return res.status(200).json(trainingData);
     }
 
