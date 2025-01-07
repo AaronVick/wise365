@@ -96,7 +96,8 @@ export default function Training() {
     { value: 'personality', label: 'Personality' },
     { value: 'milestone', label: 'Milestone' },
     { value: 'knowledge_base', label: 'Knowledge Base' },
-    { value: 'feedback_bank', label: 'Feedback Bank' }
+    { value: 'feedback_bank', label: 'Feedback Bank' },
+    { value: 'faqs', label: 'FAQs' }
   ];
 
   // Handlers
@@ -255,179 +256,196 @@ export default function Training() {
     }
   };
 
-  // Render form fields based on data type
-  const renderDataTypeFields = () => {
-    switch (newKnowledge.dataType) {
-      case 'instructions':
-        return (
-          <>
-            <textarea
-              className="p-2 border rounded w-full mb-2"
-              placeholder="Purpose"
-              value={newKnowledge.data.context.purpose}
-              onChange={(e) => setNewKnowledge({
+// Render form fields based on data type
+const renderDataTypeFields = () => {
+  switch (newKnowledge.dataType) {
+    case 'instructions':
+      return (
+        <>
+          <textarea
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Purpose"
+            value={newKnowledge.data.context.purpose}
+            onChange={(e) =>
+              setNewKnowledge({
                 ...newKnowledge,
                 data: {
                   ...newKnowledge.data,
-                  context: { ...newKnowledge.data.context, purpose: e.target.value }
-                }
-              })}
-            />
-            <div className="mb-2">
-              <label className="block font-bold mb-1">Approach Steps</label>
-              {newKnowledge.data.context.approach.map((step, idx) => (
-                <div key={idx} className="flex mb-2">
-                  <input
-                    type="text"
-                    className="p-2 border rounded flex-1 mr-2"
-                    value={step}
-                    onChange={(e) => handleArrayField('approach', idx, e.target.value, 'context')}
-                  />
-                </div>
-              ))}
-              <button
-                type="button"
-                className="px-2 py-1 bg-gray-200 rounded"
-                onClick={() => handleAddArrayItem('approach', 'context')}
-              >
-                + Add Step
-              </button>
-            </div>
-            <div className="mb-2">
-              <label className="block font-bold mb-1">Response Categories</label>
-              {newKnowledge.data.responseFormat.categories.map((category, idx) => (
-                <div key={idx} className="flex mb-2">
-                  <input
-                    type="text"
-                    className="p-2 border rounded flex-1 mr-2"
-                    value={category}
-                    onChange={(e) => handleArrayField('categories', idx, e.target.value, 'responseFormat')}
-                  />
-                </div>
-              ))}
-              <button
-                type="button"
-                className="px-2 py-1 bg-gray-200 rounded"
-                onClick={() => handleAddArrayItem('categories', 'responseFormat')}
-              >
-                + Add Category
-              </button>
-            </div>
-            <textarea
-              className="p-2 border rounded w-full mb-2"
-              placeholder="Final Statement"
-              value={newKnowledge.data.responseFormat.finalStatement}
-              onChange={(e) => setNewKnowledge({
+                  context: { ...newKnowledge.data.context, purpose: e.target.value },
+                },
+              })
+            }
+          />
+          <div className="mb-2">
+            <label className="block font-bold mb-1">Approach Steps</label>
+            {newKnowledge.data.context.approach.map((step, idx) => (
+              <div key={idx} className="flex mb-2">
+                <input
+                  type="text"
+                  className="p-2 border rounded flex-1 mr-2"
+                  value={step}
+                  onChange={(e) => handleArrayField('approach', idx, e.target.value, 'context')}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              className="px-2 py-1 bg-gray-200 rounded"
+              onClick={() => handleAddArrayItem('approach', 'context')}
+            >
+              + Add Step
+            </button>
+          </div>
+          <div className="mb-2">
+            <label className="block font-bold mb-1">Response Categories</label>
+            {newKnowledge.data.responseFormat.categories.map((category, idx) => (
+              <div key={idx} className="flex mb-2">
+                <input
+                  type="text"
+                  className="p-2 border rounded flex-1 mr-2"
+                  value={category}
+                  onChange={(e) => handleArrayField('categories', idx, e.target.value, 'responseFormat')}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              className="px-2 py-1 bg-gray-200 rounded"
+              onClick={() => handleAddArrayItem('categories', 'responseFormat')}
+            >
+              + Add Category
+            </button>
+          </div>
+          <textarea
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Final Statement"
+            value={newKnowledge.data.responseFormat.finalStatement}
+            onChange={(e) =>
+              setNewKnowledge({
                 ...newKnowledge,
                 data: {
                   ...newKnowledge.data,
-                  responseFormat: { ...newKnowledge.data.responseFormat, finalStatement: e.target.value }
-                }
-              })}
-            />
-          </>
-        );
+                  responseFormat: { ...newKnowledge.data.responseFormat, finalStatement: e.target.value },
+                },
+              })
+            }
+          />
+        </>
+      );
 
-      case 'personality':
-        return (
-          <>
-            <textarea
-              className="p-2 border rounded w-full mb-2"
-              placeholder="Examples"
-              value={newKnowledge.data.examples}
-              onChange={(e) => setNewKnowledge({
+    case 'personality':
+      return (
+        <>
+          <textarea
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Examples"
+            value={newKnowledge.data.examples}
+            onChange={(e) =>
+              setNewKnowledge({
                 ...newKnowledge,
-                data: { ...newKnowledge.data, examples: e.target.value }
-              })}
-            />
-            <textarea
-              className="p-2 border rounded w-full mb-2"
-              placeholder="Tone"
-              value={newKnowledge.data.tone}
-              onChange={(e) => setNewKnowledge({
-                ...newKnowledge.data,
-                data: { ...newKnowledge.data, tone: e.target.value }
-              })}
-            />
-            <div className="mb-2">
-              <label className="block font-bold mb-1">Traits</label>
-              {newKnowledge.data.traits.map((trait, idx) => (
-                <div key={idx} className="flex mb-2">
-                  <input
-                    type="text"
-                    className="p-2 border rounded flex-1 mr-2"
-                    value={trait}
-                    onChange={(e) => handleArrayField('traits', idx, e.target.value)}
-                  />
-                </div>
-              ))}
-              <button
-                type="button"
-                className="px-2 py-1 bg-gray-200 rounded"
-                onClick={() => handleAddArrayItem('traits')}
-              >
-                + Add Trait
-              </button>
-            </div>
-          </>
-        );
+                data: { ...newKnowledge.data, examples: e.target.value },
+              })
+            }
+          />
+          <textarea
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Tone"
+            value={newKnowledge.data.tone}
+            onChange={(e) =>
+              setNewKnowledge({
+                ...newKnowledge,
+                data: { ...newKnowledge.data, tone: e.target.value },
+              })
+            }
+          />
+          <div className="mb-2">
+            <label className="block font-bold mb-1">Traits</label>
+            {newKnowledge.data.traits.map((trait, idx) => (
+              <div key={idx} className="flex mb-2">
+                <input
+                  type="text"
+                  className="p-2 border rounded flex-1 mr-2"
+                  value={trait}
+                  onChange={(e) => handleArrayField('traits', idx, e.target.value)}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              className="px-2 py-1 bg-gray-200 rounded"
+              onClick={() => handleAddArrayItem('traits')}
+            >
+              + Add Trait
+            </button>
+          </div>
+        </>
+      );
 
-      case 'milestone':
-        return (
-          <>
-            <input
-              type="number"
-              className="p-2 border rounded w-full mb-2"
-              placeholder="Order"
-              value={newKnowledge.order}
-              onChange={(e) => setNewKnowledge({
+    case 'milestone':
+      return (
+        <>
+          <input
+            type="number"
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Order"
+            value={newKnowledge.order}
+            onChange={(e) =>
+              setNewKnowledge({
                 ...newKnowledge,
-                order: Number(e.target.value)
-              })}
-            />
-            <textarea
-              className="p-2 border rounded w-full mb-2"
-              placeholder="Question"
-              value={newKnowledge.data.qa.question}
-              onChange={(e) => setNewKnowledge({
-                ...newKnowledge,
-                data: {
-                  ...newKnowledge.data,
-                  qa: { ...newKnowledge.data.qa, question: e.target.value }
-                }
-              })}
-            />
-            <textarea
-              className="p-2 border rounded w-full mb-2"
-              placeholder="Guidance"
-              value={newKnowledge.data.qa.guidance}
-              onChange={(e) => setNewKnowledge({
+                order: Number(e.target.value),
+              })
+            }
+          />
+          <textarea
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Question"
+            value={newKnowledge.data.qa.question}
+            onChange={(e) =>
+              setNewKnowledge({
                 ...newKnowledge,
                 data: {
                   ...newKnowledge.data,
-                  qa: { ...newKnowledge.data.qa, guidance: e.target.value }
-                }
-              })}
-            />
-            <textarea
-              className="p-2 border rounded w-full mb-2"
-              placeholder="Feedback Example"
-              value={newKnowledge.data.qa.feedbackExample}
-              onChange={(e) => setNewKnowledge({
+                  qa: { ...newKnowledge.data.qa, question: e.target.value },
+                },
+              })
+            }
+          />
+          <textarea
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Guidance"
+            value={newKnowledge.data.qa.guidance}
+            onChange={(e) =>
+              setNewKnowledge({
                 ...newKnowledge,
                 data: {
                   ...newKnowledge.data,
-                  qa: { ...newKnowledge.data.qa, feedbackExample: e.target.value }
-                }
-              })}
-            />
-          </>
-        );
+                  qa: { ...newKnowledge.data.qa, guidance: e.target.value },
+                },
+              })
+            }
+          />
+          <textarea
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Feedback Example"
+            value={newKnowledge.data.qa.feedbackExample}
+            onChange={(e) =>
+              setNewKnowledge({
+                ...newKnowledge,
+                data: {
+                  ...newKnowledge.data,
+                  qa: { ...newKnowledge.data.qa, feedbackExample: e.target.value },
+                },
+              })
+            }
+          />
+        </>
+      );
 
-      default:
-        return null;
-    }
-  };
+    default:
+      return null;
+  }
+};
+
 
   // Component render
   return (
@@ -672,21 +690,312 @@ export default function Training() {
         </div>
       )}
 
-      {/* Keep existing sections for other types */}
-      {/* Personality Section */}
-      {editingItem.dataType === 'personality' && (
-        // ... existing personality section ...
-      )}
+{editingItem.dataType === 'personality' && (
+  <>
+    <textarea
+      className="p-2 border rounded w-full mb-2"
+      placeholder="Examples"
+      value={editingItem.data.examples || ''}
+      onChange={(e) =>
+        setEditingItem({
+          ...editingItem,
+          data: { ...editingItem.data, examples: e.target.value },
+        })
+      }
+    />
+    <textarea
+      className="p-2 border rounded w-full mb-2"
+      placeholder="Tone"
+      value={editingItem.data.tone || ''}
+      onChange={(e) =>
+        setEditingItem({
+          ...editingItem,
+          data: { ...editingItem.data, tone: e.target.value },
+        })
+      }
+    />
+    <div className="mb-2">
+      <label className="block font-bold mb-1">Traits</label>
+      {(editingItem.data.traits || []).map((trait, idx) => (
+        <div key={idx} className="flex mb-2">
+          <input
+            type="text"
+            className="p-2 border rounded flex-1 mr-2"
+            value={trait}
+            onChange={(e) => {
+              const newTraits = [...editingItem.data.traits];
+              newTraits[idx] = e.target.value;
+              setEditingItem({ ...editingItem, data: { ...editingItem.data, traits: newTraits } });
+            }}
+          />
+        </div>
+      ))}
+      <button
+        type="button"
+        className="px-2 py-1 bg-gray-200 rounded"
+        onClick={() => {
+          const newTraits = [...(editingItem.data.traits || []), ''];
+          setEditingItem({ ...editingItem, data: { ...editingItem.data, traits: newTraits } });
+        }}
+      >
+        + Add Trait
+      </button>
+    </div>
+  </>
+)}
 
-      {/* Instructions Section */}
-      {editingItem.dataType === 'instructions' && (
-        // ... existing instructions section ...
-      )}
 
-      {/* Milestone Section */}
-      {editingItem.dataType === 'milestone' && (
-        // ... existing milestone section ...
-      )}
+{editingItem.dataType === 'personality' && (
+  <>
+    <textarea
+      className="p-2 border rounded w-full mb-2"
+      placeholder="Examples"
+      value={editingItem.data.examples || ''}
+      onChange={(e) =>
+        setEditingItem({
+          ...editingItem,
+          data: { ...editingItem.data, examples: e.target.value },
+        })
+      }
+    />
+    <textarea
+      className="p-2 border rounded w-full mb-2"
+      placeholder="Tone"
+      value={editingItem.data.tone || ''}
+      onChange={(e) =>
+        setEditingItem({
+          ...editingItem,
+          data: { ...editingItem.data, tone: e.target.value },
+        })
+      }
+    />
+    <div className="mb-2">
+      <label className="block font-bold mb-1">Traits</label>
+      {(editingItem.data.traits || []).map((trait, idx) => (
+        <div key={idx} className="flex mb-2">
+          <input
+            type="text"
+            className="p-2 border rounded flex-1 mr-2"
+            value={trait}
+            onChange={(e) => {
+              const newTraits = [...editingItem.data.traits];
+              newTraits[idx] = e.target.value;
+              setEditingItem({ ...editingItem, data: { ...editingItem.data, traits: newTraits } });
+            }}
+          />
+        </div>
+      ))}
+      <button
+        type="button"
+        className="px-2 py-1 bg-gray-200 rounded"
+        onClick={() => {
+          const newTraits = [...(editingItem.data.traits || []), ''];
+          setEditingItem({ ...editingItem, data: { ...editingItem.data, traits: newTraits } });
+        }}
+      >
+        + Add Trait
+      </button>
+    </div>
+  </>
+)}
+
+{editingItem.dataType === 'milestone' && (
+  <>
+    <input
+      type="number"
+      className="p-2 border rounded w-full mb-2"
+      placeholder="Order"
+      value={editingItem.order || 1}
+      onChange={(e) =>
+        setEditingItem({
+          ...editingItem,
+          order: Number(e.target.value),
+        })
+      }
+    />
+    <textarea
+      className="p-2 border rounded w-full mb-2"
+      placeholder="Question"
+      value={editingItem.data.qa?.question || ''}
+      onChange={(e) =>
+        setEditingItem({
+          ...editingItem,
+          data: {
+            ...editingItem.data,
+            qa: { ...editingItem.data.qa, question: e.target.value },
+          },
+        })
+      }
+    />
+    <textarea
+      className="p-2 border rounded w-full mb-2"
+      placeholder="Guidance"
+      value={editingItem.data.qa?.guidance || ''}
+      onChange={(e) =>
+        setEditingItem({
+          ...editingItem,
+          data: {
+            ...editingItem.data,
+            qa: { ...editingItem.data.qa, guidance: e.target.value },
+          },
+        })
+      }
+    />
+    <textarea
+      className="p-2 border rounded w-full mb-2"
+      placeholder="Feedback Example"
+      value={editingItem.data.qa?.feedbackExample || ''}
+      onChange={(e) =>
+        setEditingItem({
+          ...editingItem,
+          data: {
+            ...editingItem.data,
+            qa: { ...editingItem.data.qa, feedbackExample: e.target.value },
+          },
+        })
+      }
+    />
+  </>
+)}
+
+{editingItem.dataType === 'knowledge_base' && (
+  <>
+    <textarea
+      className="p-2 border rounded w-full mb-2"
+      placeholder="Content"
+      value={editingItem.data.content || ''}
+      onChange={(e) =>
+        setEditingItem({
+          ...editingItem,
+          data: { ...editingItem.data, content: e.target.value },
+        })
+      }
+    />
+    <div className="mb-2">
+      <label className="block font-bold mb-1">Categories</label>
+      {(editingItem.data.categories || []).map((category, idx) => (
+        <div key={idx} className="flex mb-2">
+          <input
+            type="text"
+            className="p-2 border rounded flex-1 mr-2"
+            value={category}
+            onChange={(e) => {
+              const newCategories = [...editingItem.data.categories];
+              newCategories[idx] = e.target.value;
+              setEditingItem({ ...editingItem, data: { ...editingItem.data, categories: newCategories } });
+            }}
+          />
+        </div>
+      ))}
+      <button
+        type="button"
+        className="px-2 py-1 bg-gray-200 rounded"
+        onClick={() => {
+          const newCategories = [...(editingItem.data.categories || []), ''];
+          setEditingItem({ ...editingItem, data: { ...editingItem.data, categories: newCategories } });
+        }}
+      >
+        + Add Category
+      </button>
+    </div>
+  </>
+)}
+
+
+{editingItem.dataType === 'knowledge_base' && (
+  <>
+    <textarea
+      className="p-2 border rounded w-full mb-2"
+      placeholder="Content"
+      value={editingItem.data.content || ''}
+      onChange={(e) =>
+        setEditingItem({
+          ...editingItem,
+          data: { ...editingItem.data, content: e.target.value },
+        })
+      }
+    />
+    <div className="mb-2">
+      <label className="block font-bold mb-1">Categories</label>
+      {(editingItem.data.categories || []).map((category, idx) => (
+        <div key={idx} className="flex mb-2">
+          <input
+            type="text"
+            className="p-2 border rounded flex-1 mr-2"
+            value={category}
+            onChange={(e) => {
+              const newCategories = [...editingItem.data.categories];
+              newCategories[idx] = e.target.value;
+              setEditingItem({ ...editingItem, data: { ...editingItem.data, categories: newCategories } });
+            }}
+          />
+        </div>
+      ))}
+      <button
+        type="button"
+        className="px-2 py-1 bg-gray-200 rounded"
+        onClick={() => {
+          const newCategories = [...(editingItem.data.categories || []), ''];
+          setEditingItem({ ...editingItem, data: { ...editingItem.data, categories: newCategories } });
+        }}
+      >
+        + Add Category
+      </button>
+    </div>
+  </>
+)}
+
+
+{editingItem.dataType === 'faqs' && (
+  <div className="mb-4">
+    <label className="block font-bold mb-2">FAQs</label>
+    {(editingItem.data.faqs || []).map((faq, idx) => (
+      <div key={idx} className="p-4 border rounded mb-4">
+        <textarea
+          className="p-2 border rounded w-full mb-2"
+          placeholder="Question"
+          value={faq.question || ''}
+          onChange={(e) => {
+            const newFaqs = [...editingItem.data.faqs];
+            newFaqs[idx] = { ...newFaqs[idx], question: e.target.value };
+            setEditingItem({ ...editingItem, data: { ...editingItem.data, faqs: newFaqs } });
+          }}
+        />
+        <textarea
+          className="p-2 border rounded w-full mb-2"
+          placeholder="Answer"
+          value={faq.answer || ''}
+          onChange={(e) => {
+            const newFaqs = [...editingItem.data.faqs];
+            newFaqs[idx] = { ...newFaqs[idx], answer: e.target.value };
+            setEditingItem({ ...editingItem, data: { ...editingItem.data, faqs: newFaqs } });
+          }}
+        />
+        <button
+          onClick={() => {
+            const newFaqs = [...editingItem.data.faqs];
+            newFaqs.splice(idx, 1);
+            setEditingItem({ ...editingItem, data: { ...editingItem.data, faqs: newFaqs } });
+          }}
+          className="px-2 py-1 bg-red-500 text-white rounded"
+        >
+          Remove FAQ
+        </button>
+      </div>
+    ))}
+    <button
+      type="button"
+      onClick={() => {
+        const newFaq = { question: '', answer: '' };
+        const newFaqs = [...(editingItem.data.faqs || []), newFaq];
+        setEditingItem({ ...editingItem, data: { ...editingItem.data, faqs: newFaqs } });
+      }}
+      className="px-2 py-1 bg-blue-500 text-white rounded"
+    >
+      + Add FAQ
+    </button>
+  </div>
+)}
 
       <div className="flex justify-end gap-2 mt-4">
         <button
