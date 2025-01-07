@@ -1,40 +1,92 @@
-//  pages/api/admin/conversations.js
+import { getFirestore, collection, doc, getDoc, updateDoc, setDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { initializeApp } from 'firebase/app';
 
-import admin from '@/lib/firebaseAdmin';
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
-    const { agentId, messages, participants } = req.body;
+    const { agentId, messages } = req.body;
+
+    if (!agentId || !messages) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
 
     try {
-      const conversationRef = admin.firestore().collection('conversations').doc(agentId);
-      const conversation = await conversationRef.get();
-
-      if (conversation.exists) {
-        // Append new messages to the existing conversation
-        await conversationRef.update({
-          messages: admin.firestore.FieldValue.arrayUnion(...messages),
-          lastUpdatedAt: new Date(),
+      // Query for existing conversation
+      const conversationsRef = collection(db, 'conversations');
+      const q = query(
+        conversationsRef,
+        where('agentId', '==', agentId),
+        where('createdBy', '==', 'admin')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        // Update existing conversation
+        const conversationDoc = querySnapshot.docs[0];
+        await updateDoc(doc(db, 'conversations', conversationDoc.id), {
+          messages: [...conversationDoc.data().messages, ...messages],
+          lastUpdatedAt: serverTimestamp()
         });
       } else {
-        // Create a new conversation document
-        await conversationRef.set({
+        // Create new conversation
+        await addDoc(conversationsRef, {
           agentId,
-          createdAt: new Date(),
-          lastUpdatedAt: new Date(),
+          createdAt: serverTimestamp(),
+          lastUpdatedAt: serverTimestamp(),
+          createdBy: 'admin',
           messages,
-          participants,
-          name: `Chat with ${agentId}`,
+          participants: ['admin', agentId],
+          teamId: 'admin_team',
+          name: `Admin Chat with ${agentId}`,
+          isShared: true
         });
       }
 
-      res.status(200).json({ success: true });
+      return res.status(200).json({ success: true });
     } catch (error) {
-      console.error('Error saving conversation:', error);
-      res.status(500).json({ error: 'Failed to save conversation' });
+      console.error('Error handling conversation:', error);
+      return res.status(500).json({ 
+        error: 'Failed to handle conversation',
+        message: error.message 
+      });
     }
-  } else {
-    res.setHeader('Allow', ['POST']);
-    res.status(405).json({ error: `Method ${req.method} not allowed` });
   }
+
+  if (req.method === 'GET') {
+    const { agentId } = req.query;
+
+    try {
+      const conversationsRef = collection(db, 'conversations');
+      const q = query(
+        conversationsRef,
+        where('agentId', '==', agentId),
+        where('createdBy', '==', 'admin')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const conversations = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      return res.status(200).json(conversations);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      return res.status(500).json({ 
+        error: 'Failed to fetch conversations',
+        message: error.message 
+      });
+    }
+  }
+
+  return res.status(405).json({ error: `Method ${req.method} not allowed` });
 }

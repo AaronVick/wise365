@@ -1,9 +1,13 @@
+//  /pages/admin/training.js
+
 import { useEffect, useState } from 'react';
 
 export default function Training() {
   const [data, setData] = useState([]);
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [newKnowledge, setNewKnowledge] = useState({
     agentId: '',
     dataType: 'knowledge_base',
@@ -32,14 +36,20 @@ export default function Training() {
   // Fetch agents on mount
   useEffect(() => {
     async function fetchAgents() {
+      setLoading(true);
+      setError(null);
       try {
         const res = await fetch('/api/admin?tab=agents');
         if (!res.ok) throw new Error('Failed to fetch agents');
         const agentsData = await res.json();
+        console.log('Fetched agents:', agentsData);
         setAgents(agentsData || []);
       } catch (error) {
         console.error('Error fetching agents:', error);
+        setError(error.message);
         setAgents([]);
+      } finally {
+        setLoading(false);
       }
     }
     fetchAgents();
@@ -47,17 +57,28 @@ export default function Training() {
 
   // Fetch training data for selected agent
   const handleAgentSelection = async (agentId) => {
+    console.log('Selected agent:', agentId);
     setSelectedAgent(agentId);
     setNewKnowledge({ ...newKnowledge, agentId });
+    setLoading(true);
+    setError(null);
 
     try {
       const res = await fetch(`/api/admin?tab=training&agentId=${agentId}`);
+      console.log('Training data response status:', res.status);
+      
       if (!res.ok) throw new Error('Failed to fetch training data');
+      
       const trainingData = await res.json();
+      console.log('Received training data:', trainingData);
+      
       setData(trainingData || []);
     } catch (error) {
       console.error('Error fetching training data:', error);
+      setError(error.message);
       setData([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -67,6 +88,9 @@ export default function Training() {
       alert('Please select an agent before adding knowledge.');
       return;
     }
+
+    setLoading(true);
+    setError(null);
 
     try {
       const res = await fetch('/api/admin/training', {
@@ -98,23 +122,43 @@ export default function Training() {
       handleAgentSelection(selectedAgent); // Refresh training data
     } catch (error) {
       console.error('Error adding knowledge:', error);
+      setError(error.message);
       alert('Failed to add knowledge. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div>
+    <div className="p-6">
       <h2 className="text-xl font-bold mb-4">Training Data</h2>
+      
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <div className="text-center py-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+        </div>
+      )}
+
+      {/* Agent Selection */}
       <select
         className="p-2 border rounded w-full mb-4"
         value={selectedAgent || ''}
         onChange={(e) => handleAgentSelection(e.target.value)}
+        disabled={loading}
       >
         <option value="" disabled>
           {agents.length === 0 ? 'No agents available' : 'Select an Agent'}
         </option>
         {agents.map((agent) => (
-          <option key={agent.id} value={agent.id}>
+          <option key={agent.id} value={agent.agentId}>
             {agent.agentName}: {agent.Role}
           </option>
         ))}
@@ -143,12 +187,14 @@ export default function Training() {
         </div>
       ) : (
         <p className="text-gray-600">
-          {selectedAgent ? 'No training data available.' : 'Select an agent to view training data.'}
+          {selectedAgent 
+            ? 'No training data available.' 
+            : 'Select an agent to view training data.'}
         </p>
       )}
 
       {/* Add New Knowledge Form */}
-      {selectedAgent && (
+      {selectedAgent && !loading && (
         <div className="p-4 bg-white shadow rounded mt-6">
           <h3 className="text-lg font-bold mb-2">Add New Knowledge</h3>
           <select
@@ -213,8 +259,9 @@ export default function Training() {
             }
           />
           <button
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300"
             onClick={handleAddKnowledge}
+            disabled={loading}
           >
             Add Knowledge
           </button>
