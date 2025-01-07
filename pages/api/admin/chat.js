@@ -1,3 +1,5 @@
+// pages/api/admin/chat.js
+
 import { Configuration, OpenAIApi } from 'openai';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -71,9 +73,24 @@ export default async function handler(req, res) {
       }
 
       const newMessages = [
-        JSON.stringify({ role: 'admin', content: message }),
-        JSON.stringify({ role: agentId, content: reply })
+        `"role": "admin", "content": "${message}", "timestamp": "${new Date().toISOString()}"`,
+        `"role": "${agentId}", "content": "${reply}", "timestamp": "${new Date().toISOString()}"`
       ];
+      
+      // When creating a new conversation:
+      chatDoc = await db.collection('conversations').add({
+        agentID: agentId,
+        createdAt: new Date(),
+        lastUpdatedAt: new Date(),
+        createdBy: 'admin',
+        isShared: true,
+        messages: [
+          `"role": "admin", "content": "${message}", "timestamp": "${new Date().toISOString()}"`,
+          `"role": "${agentId}", "content": "${reply}", "timestamp": "${new Date().toISOString()}"`
+        ],
+        participants: ['admin', agentId],
+        teamID: 'admin_team'
+      });
 
       await conversationRef.update({
         messages: [...(conversation.data().messages || []), ...newMessages],

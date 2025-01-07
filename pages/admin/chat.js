@@ -1,3 +1,5 @@
+// pages/admin/chat.js
+
 import { useState, useEffect, useRef } from 'react';
 
 export default function Chat() {
@@ -14,7 +16,28 @@ export default function Chat() {
   const [newChatName, setNewChatName] = useState('');
   const messagesEndRef = useRef(null);
 
-  // ... (keep existing useEffect for scrollToBottom)
+  // Scroll to bottom when messages change
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages]);
+
+  // Handle escape key for modal
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setShowNewChatModal(false);
+      }
+    };
+    
+    if (showNewChatModal) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+  }, [showNewChatModal]);
 
   // Fetch agents and conversations on mount
   useEffect(() => {
@@ -51,97 +74,174 @@ export default function Chat() {
       return;
     }
 
-    async function fetchData() {
-      setLoading(true);
-      setError(null);
-      try {
-        // Fetch agent training data
-        const trainingRes = await fetch(`/api/admin?tab=training&agentId=${selectedAgent}`);
-        if (!trainingRes.ok) throw new Error('Failed to fetch agent training data');
-        const trainingData = await trainingRes.json();
-        const personalityData = trainingData.find(data => data.dataType === 'personality');
-        setAgentPersona(personalityData || null);
+  async function fetchData() {
+    setLoading(true);
+    setError(null);
+    try {
+      // Fetch agent training data
+      const trainingRes = await fetch(`/api/admin?tab=training&agentId=${selectedAgent}`);
+      if (!trainingRes.ok) throw new Error('Failed to fetch agent training data');
+      const trainingData = await trainingRes.json();
+      const personalityData = trainingData.find(data => data.dataType === 'personality');
+      setAgentPersona(personalityData || null);
 
-        // If a conversation is selected, fetch its messages
-        if (selectedConversation) {
-          const messages = selectedConversation.messages.map(msg => {
-            try {
-              const msgObj = JSON.parse(`{${msg}}`);
+      // If a conversation is selected, fetch its messages
+      if (selectedConversation) {
+        console.log('Selected conversation messages:', selectedConversation.messages);
+        const messages = selectedConversation.messages.map(msg => {
+          try {
+            // Extract role and content using regex since it's a string format
+            const roleMatch = msg.match(/"role":\s*"([^"]+)"/);
+            const contentMatch = msg.match(/"content":\s*"([^"]+)"/);
+            
+            if (roleMatch && contentMatch) {
+              const role = roleMatch[1];
+              const content = contentMatch[1];
               return {
-                user: msgObj.role === 'admin' ? msgObj.content : null,
-                bot: msgObj.role === selectedAgent ? msgObj.content : null
+                user: role === 'admin' ? content : null,
+                bot: role === selectedAgent ? content : null
               };
+            }
+            return null;
+          } catch (e) {
+            console.error('Error parsing message:', msg, e);
+            return null;
+          }
+        }).filter(msg => msg !== null && (msg.user || msg.bot));
+        
+        console.log('Parsed messages:', messages);
+        setChatMessages(messages);
+      } else {
+        // Find or create general chat for this agent
+        const generalChat = conversations.find(c => 
+          c.agentID === selectedAgent && !c.name && c.createdBy === 'admin'
+        );
+        
+        if (generalChat) {
+          console.log('Found general chat:', generalChat);
+          setSelectedConversation(generalChat);
+          // Parse messages from general chat
+          const messages = generalChat.messages.map(msg => {
+            try {
+              const roleMatch = msg.match(/"role":\s*"([^"]+)"/);
+              const contentMatch = msg.match(/"content":\s*"([^"]+)"/);
+              
+              if (roleMatch && contentMatch) {
+                const role = roleMatch[1];
+                const content = contentMatch[1];
+                return {
+                  user: role === 'admin' ? content : null,
+                  bot: role === selectedAgent ? content : null
+                };
+              }
+              return null;
             } catch (e) {
               console.error('Error parsing message:', msg, e);
               return null;
             }
           }).filter(msg => msg !== null && (msg.user || msg.bot));
+          
+          console.log('Parsed general chat messages:', messages);
           setChatMessages(messages);
         } else {
-          // Find or create general chat for this agent
-          const generalChat = conversations.find(c => 
-            c.agentID === selectedAgent && !c.name && c.createdBy === 'admin'
-          );
-          if (generalChat) {
-            setSelectedConversation(generalChat);
-          } else {
-            // Will create new general chat on first message
-            setChatMessages([]);
-          }
+          console.log('No general chat found, will create on first message');
+          setChatMessages([]);
         }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setError('Failed to load data');
-      } finally {
-        setLoading(false);
       }
-    }
-    fetchData();
-  }, [selectedAgent, selectedConversation]);
-
-  const handleCreateNewChat = async () => {
-    if (!selectedAgent || !newChatName.trim()) return;
-
-    setLoading(true);
-    try {
-      const res = await fetch('/api/admin/chat/new', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentId: selectedAgent,
-          name: newChatName.trim(),
-        }),
-      });
-
-      if (!res.ok) throw new Error('Failed to create new chat');
-      
-      const newChat = await res.json();
-      setConversations(prev => [...prev, newChat]);
-      setSelectedConversation(newChat);
-      setNewChatName('');
-      setShowNewChatModal(false);
     } catch (error) {
-      setError('Failed to create new chat: ' + error.message);
+      console.error('Error fetching data:', error);
+      setError('Failed to load data');
+      setAgentPersona(null);
+      setChatMessages([]);
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  fetchData();
+}, [selectedAgent, selectedConversation, conversations]);
+
+const handleCreateNewChat = async () => {
+  if (!selectedAgent || !newChatName.trim()) return;
+
+  setLoading(true);
+  try {
+    // Create new chat
+    const res = await fetch('/api/admin/chat/new', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agentId: selectedAgent,
+        name: newChatName.trim(),
+        timestamp: new Date().toISOString()
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Failed to create new chat');
+    }
+    
+    const newChat = await res.json();
+
+    // Format the new chat to match our data structure
+    const formattedChat = {
+      ...newChat,
+      agentID: selectedAgent,
+      messages: [],
+      createdBy: 'admin',
+      isShared: true,
+      participants: ['admin', selectedAgent],
+      teamID: 'admin_team',
+      name: newChatName.trim(),
+      lastUpdatedAt: new Date(),
+      createdAt: new Date()
+    };
+
+    // Update local state
+    setConversations(prev => [...prev, formattedChat]);
+    setSelectedConversation(formattedChat);
+    setNewChatName('');
+    setShowNewChatModal(false);
+
+    // Refresh conversations from server to ensure we have the latest data
+    const refreshRes = await fetch('/api/admin?tab=conversations');
+    if (refreshRes.ok) {
+      const refreshedConversations = await refreshRes.json();
+      setConversations(refreshedConversations);
+    }
+  } catch (error) {
+    console.error('Error creating new chat:', error);
+    setError('Failed to create new chat: ' + error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSendMessage = async () => {
     if (!selectedAgent || !chatInput.trim()) {
       alert('Please select an agent and enter a message.');
       return;
     }
-
+  
     setLoading(true);
     setError(null);
-
+  
     try {
       let systemPrompt = `You are ${selectedAgent}`;
       if (agentPersona) {
-        // ... (keep existing prompt construction)
+        systemPrompt += `\n${agentPersona.description}`;
+        if (agentPersona.data?.tone) {
+          systemPrompt += `\nTone: ${agentPersona.data.tone}`;
+        }
+        if (agentPersona.data?.traits?.length) {
+          systemPrompt += `\nTraits: ${agentPersona.data.traits.join(', ')}`;
+        }
+        if (agentPersona.data?.examples) {
+          systemPrompt += `\nExample interactions: ${agentPersona.data.examples}`;
+        }
       }
-
+  
       const res = await fetch('/api/admin/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -149,38 +249,34 @@ export default function Chat() {
           agentId: selectedAgent,
           message: chatInput,
           prompt: systemPrompt,
-          conversationId: selectedConversation?.id,
-          isNewConversation: !selectedConversation
+          conversationId: selectedConversation?.id
         }),
       });
-
-      let data;
+  
       const responseText = await res.text();
-      
+      console.log('Raw response:', responseText);
+  
+      let data;
       try {
         data = JSON.parse(responseText);
       } catch (parseError) {
+        console.error('Failed to parse response:', responseText);
         throw new Error('Invalid response from server');
       }
-
-      if (!res.ok || !data.reply) {
-        throw new Error(data.error || 'Failed to send message');
+  
+      if (!data.reply) {
+        throw new Error('No reply received from server');
       }
-
-      // If this was a new conversation, update the conversations list
-      if (data.conversationId && !selectedConversation) {
-        const newConversation = {
-          id: data.conversationId,
-          agentID: selectedAgent,
-          messages: [],
-          createdBy: 'admin'
-        };
-        setConversations(prev => [...prev, newConversation]);
-        setSelectedConversation(newConversation);
-      }
-
+  
       setChatMessages(prev => [...prev, { user: chatInput, bot: data.reply }]);
       setChatInput('');
+  
+      // Refresh conversations if this was a new chat
+      if (!selectedConversation) {
+        const conversationsRes = await fetch('/api/admin?tab=conversations');
+        const conversationsData = await conversationsRes.json();
+        setConversations(conversationsData || []);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       setError('Failed to send message: ' + error.message);
