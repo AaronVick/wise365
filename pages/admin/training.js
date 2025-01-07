@@ -1,15 +1,18 @@
 //  /pages/admin/training.js
 
+
 import { useEffect, useState } from 'react';
 
 export default function Training() {
+  // State declarations
   const [data, setData] = useState([]);
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
 
-  // Define initial states for different data types
+  // Data type templates definition
   const dataTypeTemplates = {
     instructions: {
       agentId: '',
@@ -96,7 +99,7 @@ export default function Training() {
     { value: 'feedback_bank', label: 'Feedback Bank' }
   ];
 
-  // Handler for data type change
+  // Handlers
   const handleDataTypeChange = (e) => {
     const selectedType = e.target.value;
     setNewKnowledge({
@@ -105,7 +108,6 @@ export default function Training() {
     });
   };
 
-  // Handler for array fields
   const handleArrayField = (field, index, value, parentField = null) => {
     setNewKnowledge(prev => {
       const newData = { ...prev };
@@ -118,7 +120,6 @@ export default function Training() {
     });
   };
 
-  // Handler to add array item
   const handleAddArrayItem = (field, parentField = null) => {
     setNewKnowledge(prev => {
       const newData = { ...prev };
@@ -129,6 +130,129 @@ export default function Training() {
       }
       return newData;
     });
+  };
+
+  const handleUpdateKnowledge = async () => {
+    if (!editingItem) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/admin/training/${editingItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingItem),
+      });
+
+      if (!res.ok) throw new Error('Failed to update knowledge');
+
+      alert('Knowledge updated successfully!');
+      setEditingItem(null);
+      handleAgentSelection(selectedAgent); // Refresh training data
+    } catch (error) {
+      console.error('Error updating knowledge:', error);
+      setError(error.message);
+      alert('Failed to update knowledge. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch agents on mount
+  useEffect(() => {
+    async function fetchAgents() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch('/api/admin?tab=agents');
+        if (!res.ok) throw new Error('Failed to fetch agents');
+        const agentsData = await res.json();
+        console.log('Fetched agents:', agentsData);
+        setAgents(agentsData || []);
+      } catch (error) {
+        console.error('Error fetching agents:', error);
+        setError(error.message);
+        setAgents([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAgents();
+  }, []);
+
+  // Fetch training data for selected agent
+  const handleAgentSelection = async (agentId) => {
+    console.log('Selected agent:', agentId);
+    setSelectedAgent(agentId);
+    setNewKnowledge({ ...newKnowledge, agentId });
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/admin?tab=training&agentId=${agentId}`);
+      console.log('Training data response status:', res.status);
+      
+      if (!res.ok) throw new Error('Failed to fetch training data');
+      
+      const trainingData = await res.json();
+      console.log('Received training data:', trainingData);
+      
+      setData(trainingData || []);
+    } catch (error) {
+      console.error('Error fetching training data:', error);
+      setError(error.message);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add new knowledge for the selected agent
+  const handleAddKnowledge = async () => {
+    if (!selectedAgent) {
+      alert('Please select an agent before adding knowledge.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/admin/training', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newKnowledge),
+      });
+
+      if (!res.ok) throw new Error('Failed to add knowledge');
+
+      alert('Knowledge added successfully!');
+      setNewKnowledge({
+        agentId: selectedAgent,
+        dataType: 'knowledge_base',
+        description: '',
+        URL: '',
+        milestone: false,
+        order: 1,
+        data: {
+          introduction: { greeting: '' },
+          context: { purpose: '' },
+          process: [],
+          qa: [{ question: '', guidance: '', feedbackExample: '' }],
+          responseFormat: { categories: [], finalStatement: '' },
+          additionalNotes: [],
+        },
+      });
+
+      handleAgentSelection(selectedAgent); // Refresh training data
+    } catch (error) {
+      console.error('Error adding knowledge:', error);
+      setError(error.message);
+      alert('Failed to add knowledge. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Render form fields based on data type
@@ -300,111 +424,12 @@ export default function Training() {
           </>
         );
 
-      // Add other cases for knowledge_base and feedback_bank
       default:
         return null;
     }
   };
 
-  // Fetch agents on mount
-  useEffect(() => {
-    async function fetchAgents() {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch('/api/admin?tab=agents');
-        if (!res.ok) throw new Error('Failed to fetch agents');
-        const agentsData = await res.json();
-        console.log('Fetched agents:', agentsData);
-        setAgents(agentsData || []);
-      } catch (error) {
-        console.error('Error fetching agents:', error);
-        setError(error.message);
-        setAgents([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchAgents();
-  }, []);
-
-  // Fetch training data for selected agent
-  const handleAgentSelection = async (agentId) => {
-    console.log('Selected agent:', agentId);
-    setSelectedAgent(agentId);
-    setNewKnowledge({ ...newKnowledge, agentId });
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch(`/api/admin?tab=training&agentId=${agentId}`);
-      console.log('Training data response status:', res.status);
-      
-      if (!res.ok) throw new Error('Failed to fetch training data');
-      
-      const trainingData = await res.json();
-      console.log('Received training data:', trainingData);
-      
-      setData(trainingData || []);
-    } catch (error) {
-      console.error('Error fetching training data:', error);
-      setError(error.message);
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-
-  // Add new knowledge for the selected agent
-  const handleAddKnowledge = async () => {
-    if (!selectedAgent) {
-      alert('Please select an agent before adding knowledge.');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch('/api/admin/training', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newKnowledge),
-      });
-
-      if (!res.ok) throw new Error('Failed to add knowledge');
-
-      alert('Knowledge added successfully!');
-      setNewKnowledge({
-        agentId: selectedAgent,
-        dataType: 'knowledge_base',
-        description: '',
-        URL: '',
-        milestone: false,
-        order: 1,
-        data: {
-          introduction: { greeting: '' },
-          context: { purpose: '' },
-          process: [],
-          qa: [{ question: '', guidance: '', feedbackExample: '' }],
-          responseFormat: { categories: [], finalStatement: '' },
-          additionalNotes: [],
-        },
-      });
-
-      handleAgentSelection(selectedAgent); // Refresh training data
-    } catch (error) {
-      console.error('Error adding knowledge:', error);
-      setError(error.message);
-      alert('Failed to add knowledge. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
+  // Component render
   return (
     <div className="p-6">
       <h2 className="text-xl font-bold mb-4">Training Data</h2>
@@ -437,205 +462,204 @@ export default function Training() {
         ))}
       </select>
 
-     {/* Display Existing Training Data */}
-{data.length > 0 ? (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-    {data.map((item, idx) => (
-      <div key={idx} className="p-4 bg-gray-100 shadow rounded">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="font-bold">{item.dataType}</h3>
-          <button
-            onClick={() => setEditingItem(item)}
-            className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
-          >
-            Edit
-          </button>
-        </div>
-        <p>{item.description}</p>
-        {item.URL && (
-          <a
-            href={item.URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-500"
-          >
-            Learn More
-          </a>
-        )}
-        {item.milestone && <p className="text-green-600 font-semibold">Milestone</p>}
-        
-        {/* Display additional data based on type */}
-        {item.data && (
-          <div className="mt-2 text-sm">
-            {item.data.examples && (
-              <p><strong>Examples:</strong> {item.data.examples}</p>
-            )}
-            {item.data.tone && (
-              <p><strong>Tone:</strong> {item.data.tone}</p>
-            )}
-            {item.data.traits && item.data.traits.length > 0 && (
-              <p><strong>Traits:</strong> {item.data.traits.join(', ')}</p>
-            )}
-            {item.data.context?.purpose && (
-              <p><strong>Purpose:</strong> {item.data.context.purpose}</p>
-            )}
-          </div>
-        )}
-      </div>
-    ))}
-  </div>
-) : (
-  <p className="text-gray-600">
-    {selectedAgent 
-      ? 'No training data available.' 
-      : 'Select an agent to view training data.'}
-  </p>
-)}
-
-{/* Edit Training Item Modal */}
-{editingItem && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      <h3 className="text-lg font-bold mb-4">Edit {editingItem.dataType}</h3>
-      
-      <textarea
-        className="p-2 border rounded w-full mb-2"
-        placeholder="Description"
-        value={editingItem.description}
-        onChange={(e) => setEditingItem({
-          ...editingItem,
-          description: e.target.value
-        })}
-      />
-
-      <input
-        type="text"
-        className="p-2 border rounded w-full mb-2"
-        placeholder="URL (Optional)"
-        value={editingItem.URL || ''}
-        onChange={(e) => setEditingItem({
-          ...editingItem,
-          URL: e.target.value
-        })}
-      />
-
-      <div className="mb-2">
-        <label className="mr-2 font-bold">Milestone:</label>
-        <input
-          type="checkbox"
-          checked={editingItem.milestone || false}
-          onChange={(e) => setEditingItem({
-            ...editingItem,
-            milestone: e.target.checked
-          })}
-        />
-      </div>
-
-      {editingItem.order !== undefined && (
-        <input
-          type="number"
-          className="p-2 border rounded w-full mb-2"
-          placeholder="Order"
-          value={editingItem.order}
-          onChange={(e) => setEditingItem({
-            ...editingItem,
-            order: Number(e.target.value)
-          })}
-        />
-      )}
-
-      {/* Data type specific fields */}
-      {editingItem.dataType === 'personality' && (
-        <>
-          <textarea
-            className="p-2 border rounded w-full mb-2"
-            placeholder="Examples"
-            value={editingItem.data?.examples || ''}
-            onChange={(e) => setEditingItem({
-              ...editingItem,
-              data: { ...editingItem.data, examples: e.target.value }
-            })}
-          />
-          <textarea
-            className="p-2 border rounded w-full mb-2"
-            placeholder="Tone"
-            value={editingItem.data?.tone || ''}
-            onChange={(e) => setEditingItem({
-              ...editingItem,
-              data: { ...editingItem.data, tone: e.target.value }
-            })}
-          />
-          <div className="mb-2">
-            <label className="block font-bold mb-1">Traits</label>
-            {(editingItem.data?.traits || []).map((trait, idx) => (
-              <div key={idx} className="flex mb-2">
-                <input
-                  type="text"
-                  className="p-2 border rounded flex-1 mr-2"
-                  value={trait}
-                  onChange={(e) => {
-                    const newTraits = [...(editingItem.data?.traits || [])];
-                    newTraits[idx] = e.target.value;
-                    setEditingItem({
-                      ...editingItem,
-                      data: { ...editingItem.data, traits: newTraits }
-                    });
-                  }}
-                />
+      {/* Display Existing Training Data */}
+      {data.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {data.map((item, idx) => (
+            <div key={idx} className="p-4 bg-gray-100 shadow rounded">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-bold">{item.dataType}</h3>
                 <button
-                  onClick={() => {
-                    const newTraits = [...(editingItem.data?.traits || [])];
-                    newTraits.splice(idx, 1);
-                    setEditingItem({
-                      ...editingItem,
-                      data: { ...editingItem.data, traits: newTraits }
-                    });
-                  }}
-                  className="px-2 py-1 bg-red-500 text-white rounded"
+                  onClick={() => setEditingItem(item)}
+                  className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
                 >
-                  Remove
+                  Edit
                 </button>
               </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => setEditingItem({
-                ...editingItem,
-                data: {
-                  ...editingItem.data,
-                  traits: [...(editingItem.data?.traits || []), '']
-                }
-              })}
-              className="px-2 py-1 bg-gray-200 rounded"
-            >
-              + Add Trait
-            </button>
-          </div>
-        </>
+              <p>{item.description}</p>
+              {item.URL && (
+                <a
+                  href={item.URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500"
+                >
+                  Learn More
+                </a>
+              )}
+              {item.milestone && <p className="text-green-600 font-semibold">Milestone</p>}
+              
+              {/* Display additional data based on type */}
+              {item.data && (
+                <div className="mt-2 text-sm">
+                  {item.data.examples && (
+                    <p><strong>Examples:</strong> {item.data.examples}</p>
+                  )}
+                  {item.data.tone && (
+                    <p><strong>Tone:</strong> {item.data.tone}</p>
+                  )}
+                  {item.data.traits && item.data.traits.length > 0 && (
+                    <p><strong>Traits:</strong> {item.data.traits.join(', ')}</p>
+                  )}
+                  {item.data.context?.purpose && (
+                    <p><strong>Purpose:</strong> {item.data.context.purpose}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-600">
+          {selectedAgent 
+            ? 'No training data available.' 
+            : 'Select an agent to view training data.'}
+        </p>
       )}
 
-      {/* Add similar sections for other data types */}
+      {/* Edit Training Item Modal */}
+      {editingItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold mb-4">Edit {editingItem.dataType}</h3>
+            
+            <textarea
+              className="p-2 border rounded w-full mb-2"
+              placeholder="Description"
+              value={editingItem.description}
+              onChange={(e) => setEditingItem({
+                ...editingItem,
+                description: e.target.value
+              })}
+            />
 
-      <div className="flex justify-end gap-2 mt-4">
-        <button
-          onClick={() => setEditingItem(null)}
-          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleUpdateKnowledge}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Save Changes
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            <input
+              type="text"
+              className="p-2 border rounded w-full mb-2"
+              placeholder="URL (Optional)"
+              value={editingItem.URL || ''}
+              onChange={(e) => setEditingItem({
+                ...editingItem,
+                URL: e.target.value
+              })}
+            />
 
-      {/* Add New Knowledge Form */}
-      {selectedAgent && !loading && (
+            <div className="mb-2">
+              <label className="mr-2 font-bold">Milestone:</label>
+              <input
+                type="checkbox"
+                checked={editingItem.milestone || false}
+                onChange={(e) => setEditingItem({
+                  ...editingItem,
+                  milestone: e.target.checked
+                })}
+              />
+            </div>
+
+            {editingItem.order !== undefined && (
+              <input
+                type="number"
+                className="p-2 border rounded w-full mb-2"
+                placeholder="Order"
+                value={editingItem.order}
+                onChange={(e) => setEditingItem({
+                  ...editingItem,
+                  order: Number(e.target.value)
+                })}
+              />
+            )}
+
+            {/* Data type specific fields */}
+            {editingItem.dataType === 'personality' && (
+              <>
+                <textarea
+                  className="p-2 border rounded w-full mb-2"
+                  placeholder="Examples"
+                  value={editingItem.data?.examples || ''}
+                  onChange={(e) => setEditingItem({
+                    ...editingItem,
+                    data: { ...editingItem.data, examples: e.target.value }
+                  })}
+                />
+                <textarea
+                  className="p-2 border rounded w-full mb-2"
+                  placeholder="Tone"
+                  value={editingItem.data?.tone || ''}
+                  onChange={(e) => setEditingItem({
+                    ...editingItem,
+                    data: { ...editingItem.data, tone: e.target.value }
+                  })}
+                />
+                <div className="mb-2">
+                  <label className="block font-bold mb-1">Traits</label>
+                  {(editingItem.data?.traits || []).map((trait, idx) => (
+                    <div key={idx} className="flex mb-2">
+                      <input
+                        type="text"
+                        className="p-2 border rounded flex-1 mr-2"
+                        value={trait}
+                        onChange={(e) => {
+                          const newTraits = [...(editingItem.data?.traits || [])];
+                          newTraits[idx] = e.target.value;
+                          setEditingItem({
+                            ...editingItem,
+                            data: { ...editingItem.data, traits: newTraits }
+                          });
+                        }}
+                      />
+                      <button
+                        onClick={() => {
+                          const newTraits = [...(editingItem.data?.traits || [])];
+                          newTraits.splice(idx, 1);
+                          setEditingItem({
+                            ...editingItem,
+                            data: { ...editingItem.data, traits: newTraits }
+                          });
+                        }}
+                        className="px-2 py-1 bg-red-500 text-white rounded"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setEditingItem({
+                      ...editingItem,
+                      data: {
+                        ...editingItem.data,
+                        traits: [...(editingItem.data?.traits || []), '']
+                      }
+                    })}
+                    className="px-2 py-1 bg-gray-200 rounded"
+                  >
+                    + Add Trait
+                  </button>
+                </div>
+              </>
+            )}
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setEditingItem(null)}
+                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateKnowledge}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      
+{/* Add New Knowledge Form */}
+{selectedAgent && !loading && (
         <div className="p-4 bg-white shadow rounded mt-6">
           <h3 className="text-lg font-bold mb-2">Add New Knowledge</h3>
           <select
@@ -689,7 +713,3 @@ export default function Training() {
     </div>
   );
 }
-
-  
-
-
