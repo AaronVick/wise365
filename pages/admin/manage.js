@@ -73,34 +73,41 @@ export default function ManageAgents() {
   return (
     <div>
       <h2 className="text-xl font-bold mb-4">Manage Agents</h2>
-      <div className="overflow-x-auto">
-        <table className="table-auto w-full bg-white shadow rounded mb-6">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="p-4 text-left">Agent ID</th>
-              <th className="p-4 text-left">Agent Name</th>
-              <th className="p-4 text-left">Role</th>
-              <th className="p-4 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((agent) => (
-              <tr key={agent.agentId} className="bg-white">
-                <td className="p-4">{agent.agentId}</td>
-                <td className="p-4">{agent.agentName}</td>
-                <td className="p-4">{agent.Role}</td>
-                <td className="p-4">
-                  <button
-                    onClick={() => setEditingAgent(agent)}
-                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                  >
-                    Edit
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+      {/* Agents Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {data.map((agent) => (
+          <div key={agent.agentId} className="p-4 bg-white shadow rounded">
+            <h3 className="text-lg font-bold">{agent.agentName}</h3>
+            <p>
+              <strong>Agent ID:</strong> {agent.agentId}
+            </p>
+            <p>
+              <strong>Role:</strong> {agent.Role}
+            </p>
+            <p>
+              <strong>Role Info:</strong> {agent.RoleInfo}
+            </p>
+            <p>
+              <strong>Type:</strong> {agent.Type}
+            </p>
+            <p>
+              <strong>Language:</strong> {agent.language}
+            </p>
+            <p>
+              <strong>Personality:</strong> {agent.personality}
+            </p>
+            <p>
+              <strong>About:</strong> {agent.About}
+            </p>
+            <button
+              onClick={() => setEditingAgent(agent)}
+              className="px-4 py-2 mt-4 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Edit
+            </button>
+          </div>
+        ))}
       </div>
 
       {/* Edit Agent Section */}

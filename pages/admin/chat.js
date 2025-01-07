@@ -8,15 +8,45 @@ export default function Chat() {
 
   useEffect(() => {
     async function fetchAgents() {
-      const res = await fetch('/api/admin/agents');
-      const agentsData = await res.json();
-      setAgents(agentsData || []);
+      try {
+        const res = await fetch('/api/admin/agents');
+        const agentsData = await res.json();
+        setAgents(agentsData || []);
+      } catch (error) {
+        console.error('Error fetching agents:', error);
+        setAgents([]); // Fallback to an empty array if fetching fails
+      }
     }
     fetchAgents();
   }, []);
 
   const handleSendMessage = async () => {
-    // Chat sending logic here
+    if (!selectedAgent) {
+      alert('Please select an agent to chat with.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId: selectedAgent, message: chatInput }),
+      });
+
+      if (!res.ok) throw new Error('Failed to send message');
+
+      const { reply } = await res.json();
+
+      setChatMessages((prevMessages) => [
+        ...prevMessages,
+        { user: chatInput, bot: reply },
+      ]);
+
+      setChatInput('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert('Failed to send the message. Please try again.');
+    }
   };
 
   return (
@@ -32,7 +62,7 @@ export default function Chat() {
         </option>
         {agents.map((agent) => (
           <option key={agent.agentId} value={agent.agentId}>
-            {agent.agentName}
+            {agent.agentName}: {agent.Role}
           </option>
         ))}
       </select>
@@ -50,6 +80,7 @@ export default function Chat() {
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
           className="p-2 border rounded w-full mr-2"
+          placeholder="Type a message..."
         />
         <button
           onClick={handleSendMessage}

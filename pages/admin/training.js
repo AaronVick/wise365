@@ -7,18 +7,31 @@ export default function Training() {
 
   useEffect(() => {
     async function fetchAgents() {
-      const res = await fetch('/api/admin/agents');
-      const result = await res.json();
-      setAgents(result || []);
+      try {
+        const res = await fetch('/api/admin/agents');
+        if (!res.ok) throw new Error('Failed to fetch agents');
+        const result = await res.json();
+        console.log("Fetched Agents:", result); // Debugging line
+        setAgents(result || []);
+      } catch (error) {
+        console.error("Error fetching agents:", error);
+        setAgents([]); // Fallback to empty array
+      }
     }
     fetchAgents();
   }, []);
 
   const handleAgentSelection = async (agentId) => {
     setSelectedAgent(agentId);
-    const res = await fetch(`/api/admin/training?agentId=${agentId}`);
-    const trainingData = await res.json();
-    setData(trainingData || []);
+    try {
+      const res = await fetch(`/api/admin/training?agentId=${agentId}`);
+      if (!res.ok) throw new Error('Failed to fetch training data');
+      const trainingData = await res.json();
+      setData(trainingData || []);
+    } catch (error) {
+      console.error("Error fetching training data:", error);
+      setData([]); // Fallback to empty array
+    }
   };
 
   return (
@@ -30,11 +43,11 @@ export default function Training() {
         onChange={(e) => handleAgentSelection(e.target.value)}
       >
         <option value="" disabled>
-          Select an Agent
+          {agents.length === 0 ? 'No agents available' : 'Select an Agent'}
         </option>
         {agents.map((agent) => (
           <option key={agent.agentId} value={agent.agentId}>
-            {agent.agentName}
+            {agent.agentName}: {agent.Role}
           </option>
         ))}
       </select>
@@ -42,7 +55,7 @@ export default function Training() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {data.map((item, idx) => (
             <div key={idx} className="p-4 bg-gray-100 shadow rounded">
-              <h3>{item.dataType}</h3>
+              <h3 className="font-bold">{item.dataType}</h3>
               <p>{item.description}</p>
             </div>
           ))}
