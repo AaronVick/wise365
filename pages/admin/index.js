@@ -167,6 +167,21 @@ export default function AdminDashboard() {
     }
 
     if (activeTab === 'training') {
+      useEffect(() => {
+        async function fetchAgents() {
+          try {
+            const res = await fetch('/api/admin/agents'); // Fetch agents from Firebase
+            if (!res.ok) throw new Error('Failed to fetch agents');
+            const agentsData = await res.json();
+            setAgents(agentsData || []); // Update the state with the fetched agents
+          } catch (error) {
+            console.error('Error fetching agents:', error);
+          }
+        }
+    
+        fetchAgents();
+      }, []);
+    
       return (
         <div>
           <h2 className="text-xl font-bold mb-4">Training Data</h2>
@@ -177,26 +192,85 @@ export default function AdminDashboard() {
             onChange={async (e) => {
               const agentId = e.target.value;
               setSelectedAgent(agentId);
-              const res = await fetch(`/api/admin/training?agentId=${agentId}`);
-              const trainingData = await res.json();
-              setData(trainingData || []);
+              try {
+                const res = await fetch(`/api/admin/training?agentId=${agentId}`);
+                if (!res.ok) throw new Error('Failed to fetch training data');
+                const trainingData = await res.json();
+                setData(trainingData || []);
+              } catch (error) {
+                console.error('Error fetching training data:', error);
+                setData([]); // Fallback to an empty array if fetching fails
+              }
             }}
           >
             <option value="" disabled>
               Select an Agent
             </option>
-            {agents.map((agent) => (
-              <option key={agent.agentId} value={agent.agentId}>
-                {agent.agentName}
-              </option>
-            ))}
+            {agents.length > 0 ? (
+              agents.map((agent) => (
+                <option key={agent.agentId} value={agent.agentId}>
+                  {agent.agentName}
+                </option>
+              ))
+            ) : (
+              <option disabled>No agents available</option>
+            )}
           </select>
-          {/* Training Data */}
+    
+          {/* Display Training Data */}
+          {selectedAgent && data.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {data.map((training, index) => (
+                <div key={index} className="p-4 bg-gray-100 shadow rounded">
+                  <h3 className="text-lg font-semibold">{training.dataType}</h3>
+                  <p className="text-sm text-gray-600">{training.description}</p>
+                  {training.data?.qa && (
+                    <div className="mt-4">
+                      <h4 className="text-md font-bold">Q&A:</h4>
+                      {training.data.qa.map((qaItem, idx) => (
+                        <div key={idx} className="p-2 bg-gray-200 rounded mb-2">
+                          <p>
+                            <strong>Question:</strong> {qaItem.question}
+                          </p>
+                          <p>
+                            <strong>Guidance:</strong> {qaItem.guidance}
+                          </p>
+                          <p>
+                            <strong>Feedback Example:</strong> {qaItem.feedbackExample}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-600">
+              {selectedAgent
+                ? 'No training data found for the selected agent.'
+                : 'Please select an agent to view their training data.'}
+            </p>
+          )}
         </div>
       );
     }
-
     if (activeTab === 'chat') {
+      useEffect(() => {
+        async function fetchAgents() {
+          try {
+            const res = await fetch('/api/admin/agents'); // Fetch agents from Firebase
+            if (!res.ok) throw new Error('Failed to fetch agents');
+            const agentsData = await res.json();
+            setAgents(agentsData || []); // Update the state with the fetched agents
+          } catch (error) {
+            console.error('Error fetching agents:', error);
+          }
+        }
+    
+        fetchAgents();
+      }, []);
+    
       return (
         <div>
           <h2 className="text-xl font-bold mb-4">Chat with Agents</h2>
@@ -207,25 +281,109 @@ export default function AdminDashboard() {
             onChange={async (e) => {
               const agentId = e.target.value;
               setSelectedAgent(agentId);
-              const res = await fetch(`/api/admin/conversations?agentId=${agentId}`);
-              const conversationData = res.ok ? await res.json() : { messages: [] };
-              setChatMessages(conversationData.messages || []);
+              try {
+                const res = await fetch(`/api/admin/conversations?agentId=${agentId}`);
+                if (!res.ok) throw new Error('Failed to fetch conversation data');
+                const conversationData = await res.json();
+                setChatMessages(conversationData.messages || []);
+              } catch (error) {
+                console.error('Error fetching conversation data:', error);
+                setChatMessages([]); // Fallback to an empty array if fetching fails
+              }
             }}
           >
             <option value="" disabled>
               Select an Agent
             </option>
-            {agents.map((agent) => (
-              <option key={agent.agentId} value={agent.agentId}>
-                {agent.agentName}
-              </option>
-            ))}
+            {agents.length > 0 ? (
+              agents.map((agent) => (
+                <option key={agent.agentId} value={agent.agentId}>
+                  {agent.agentName}
+                </option>
+              ))
+            ) : (
+              <option disabled>No agents available</option>
+            )}
           </select>
+    
           {/* Chat Messages */}
+          <div className="p-4 bg-gray-100 shadow rounded mb-4">
+            {chatMessages && chatMessages.length > 0 ? (
+              chatMessages.map((msg, idx) => (
+                <div key={idx} className="mb-2">
+                  <p>
+                    <strong>You:</strong> {msg.user}
+                  </p>
+                  <p>
+                    <strong>{selectedAgent}:</strong> {msg.bot}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500">
+                {selectedAgent
+                  ? 'No messages yet. Start the conversation!'
+                  : 'Please select an agent to view chat history.'}
+              </p>
+            )}
+          </div>
+    
+          {/* Chat Input */}
+          <div className="flex">
+            <input
+              type="text"
+              className="p-2 border rounded w-full mr-2"
+              placeholder="Type a message..."
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+            />
+            <button
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              onClick={async () => {
+                if (!selectedAgent) {
+                  alert('Please select an agent to chat with.');
+                  return;
+                }
+    
+                const prompt = `You are chatting with ${selectedAgent}. Respond to the following message: "${chatInput}"`;
+    
+                try {
+                  const res = await fetch('/api/admin/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ agentId: selectedAgent, prompt }),
+                  });
+                  if (!res.ok) throw new Error('Failed to send message');
+                  const { reply } = await res.json();
+    
+                  const userMessage = { user: chatInput, timestamp: new Date() };
+                  const botMessage = { bot: reply, timestamp: new Date() };
+    
+                  setChatMessages((prev) => [...prev, userMessage, botMessage]);
+                  setChatInput('');
+    
+                  // Save conversation to the Firebase collection
+                  await fetch('/api/admin/conversations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      agentId: selectedAgent,
+                      messages: [userMessage, botMessage],
+                    }),
+                  });
+                } catch (error) {
+                  console.error('Error sending message:', error);
+                  alert('Failed to send message. Please try again.');
+                }
+              }}
+            >
+              Send
+            </button>
+          </div>
         </div>
       );
     }
-  };
+    
 
   return (
     <AdminLayout>
