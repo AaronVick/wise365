@@ -574,57 +574,57 @@ const renderDataTypeFields = () => {
           })}
         />
       </div>
+{/* FAQs Section */}
+{editingItem?.dataType === 'faqs' && (
+  <div className="mb-4">
+    <label className="block font-bold mb-2">FAQs</label>
+    {(editingItem?.faqs || []).map((faq, idx) => (
+      <div key={idx} className="p-4 border rounded mb-4">
+        <textarea
+          className="p-2 border rounded w-full mb-2"
+          placeholder="Question"
+          value={faq.question || ''}
+          onChange={(e) => {
+            const newFaqs = [...(editingItem.faqs || [])];
+            newFaqs[idx] = { ...newFaqs[idx], question: e.target.value };
+            setEditingItem({ ...editingItem, faqs: newFaqs });
+          }}
+        />
+        <textarea
+          className="p-2 border rounded w-full mb-2"
+          placeholder="Answer"
+          value={faq.answer || ''}
+          onChange={(e) => {
+            const newFaqs = [...(editingItem.faqs || [])];
+            newFaqs[idx] = { ...newFaqs[idx], answer: e.target.value };
+            setEditingItem({ ...editingItem, faqs: newFaqs });
+          }}
+        />
+        <button
+          onClick={() => {
+            const newFaqs = [...(editingItem.faqs || [])];
+            newFaqs.splice(idx, 1);
+            setEditingItem({ ...editingItem, faqs: newFaqs });
+          }}
+          className="px-2 py-1 bg-red-500 text-white rounded"
+        >
+          Remove FAQ
+        </button>
+      </div>
+    ))}
+    <button
+      type="button"
+      onClick={() => {
+        const newFaqs = [...(editingItem.faqs || []), { question: '', answer: '' }];
+        setEditingItem({ ...editingItem, faqs: newFaqs });
+      }}
+      className="px-2 py-1 bg-blue-500 text-white rounded"
+    >
+      + Add FAQ
+    </button>
+  </div>
+)}
 
-      {/* FAQs Section */}
-      {editingItem.dataType === 'faqs' && (
-        <div className="mb-4">
-          <label className="block font-bold mb-2">FAQs</label>
-          {(editingItem.faqs || []).map((faq, idx) => (
-            <div key={idx} className="p-4 border rounded mb-4">
-              <textarea
-                className="p-2 border rounded w-full mb-2"
-                placeholder="Question"
-                value={faq.question}
-                onChange={(e) => {
-                  const newFaqs = [...editingItem.faqs];
-                  newFaqs[idx] = { ...newFaqs[idx], question: e.target.value };
-                  setEditingItem({ ...editingItem, faqs: newFaqs });
-                }}
-              />
-              <textarea
-                className="p-2 border rounded w-full mb-2"
-                placeholder="Answer"
-                value={faq.answer}
-                onChange={(e) => {
-                  const newFaqs = [...editingItem.faqs];
-                  newFaqs[idx] = { ...newFaqs[idx], answer: e.target.value };
-                  setEditingItem({ ...editingItem, faqs: newFaqs });
-                }}
-              />
-              <button
-                onClick={() => {
-                  const newFaqs = [...editingItem.faqs];
-                  newFaqs.splice(idx, 1);
-                  setEditingItem({ ...editingItem, faqs: newFaqs });
-                }}
-                className="px-2 py-1 bg-red-500 text-white rounded"
-              >
-                Remove FAQ
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => {
-              const newFaqs = [...(editingItem.faqs || []), { question: '', answer: '' }];
-              setEditingItem({ ...editingItem, faqs: newFaqs });
-            }}
-            className="px-2 py-1 bg-blue-500 text-white rounded"
-          >
-            + Add FAQ
-          </button>
-        </div>
-      )}
 
       {/* Examples Section */}
       {editingItem.dataType === 'examples' && (
@@ -1018,56 +1018,374 @@ const renderDataTypeFields = () => {
       
 {/* Add New Knowledge Form */}
 {selectedAgent && !loading && (
-        <div className="p-4 bg-white shadow rounded mt-6">
-          <h3 className="text-lg font-bold mb-2">Add New Knowledge</h3>
-          <select
-            className="p-2 border rounded w-full mb-2"
-            value={newKnowledge.dataType}
-            onChange={handleDataTypeChange}
-          >
-            {dataTypeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+  <div className="p-4 bg-white shadow rounded mt-6">
+    <h3 className="text-lg font-bold mb-2">Add New Knowledge</h3>
+    <select
+      className="p-2 border rounded w-full mb-2"
+      value={newKnowledge.dataType}
+      onChange={handleDataTypeChange}
+    >
+      {dataTypeOptions.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
 
+    <textarea
+      className="p-2 border rounded w-full mb-2"
+      placeholder="Description"
+      value={newKnowledge.description}
+      onChange={(e) => setNewKnowledge({ ...newKnowledge, description: e.target.value })}
+    />
+
+    <input
+      type="text"
+      className="p-2 border rounded w-full mb-2"
+      placeholder="URL (Optional)"
+      value={newKnowledge.URL || ''}
+      onChange={(e) => setNewKnowledge({ ...newKnowledge, URL: e.target.value })}
+    />
+
+    <div className="mb-2">
+      <label className="mr-2 font-bold">Milestone:</label>
+      <input
+        type="checkbox"
+        checked={newKnowledge.milestone || false}
+        onChange={(e) => setNewKnowledge({ ...newKnowledge, milestone: e.target.checked })}
+      />
+    </div>
+
+    {/* Dynamic fields based on data type */}
+    {newKnowledge.dataType === 'faqs' && (
+      <div className="mb-4">
+        <label className="block font-bold mb-2">FAQs</label>
+        {(newKnowledge.faqs || []).map((faq, idx) => (
+          <div key={idx} className="p-4 border rounded mb-4">
+            <textarea
+              className="p-2 border rounded w-full mb-2"
+              placeholder="Question"
+              value={faq.question || ''}
+              onChange={(e) => {
+                const newFaqs = [...(newKnowledge.faqs || [])];
+                newFaqs[idx] = { ...newFaqs[idx], question: e.target.value };
+                setNewKnowledge({ ...newKnowledge, faqs: newFaqs });
+              }}
+            />
+            <textarea
+              className="p-2 border rounded w-full mb-2"
+              placeholder="Answer"
+              value={faq.answer || ''}
+              onChange={(e) => {
+                const newFaqs = [...(newKnowledge.faqs || [])];
+                newFaqs[idx] = { ...newFaqs[idx], answer: e.target.value };
+                setNewKnowledge({ ...newKnowledge, faqs: newFaqs });
+              }}
+            />
+            <button
+              onClick={() => {
+                const newFaqs = [...(newKnowledge.faqs || [])];
+                newFaqs.splice(idx, 1);
+                setNewKnowledge({ ...newKnowledge, faqs: newFaqs });
+              }}
+              className="px-2 py-1 bg-red-500 text-white rounded"
+            >
+              Remove FAQ
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => {
+            const newFaqs = [...(newKnowledge.faqs || []), { question: '', answer: '' }];
+            setNewKnowledge({ ...newKnowledge, faqs: newFaqs });
+          }}
+          className="px-2 py-1 bg-blue-500 text-white rounded"
+        >
+          + Add FAQ
+        </button>
+      </div>
+    )}
+
+    {newKnowledge.dataType === 'examples' && (
+      <div className="mb-4">
+        <label className="block font-bold mb-2">Examples</label>
+        {(newKnowledge.examples || []).map((example, idx) => (
+          <div key={idx} className="p-4 border rounded mb-4">
+            <input
+              type="text"
+              className="p-2 border rounded w-full mb-2"
+              placeholder="Category"
+              value={example.category || ''}
+              onChange={(e) => {
+                const newExamples = [...(newKnowledge.examples || [])];
+                newExamples[idx] = { ...newExamples[idx], category: e.target.value };
+                setNewKnowledge({ ...newKnowledge, examples: newExamples });
+              }}
+            />
+            <textarea
+              className="p-2 border rounded w-full mb-2"
+              placeholder="Statement"
+              value={example.statement || ''}
+              onChange={(e) => {
+                const newExamples = [...(newKnowledge.examples || [])];
+                newExamples[idx] = { ...newExamples[idx], statement: e.target.value };
+                setNewKnowledge({ ...newKnowledge, examples: newExamples });
+              }}
+            />
+            <button
+              onClick={() => {
+                const newExamples = [...(newKnowledge.examples || [])];
+                newExamples.splice(idx, 1);
+                setNewKnowledge({ ...newKnowledge, examples: newExamples });
+              }}
+              className="px-2 py-1 bg-red-500 text-white rounded"
+            >
+              Remove Example
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => {
+            const newExamples = [...(newKnowledge.examples || []), { category: '', statement: '' }];
+            setNewKnowledge({ ...newKnowledge, examples: newExamples });
+          }}
+          className="px-2 py-1 bg-blue-500 text-white rounded"
+        >
+          + Add Example
+        </button>
+      </div>
+    )}
+
+const renderDataTypeFields = () => {
+  switch (newKnowledge.dataType) {
+    case 'instructions':
+      return (
+        <>
           <textarea
             className="p-2 border rounded w-full mb-2"
-            placeholder="Description"
-            value={newKnowledge.description}
-            onChange={(e) => setNewKnowledge({ ...newKnowledge, description: e.target.value })}
+            placeholder="Purpose"
+            value={newKnowledge.data?.context?.purpose || ''}
+            onChange={(e) =>
+              setNewKnowledge({
+                ...newKnowledge,
+                data: {
+                  ...newKnowledge.data,
+                  context: { ...newKnowledge.data.context, purpose: e.target.value },
+                },
+              })
+            }
           />
-
-          <input
-            type="text"
-            className="p-2 border rounded w-full mb-2"
-            placeholder="URL (Optional)"
-            value={newKnowledge.URL}
-            onChange={(e) => setNewKnowledge({ ...newKnowledge, URL: e.target.value })}
-          />
-
           <div className="mb-2">
-            <label className="mr-2 font-bold">Milestone:</label>
-            <input
-              type="checkbox"
-              checked={newKnowledge.milestone}
-              onChange={(e) => setNewKnowledge({ ...newKnowledge, milestone: e.target.checked })}
-            />
+            <label className="block font-bold mb-1">Approach Steps</label>
+            {(newKnowledge.data?.context?.approach || []).map((step, idx) => (
+              <div key={idx} className="flex mb-2">
+                <input
+                  type="text"
+                  className="p-2 border rounded flex-1 mr-2"
+                  value={step}
+                  onChange={(e) => {
+                    const updatedSteps = [...newKnowledge.data.context.approach];
+                    updatedSteps[idx] = e.target.value;
+                    setNewKnowledge({
+                      ...newKnowledge,
+                      data: { ...newKnowledge.data, context: { ...newKnowledge.data.context, approach: updatedSteps } },
+                    });
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    const updatedSteps = [...newKnowledge.data.context.approach];
+                    updatedSteps.splice(idx, 1);
+                    setNewKnowledge({
+                      ...newKnowledge,
+                      data: { ...newKnowledge.data, context: { ...newKnowledge.data.context, approach: updatedSteps } },
+                    });
+                  }}
+                  className="px-2 py-1 bg-red-500 text-white rounded"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              className="px-2 py-1 bg-blue-500 text-white rounded"
+              onClick={() => {
+                const updatedSteps = [...(newKnowledge.data.context?.approach || []), ''];
+                setNewKnowledge({
+                  ...newKnowledge,
+                  data: { ...newKnowledge.data, context: { ...newKnowledge.data.context, approach: updatedSteps } },
+                });
+              }}
+            >
+              Add Step
+            </button>
           </div>
+        </>
+      );
 
-          {/* Dynamic fields based on data type */}
-          {renderDataTypeFields()}
-
+    case 'feedback_bank':
+      return (
+        <>
+          {(newKnowledge.data?.responses || []).map((response, idx) => (
+            <div key={idx} className="p-4 border rounded mb-4">
+              <textarea
+                className="p-2 border rounded w-full mb-2"
+                placeholder="Response"
+                value={response || ''}
+                onChange={(e) => {
+                  const updatedResponses = [...(newKnowledge.data.responses || [])];
+                  updatedResponses[idx] = e.target.value;
+                  setNewKnowledge({
+                    ...newKnowledge,
+                    data: { ...newKnowledge.data, responses: updatedResponses },
+                  });
+                }}
+              />
+              <button
+                className="px-2 py-1 bg-red-500 text-white rounded"
+                onClick={() => {
+                  const updatedResponses = [...newKnowledge.data.responses];
+                  updatedResponses.splice(idx, 1);
+                  setNewKnowledge({
+                    ...newKnowledge,
+                    data: { ...newKnowledge.data, responses: updatedResponses },
+                  });
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
           <button
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300"
-            onClick={handleAddKnowledge}
-            disabled={loading}
+            className="px-2 py-1 bg-blue-500 text-white rounded"
+            onClick={() => {
+              const updatedResponses = [...(newKnowledge.data.responses || []), ''];
+              setNewKnowledge({
+                ...newKnowledge,
+                data: { ...newKnowledge.data, responses: updatedResponses },
+              });
+            }}
           >
-            Add Knowledge
+            Add Response
           </button>
-        </div>
-      )}
+        </>
+      );
+
+    case 'personality':
+      return (
+        <>
+          <textarea
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Tone"
+            value={newKnowledge.data?.tone || ''}
+            onChange={(e) =>
+              setNewKnowledge({
+                ...newKnowledge,
+                data: { ...newKnowledge.data, tone: e.target.value },
+              })
+            }
+          />
+          <div className="mb-2">
+            <label className="block font-bold mb-1">Traits</label>
+            {(newKnowledge.data?.traits || []).map((trait, idx) => (
+              <div key={idx} className="flex mb-2">
+                <input
+                  type="text"
+                  className="p-2 border rounded flex-1 mr-2"
+                  value={trait}
+                  onChange={(e) => {
+                    const updatedTraits = [...newKnowledge.data.traits];
+                    updatedTraits[idx] = e.target.value;
+                    setNewKnowledge({
+                      ...newKnowledge,
+                      data: { ...newKnowledge.data, traits: updatedTraits },
+                    });
+                  }}
+                />
+                <button
+                  className="px-2 py-1 bg-red-500 text-white rounded"
+                  onClick={() => {
+                    const updatedTraits = [...newKnowledge.data.traits];
+                    updatedTraits.splice(idx, 1);
+                    setNewKnowledge({
+                      ...newKnowledge,
+                      data: { ...newKnowledge.data, traits: updatedTraits },
+                    });
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              className="px-2 py-1 bg-blue-500 text-white rounded"
+              onClick={() => {
+                const updatedTraits = [...(newKnowledge.data.traits || []), ''];
+                setNewKnowledge({
+                  ...newKnowledge,
+                  data: { ...newKnowledge.data, traits: updatedTraits },
+                });
+              }}
+            >
+              Add Trait
+            </button>
+          </div>
+        </>
+      );
+
+    case 'milestone':
+      return (
+        <>
+          <textarea
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Question"
+            value={newKnowledge.data?.qa?.question || ''}
+            onChange={(e) =>
+              setNewKnowledge({
+                ...newKnowledge,
+                data: {
+                  ...newKnowledge.data,
+                  qa: { ...newKnowledge.data.qa, question: e.target.value },
+                },
+              })
+            }
+          />
+          <textarea
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Feedback Example"
+            value={newKnowledge.data?.qa?.feedbackExample || ''}
+            onChange={(e) =>
+              setNewKnowledge({
+                ...newKnowledge,
+                data: {
+                  ...newKnowledge.data,
+                  qa: { ...newKnowledge.data.qa, feedbackExample: e.target.value },
+                },
+              })
+            }
+          />
+        </>
+      );
+
+    default:
+      return null;
+  }
+};
+
+    {renderDataTypeFields()}
+
+    <button
+      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300"
+      onClick={handleAddKnowledge}
+      disabled={loading}
+    >
+      Add Knowledge
+    </button>
+  </div>
+)}
+
     </div>
   );
 }
