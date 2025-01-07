@@ -220,127 +220,269 @@ export default function ManageAgents() {
 {editingAgent && (
   <div className="p-4 bg-white shadow rounded mt-6">
     <h3 className="text-lg font-semibold mb-4">Edit Agent: {editingAgent.agentName}</h3>
-    <input
-      type="text"
-      placeholder="Agent ID"
-      value={editingAgent.agentId}
-      onChange={(e) =>
-        setEditingAgent({ ...editingAgent, agentId: e.target.value })
-      }
-      className="p-2 border rounded w-full mb-2"
-    />
-    <input
-      type="text"
-      placeholder="Agent Name"
-      value={editingAgent.agentName}
-      onChange={(e) =>
-        setEditingAgent({ ...editingAgent, agentName: e.target.value })
-      }
-      className="p-2 border rounded w-full mb-2"
-    />
-    <textarea
-      placeholder="About"
-      value={editingAgent.About}
-      onChange={(e) =>
-        setEditingAgent({ ...editingAgent, About: e.target.value })
-      }
-      className="p-2 border rounded w-full mb-2 h-32"
-    />
-    <input
-      type="text"
-      placeholder="Role"
-      value={editingAgent.Role}
-      onChange={(e) =>
-        setEditingAgent({ ...editingAgent, Role: e.target.value })
-      }
-      className="p-2 border rounded w-full mb-2"
-    />
-    <textarea
-      placeholder="Role Info"
-      value={editingAgent.RoleInfo}
-      onChange={(e) =>
-        setEditingAgent({ ...editingAgent, RoleInfo: e.target.value })
-      }
-      className="p-2 border rounded w-full mb-2"
-    />
-    <input
-      type="text"
-      placeholder="Type"
-      value={editingAgent.Type}
-      onChange={(e) =>
-        setEditingAgent({ ...editingAgent, Type: e.target.value })
-      }
-      className="p-2 border rounded w-full mb-2"
-    />
-    <input
-      type="text"
-      placeholder="Language"
-      value={editingAgent.language}
-      onChange={(e) =>
-        setEditingAgent({ ...editingAgent, language: e.target.value })
-      }
-      className="p-2 border rounded w-full mb-2"
-    />
-    <textarea
-      placeholder="Personality"
-      value={editingAgent.personality}
-      onChange={(e) =>
-        setEditingAgent({ ...editingAgent, personality: e.target.value })
-      }
-      className="p-2 border rounded w-full mb-2"
-    />
-    <div className="mb-4">
-      <label className="block font-bold mb-2">Tasks</label>
-      {Array.isArray(editingAgent.tasks) ? (
-        // If tasks is already an array
-        editingAgent.tasks.map((task, idx) => (
-          <div key={idx} className="flex mb-2">
-            <input
-              type="text"
-              value={task}
-              onChange={(e) => {
-                const newTasks = [...editingAgent.tasks];
-                newTasks[idx] = e.target.value;
-                setEditingAgent({ ...editingAgent, tasks: newTasks });
-              }}
-              className="p-2 border rounded flex-1 mr-2"
-            />
-            <button
-              onClick={() => {
-                const newTasks = [...editingAgent.tasks];
-                newTasks.splice(idx, 1);
-                setEditingAgent({ ...editingAgent, tasks: newTasks });
-              }}
-              className="px-2 py-1 bg-red-500 text-white rounded"
-            >
-              Remove
-            </button>
-          </div>
-        ))
-      ) : (
-        // If tasks is a comma-separated string
-        <textarea
-          placeholder="Tasks (comma-separated)"
-          value={editingAgent.tasks}
+
+    {/* Base Fields */}
+    <div className="grid grid-cols-1 gap-4 mb-4">
+      <div>
+        <label className="block text-sm font-medium mb-1">Agent ID</label>
+        <input
+          type="text"
+          value={editingAgent.agentId}
           onChange={(e) =>
-            setEditingAgent({ ...editingAgent, tasks: e.target.value })
+            setEditingAgent({ ...editingAgent, agentId: e.target.value })
           }
-          className="p-2 border rounded w-full mb-2"
+          className="p-2 border rounded w-full"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Agent Name</label>
+        <input
+          type="text"
+          value={editingAgent.agentName}
+          onChange={(e) =>
+            setEditingAgent({ ...editingAgent, agentName: e.target.value })
+          }
+          className="p-2 border rounded w-full"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">About</label>
+        <textarea
+          value={editingAgent.About}
+          onChange={(e) =>
+            setEditingAgent({ ...editingAgent, About: e.target.value })
+          }
+          className="p-2 border rounded w-full h-32"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Role</label>
+        <input
+          type="text"
+          value={editingAgent.Role}
+          onChange={(e) =>
+            setEditingAgent({ ...editingAgent, Role: e.target.value })
+          }
+          className="p-2 border rounded w-full"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Role Info</label>
+        <textarea
+          value={editingAgent.RoleInfo}
+          onChange={(e) =>
+            setEditingAgent({ ...editingAgent, RoleInfo: e.target.value })
+          }
+          className="p-2 border rounded w-full"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Type</label>
+        <input
+          type="text"
+          value={editingAgent.Type}
+          onChange={(e) =>
+            setEditingAgent({ ...editingAgent, Type: e.target.value })
+          }
+          className="p-2 border rounded w-full"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Language</label>
+        <input
+          type="text"
+          value={editingAgent.language}
+          onChange={(e) =>
+            setEditingAgent({ ...editingAgent, language: e.target.value })
+          }
+          className="p-2 border rounded w-full"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Personality</label>
+        <textarea
+          value={editingAgent.personality}
+          onChange={(e) =>
+            setEditingAgent({ ...editingAgent, personality: e.target.value })
+          }
+          className="p-2 border rounded w-full"
+        />
+      </div>
+
+      {/* FAQs Section */}
+      {editingAgent.faqs && (
+        <div>
+          <label className="block text-sm font-medium mb-1">FAQs</label>
+          {editingAgent.faqs.map((faq, idx) => (
+            <div key={idx} className="mb-4 p-4 border rounded">
+              <input
+                type="text"
+                placeholder="Question"
+                value={faq.question}
+                onChange={(e) => {
+                  const newFaqs = [...editingAgent.faqs];
+                  newFaqs[idx] = { ...newFaqs[idx], question: e.target.value };
+                  setEditingAgent({ ...editingAgent, faqs: newFaqs });
+                }}
+                className="p-2 border rounded w-full mb-2"
+              />
+              <textarea
+                placeholder="Answer"
+                value={faq.answer}
+                onChange={(e) => {
+                  const newFaqs = [...editingAgent.faqs];
+                  newFaqs[idx] = { ...newFaqs[idx], answer: e.target.value };
+                  setEditingAgent({ ...editingAgent, faqs: newFaqs });
+                }}
+                className="p-2 border rounded w-full"
+              />
+              <button
+                onClick={() => {
+                  const newFaqs = [...editingAgent.faqs];
+                  newFaqs.splice(idx, 1);
+                  setEditingAgent({ ...editingAgent, faqs: newFaqs });
+                }}
+                className="mt-2 px-2 py-1 bg-red-500 text-white rounded"
+              >
+                Remove FAQ
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={() => {
+              const newFaqs = [...(editingAgent.faqs || []), { question: '', answer: '' }];
+              setEditingAgent({ ...editingAgent, faqs: newFaqs });
+            }}
+            className="px-2 py-1 bg-blue-500 text-white rounded"
+          >
+            Add FAQ
+          </button>
+        </div>
       )}
-      {Array.isArray(editingAgent.tasks) && (
-        <button
-          type="button"
-          onClick={() => setEditingAgent({
-            ...editingAgent,
-            tasks: [...editingAgent.tasks, '']
-          })}
-          className="px-2 py-1 bg-gray-200 rounded mt-2"
-        >
-          + Add Task
-        </button>
+
+      {/* Examples Section */}
+      {editingAgent.examples && (
+        <div>
+          <label className="block text-sm font-medium mb-1">Examples</label>
+          {editingAgent.examples.map((example, idx) => (
+            <div key={idx} className="mb-4 p-4 border rounded">
+              <input
+                type="text"
+                placeholder="Template ID"
+                value={example.templateId}
+                onChange={(e) => {
+                  const newExamples = [...editingAgent.examples];
+                  newExamples[idx] = { ...newExamples[idx], templateId: e.target.value };
+                  setEditingAgent({ ...editingAgent, examples: newExamples });
+                }}
+                className="p-2 border rounded w-full mb-2"
+              />
+              <input
+                type="text"
+                placeholder="Category"
+                value={example.category}
+                onChange={(e) => {
+                  const newExamples = [...editingAgent.examples];
+                  newExamples[idx] = { ...newExamples[idx], category: e.target.value };
+                  setEditingAgent({ ...editingAgent, examples: newExamples });
+                }}
+                className="p-2 border rounded w-full mb-2"
+              />
+              <textarea
+                placeholder="Statement"
+                value={example.statement}
+                onChange={(e) => {
+                  const newExamples = [...editingAgent.examples];
+                  newExamples[idx] = { ...newExamples[idx], statement: e.target.value };
+                  setEditingAgent({ ...editingAgent, examples: newExamples });
+                }}
+                className="p-2 border rounded w-full"
+              />
+              <button
+                onClick={() => {
+                  const newExamples = [...editingAgent.examples];
+                  newExamples.splice(idx, 1);
+                  setEditingAgent({ ...editingAgent, examples: newExamples });
+                }}
+                className="mt-2 px-2 py-1 bg-red-500 text-white rounded"
+              >
+                Remove Example
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={() => {
+              const newExamples = [...(editingAgent.examples || []), { templateId: '', category: '', statement: '' }];
+              setEditingAgent({ ...editingAgent, examples: newExamples });
+            }}
+            className="px-2 py-1 bg-blue-500 text-white rounded"
+          >
+            Add Example
+          </button>
+        </div>
       )}
+
+      {/* Tasks Section */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">Tasks</label>
+        {Array.isArray(editingAgent.tasks) ? (
+          editingAgent.tasks.map((task, idx) => (
+            <div key={idx} className="flex mb-2">
+              <input
+                type="text"
+                value={task}
+                onChange={(e) => {
+                  const newTasks = [...editingAgent.tasks];
+                  newTasks[idx] = e.target.value;
+                  setEditingAgent({ ...editingAgent, tasks: newTasks });
+                }}
+                className="p-2 border rounded flex-1 mr-2"
+              />
+              <button
+                onClick={() => {
+                  const newTasks = [...editingAgent.tasks];
+                  newTasks.splice(idx, 1);
+                  setEditingAgent({ ...editingAgent, tasks: newTasks });
+                }}
+                className="px-2 py-1 bg-red-500 text-white rounded"
+              >
+                Remove
+              </button>
+            </div>
+          ))
+        ) : (
+          <textarea
+            placeholder="Tasks (comma-separated)"
+            value={editingAgent.tasks}
+            onChange={(e) =>
+              setEditingAgent({ ...editingAgent, tasks: e.target.value })
+            }
+            className="p-2 border rounded w-full mb-2"
+          />
+        )}
+        {Array.isArray(editingAgent.tasks) && (
+          <button
+            type="button"
+            onClick={() => setEditingAgent({
+              ...editingAgent,
+              tasks: [...editingAgent.tasks, '']
+            })}
+            className="px-2 py-1 bg-gray-200 rounded mt-2"
+          >
+            + Add Task
+          </button>
+        )}
+      </div>
     </div>
+
+    {/* Action Buttons */}
     <div className="flex gap-2">
       <button
         onClick={handleEditAgent}
