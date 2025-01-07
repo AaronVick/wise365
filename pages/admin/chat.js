@@ -1,6 +1,8 @@
+// pages/admin/chat.js
+
 import { useState, useEffect, useRef } from 'react';
 
-const Chat = () => {
+export default function Chat() {
   const [agents, setAgents] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
@@ -27,6 +29,7 @@ const Chat = () => {
         const res = await fetch('/api/admin?tab=agents');
         if (!res.ok) throw new Error('Failed to fetch agents');
         const agentsData = await res.json();
+        console.log('Fetched agents:', agentsData);
         setAgents(agentsData || []);
       } catch (error) {
         console.error('Error fetching agents:', error);
@@ -55,24 +58,38 @@ const Chat = () => {
         const trainingRes = await fetch(`/api/admin?tab=training&agentId=${selectedAgent}`);
         if (!trainingRes.ok) throw new Error('Failed to fetch agent training data');
         const trainingData = await trainingRes.json();
-        
+        console.log('Fetched training data:', trainingData);
+
         // Find personality data
         const personalityData = trainingData.find(data => data.dataType === 'personality');
+        console.log('Found personality data:', personalityData);
         setAgentPersona(personalityData || null);
 
         // Fetch previous conversations
         const conversationsRes = await fetch(`/api/admin?tab=conversations&agentId=${selectedAgent}`);
         if (!conversationsRes.ok) throw new Error('Failed to fetch conversations');
         const conversations = await conversationsRes.json();
-        
-        // Format messages for display
-        const formattedMessages = conversations.flatMap(conv => 
-          conv.messages.map(msg => ({
-            user: msg.role === 'admin' ? msg.content : null,
-            bot: msg.role === selectedAgent ? msg.content : null
-          })).filter(msg => msg.user || msg.bot)
-        );
+        console.log('Fetched conversations:', conversations);
 
+        // Format messages for display
+        const formattedMessages = conversations.flatMap(conv => {
+          if (!conv.messages) return [];
+          return conv.messages.map(msg => {
+            try {
+              // Parse the string format into an object
+              const msgObj = JSON.parse(`{${msg}}`);
+              return {
+                user: msgObj.role === 'admin' ? msgObj.content : null,
+                bot: msgObj.role === selectedAgent ? msgObj.content : null
+              };
+            } catch (e) {
+              console.error('Error parsing message:', msg, e);
+              return null;
+            }
+          }).filter(msg => msg !== null && (msg.user || msg.bot));
+        });
+
+        console.log('Formatted messages:', formattedMessages);
         setChatMessages(formattedMessages);
       } catch (error) {
         console.error('Error fetching agent details:', error);
@@ -97,11 +114,26 @@ const Chat = () => {
 
     try {
       // Construct prompt using agent persona
-      const prompt = agentPersona
-        ? `You are ${selectedAgent}. ${agentPersona.description}\n\nUser: ${chatInput}\nAgent:`
-        : `You are ${selectedAgent}. Please respond to: ${chatInput}`;
+      let systemPrompt = `You are ${selectedAgent}`;
+      
+      if (agentPersona) {
+        systemPrompt += `\n${agentPersona.description}`;
+        if (agentPersona.data?.tone) {
+          systemPrompt += `\nTone: ${agentPersona.data.tone}`;
+        }
+        if (agentPersona.data?.traits?.length) {
+          systemPrompt += `\nTraits: ${agentPersona.data.traits.join(', ')}`;
+        }
+        if (agentPersona.data?.examples) {
+          systemPrompt += `\nExample interactions: ${agentPersona.data.examples}`;
+        }
+      }
 
-      console.log('Sending message with:', { agentId: selectedAgent, message: chatInput, prompt });
+      console.log('Sending message with:', { 
+        agentId: selectedAgent, 
+        message: chatInput,
+        systemPrompt 
+      });
 
       const res = await fetch('/api/admin/chat', {
         method: 'POST',
@@ -109,7 +141,7 @@ const Chat = () => {
         body: JSON.stringify({
           agentId: selectedAgent,
           message: chatInput,
-          prompt
+          prompt: systemPrompt
         }),
       });
 
@@ -118,25 +150,17 @@ const Chat = () => {
       console.log('Raw response:', responseText);
 
       if (!res.ok) {
-        try {
-          const errorData = JSON.parse(responseText);
-          throw new Error(errorData.error || 'Failed to send message');
-        } catch (parseError) {
-          throw new Error(`Server error: ${responseText || res.statusText}`);
-        }
+        const errorData = JSON.parse(responseText);
+        throw new Error(errorData.error || 'Failed to send message');
       }
 
-      try {
-        const data = JSON.parse(responseText);
-        if (!data.reply) {
-          throw new Error('No reply received from server');
-        }
-
-        setChatMessages(prev => [...prev, { user: chatInput, bot: data.reply }]);
-        setChatInput('');
-      } catch (parseError) {
-        throw new Error('Invalid response format from server');
+      const data = JSON.parse(responseText);
+      if (!data.reply) {
+        throw new Error('No reply received from server');
       }
+
+      setChatMessages(prev => [...prev, { user: chatInput, bot: data.reply }]);
+      setChatInput('');
     } catch (error) {
       console.error('Error sending message:', error);
       setError('Failed to send message: ' + error.message);
@@ -178,6 +202,18 @@ const Chat = () => {
         ))}
       </select>
 
+      {agentPersona && (
+        <div className="bg-blue-50 p-4 rounded mb-6">
+          <h3 className="font-semibold mb-2">Agent Personality:</h3>
+          <p>{agentPersona.description}</p>
+          {agentPersona.data?.traits?.length > 0 && (
+            <div className="mt-2">
+              <strong>Traits:</strong> {agentPersona.data.traits.join(', ')}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="bg-white shadow rounded mb-6">
         <div className="p-4 bg-gray-50 border-b">
           {selectedAgent ? (
@@ -209,6 +245,11 @@ const Chat = () => {
             </div>
           ))}
           <div ref={messagesEndRef} />
+          {loading && (
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            </div>
+          )}
         </div>
 
         <div className="p-4 border-t">
@@ -234,6 +275,4 @@ const Chat = () => {
       </div>
     </div>
   );
-};
-
-export default Chat;
+}

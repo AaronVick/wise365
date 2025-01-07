@@ -1,14 +1,29 @@
-import { getFirestore, collection, doc, getDoc, updateDoc, setDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
-import { initializeApp } from 'firebase/app';
+// pages/api/admin/conversations.js
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-};
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Initialize Firebase Admin if not already initialized
+if (!getApps().length) {
+  const serviceAccount = {
+    type: process.env.FIREBASE_TYPE,
+    project_id: process.env.FIREBASE_PROJECT_ID,
+    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+    private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    client_email: process.env.FIREBASE_CLIENT_EMAIL,
+    client_id: process.env.FIREBASE_CLIENT_ID,
+    auth_uri: process.env.FIREBASE_AUTH_URI,
+    token_uri: process.env.FIREBASE_TOKEN_URI,
+    auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
+    client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
+  };
+
+  initializeApp({
+    credential: cert(serviceAccount)
+  });
+}
+
+const db = getFirestore();
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
@@ -20,28 +35,25 @@ export default async function handler(req, res) {
 
     try {
       // Query for existing conversation
-      const conversationsRef = collection(db, 'conversations');
-      const q = query(
-        conversationsRef,
-        where('agentId', '==', agentId),
-        where('createdBy', '==', 'admin')
-      );
-      
-      const querySnapshot = await getDocs(q);
+      const conversationsRef = db.collection('conversations');
+      const querySnapshot = await conversationsRef
+        .where('agentId', '==', agentId)
+        .where('createdBy', '==', 'admin')
+        .get();
       
       if (!querySnapshot.empty) {
         // Update existing conversation
         const conversationDoc = querySnapshot.docs[0];
-        await updateDoc(doc(db, 'conversations', conversationDoc.id), {
+        await conversationsRef.doc(conversationDoc.id).update({
           messages: [...conversationDoc.data().messages, ...messages],
-          lastUpdatedAt: serverTimestamp()
+          lastUpdatedAt: new Date()
         });
       } else {
         // Create new conversation
-        await addDoc(conversationsRef, {
+        await conversationsRef.add({
           agentId,
-          createdAt: serverTimestamp(),
-          lastUpdatedAt: serverTimestamp(),
+          createdAt: new Date(),
+          lastUpdatedAt: new Date(),
           createdBy: 'admin',
           messages,
           participants: ['admin', agentId],
@@ -65,14 +77,12 @@ export default async function handler(req, res) {
     const { agentId } = req.query;
 
     try {
-      const conversationsRef = collection(db, 'conversations');
-      const q = query(
-        conversationsRef,
-        where('agentId', '==', agentId),
-        where('createdBy', '==', 'admin')
-      );
-      
-      const querySnapshot = await getDocs(q);
+      const conversationsRef = db.collection('conversations');
+      const querySnapshot = await conversationsRef
+        .where('agentId', '==', agentId)
+        .where('createdBy', '==', 'admin')
+        .get();
+
       const conversations = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
