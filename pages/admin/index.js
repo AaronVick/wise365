@@ -44,6 +44,19 @@ export default function AdminDashboard() {
     fetchData();
   }, [activeTab]);
 
+  const handleAgentSelection = async (agentId) => {
+    setSelectedAgent(agentId);
+    try {
+      const res = await fetch(`/api/admin/conversations?agentId=${agentId}`);
+      if (!res.ok) throw new Error('Failed to fetch conversation data');
+      const conversationData = await res.json();
+      setChatMessages(conversationData.messages || []);
+    } catch (error) {
+      console.error('Error fetching conversation data:', error);
+      setChatMessages([]); // Fallback to an empty array if fetching fails
+    }
+  };
+
   // Add new agent
   const handleAddAgent = async () => {
     const res = await fetch('/api/admin/agents', {
@@ -146,12 +159,76 @@ export default function AdminDashboard() {
       alert('Failed to send message.');
     }
   };
-
   const renderContent = () => {
     if (activeTab === 'agents') {
       return (
         <div>
           <h2 className="text-xl font-bold mb-4">Manage Agents</h2>
+  
+          {/* Add New Agent Section */}
+          <div className="p-4 bg-white shadow rounded mb-6">
+            <h3 className="text-lg font-semibold mb-4">Add New Agent</h3>
+            <input
+              type="text"
+              placeholder="Agent ID"
+              value={newAgent.agentId}
+              onChange={(e) => setNewAgent({ ...newAgent, agentId: e.target.value })}
+              className="p-2 border rounded w-full mb-2"
+            />
+            <input
+              type="text"
+              placeholder="Agent Name"
+              value={newAgent.agentName}
+              onChange={(e) => setNewAgent({ ...newAgent, agentName: e.target.value })}
+              className="p-2 border rounded w-full mb-2"
+            />
+            <input
+              type="text"
+              placeholder="Role"
+              value={newAgent.Role}
+              onChange={(e) => setNewAgent({ ...newAgent, Role: e.target.value })}
+              className="p-2 border rounded w-full mb-2"
+            />
+            <textarea
+              placeholder="Role Info"
+              value={newAgent.RoleInfo}
+              onChange={(e) => setNewAgent({ ...newAgent, RoleInfo: e.target.value })}
+              className="p-2 border rounded w-full mb-2"
+            />
+            <input
+              type="text"
+              placeholder="Type"
+              value={newAgent.Type}
+              onChange={(e) => setNewAgent({ ...newAgent, Type: e.target.value })}
+              className="p-2 border rounded w-full mb-2"
+            />
+            <input
+              type="text"
+              placeholder="Language"
+              value={newAgent.language}
+              onChange={(e) => setNewAgent({ ...newAgent, language: e.target.value })}
+              className="p-2 border rounded w-full mb-2"
+            />
+            <textarea
+              placeholder="Personality"
+              value={newAgent.personality}
+              onChange={(e) => setNewAgent({ ...newAgent, personality: e.target.value })}
+              className="p-2 border rounded w-full mb-2"
+            />
+            <textarea
+              placeholder="About"
+              value={newAgent.About}
+              onChange={(e) => setNewAgent({ ...newAgent, About: e.target.value })}
+              className="p-2 border rounded w-full mb-2"
+            />
+            <button
+              onClick={handleAddAgent}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Add Agent
+            </button>
+          </div>
+  
           {/* Agents List */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {data.map((agent) => (
@@ -162,26 +239,78 @@ export default function AdminDashboard() {
               />
             ))}
           </div>
+  
+          {/* Edit Agent Section */}
+          {editingAgent && (
+            <div className="p-4 bg-white shadow rounded mt-6">
+              <h3 className="text-lg font-semibold mb-4">Edit Agent: {editingAgent.agentName}</h3>
+              <input
+                type="text"
+                placeholder="Agent Name"
+                value={editingAgent.agentName}
+                onChange={(e) => setEditingAgent({ ...editingAgent, agentName: e.target.value })}
+                className="p-2 border rounded w-full mb-2"
+              />
+              <input
+                type="text"
+                placeholder="Role"
+                value={editingAgent.Role}
+                onChange={(e) => setEditingAgent({ ...editingAgent, Role: e.target.value })}
+                className="p-2 border rounded w-full mb-2"
+              />
+              <textarea
+                placeholder="Role Info"
+                value={editingAgent.RoleInfo}
+                onChange={(e) => setEditingAgent({ ...editingAgent, RoleInfo: e.target.value })}
+                className="p-2 border rounded w-full mb-2"
+              />
+              <input
+                type="text"
+                placeholder="Type"
+                value={editingAgent.Type}
+                onChange={(e) => setEditingAgent({ ...editingAgent, Type: e.target.value })}
+                className="p-2 border rounded w-full mb-2"
+              />
+              <input
+                type="text"
+                placeholder="Language"
+                value={editingAgent.language}
+                onChange={(e) => setEditingAgent({ ...editingAgent, language: e.target.value })}
+                className="p-2 border rounded w-full mb-2"
+              />
+              <textarea
+                placeholder="Personality"
+                value={editingAgent.personality}
+                onChange={(e) => setEditingAgent({ ...editingAgent, personality: e.target.value })}
+                className="p-2 border rounded w-full mb-2"
+              />
+              <textarea
+                placeholder="About"
+                value={editingAgent.About}
+                onChange={(e) => setEditingAgent({ ...editingAgent, About: e.target.value })}
+                className="p-2 border rounded w-full mb-2"
+              />
+              <button
+                onClick={handleEditAgent}
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 mr-2"
+              >
+                Save Changes
+              </button>
+              <button
+                onClick={() => setEditingAgent(null)}
+                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       );
     }
+  };
+  
 
     if (activeTab === 'training') {
-      useEffect(() => {
-        async function fetchAgents() {
-          try {
-            const res = await fetch('/api/admin/agents'); // Fetch agents from Firebase
-            if (!res.ok) throw new Error('Failed to fetch agents');
-            const agentsData = await res.json();
-            setAgents(agentsData || []); // Update the state with the fetched agents
-          } catch (error) {
-            console.error('Error fetching agents:', error);
-          }
-        }
-    
-        fetchAgents();
-      }, []);
-    
       return (
         <div>
           <h2 className="text-xl font-bold mb-4">Training Data</h2>
@@ -216,7 +345,7 @@ export default function AdminDashboard() {
               <option disabled>No agents available</option>
             )}
           </select>
-    
+  
           {/* Display Training Data */}
           {selectedAgent && data.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -255,22 +384,8 @@ export default function AdminDashboard() {
         </div>
       );
     }
+
     if (activeTab === 'chat') {
-      useEffect(() => {
-        async function fetchAgents() {
-          try {
-            const res = await fetch('/api/admin/agents'); // Fetch agents from Firebase
-            if (!res.ok) throw new Error('Failed to fetch agents');
-            const agentsData = await res.json();
-            setAgents(agentsData || []); // Update the state with the fetched agents
-          } catch (error) {
-            console.error('Error fetching agents:', error);
-          }
-        }
-    
-        fetchAgents();
-      }, []);
-    
       return (
         <div>
           <h2 className="text-xl font-bold mb-4">Chat with Agents</h2>
@@ -278,19 +393,7 @@ export default function AdminDashboard() {
           <select
             className="p-2 border rounded w-full mb-4"
             value={selectedAgent || ''}
-            onChange={async (e) => {
-              const agentId = e.target.value;
-              setSelectedAgent(agentId);
-              try {
-                const res = await fetch(`/api/admin/conversations?agentId=${agentId}`);
-                if (!res.ok) throw new Error('Failed to fetch conversation data');
-                const conversationData = await res.json();
-                setChatMessages(conversationData.messages || []);
-              } catch (error) {
-                console.error('Error fetching conversation data:', error);
-                setChatMessages([]); // Fallback to an empty array if fetching fails
-              }
-            }}
+            onChange={(e) => handleAgentSelection(e.target.value)}
           >
             <option value="" disabled>
               Select an Agent
@@ -383,7 +486,7 @@ export default function AdminDashboard() {
         </div>
       );
     }
-    }
+    
 
   // Main return statement
   return (
