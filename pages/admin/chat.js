@@ -108,6 +108,71 @@ export default function Chat() {
       alert('Please select an agent and enter a message.');
       return;
     }
+  
+    setLoading(true);
+    setError(null);
+  
+    try {
+      // Construct prompt using agent persona
+      let systemPrompt = `You are ${selectedAgent}`;
+      
+      if (agentPersona) {
+        systemPrompt += `\n${agentPersona.description}`;
+        if (agentPersona.data?.tone) {
+          systemPrompt += `\nTone: ${agentPersona.data.tone}`;
+        }
+        if (agentPersona.data?.traits?.length) {
+          systemPrompt += `\nTraits: ${agentPersona.data.traits.join(', ')}`;
+        }
+        if (agentPersona.data?.examples) {
+          systemPrompt += `\nExample interactions: ${agentPersona.data.examples}`;
+        }
+      }
+  
+      console.log('Sending message with:', { 
+        agentId: selectedAgent, 
+        message: chatInput,
+        systemPrompt 
+      });
+  
+      const res = await fetch('/api/admin/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: selectedAgent,
+          message: chatInput,
+          prompt: systemPrompt
+        }),
+      });
+    
+      let data;
+      const responseText = await res.text();
+      console.log('Raw response:', responseText);
+    
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse response:', responseText);
+        throw new Error('Invalid response from server');
+      }
+    
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send message');
+      }
+    
+      if (!data.reply) {
+        throw new Error('No reply received from server');
+      }
+    
+      setChatMessages(prev => [...prev, { user: chatInput, bot: data.reply }]);
+      setChatInput('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setError('Failed to send message: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
     setLoading(true);
     setError(null);
