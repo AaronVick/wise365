@@ -54,7 +54,10 @@ export default function Training() {
       const res = await fetch(`/api/admin?tab=training&agentId=${agentId}`);
       if (!res.ok) throw new Error('Failed to fetch training data');
       const trainingData = await res.json();
-      setData(trainingData || []);
+
+      // Filter the data on the client side to ensure it matches the selected agentId
+      const filteredData = trainingData.filter((item) => item.agentId === agentId);
+      setData(filteredData || []);
     } catch (error) {
       console.error('Error fetching training data:', error);
       setData([]);
