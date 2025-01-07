@@ -68,7 +68,12 @@ export default function Chat() {
         body: JSON.stringify({ agentId: selectedAgent, message: chatInput, prompt }),
       });
 
-      if (!res.ok) throw new Error('Failed to send message');
+      if (!res.ok) {
+        const errorDetails = await res.json();
+        console.error('Failed to send message:', errorDetails);
+        alert(`Failed to send the message: ${errorDetails.error || 'Unknown error'}`);
+        return;
+      }
 
       const { reply } = await res.json();
 

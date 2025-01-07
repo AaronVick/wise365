@@ -23,36 +23,33 @@ export default function Training() {
   useEffect(() => {
     async function fetchAgents() {
       try {
-        const res = await fetch('/api/admin?tab=agents'); // Match the API handler
+        const res = await fetch('/api/admin?tab=agents');
         if (!res.ok) throw new Error('Failed to fetch agents');
-        const result = await res.json();
-        setAgents(result || []);
+        const agentsData = await res.json();
+        setAgents(agentsData || []);
       } catch (error) {
         console.error('Error fetching agents:', error);
-        setAgents([]); // Fallback to empty array
+        setAgents([]);
       }
     }
     fetchAgents();
   }, []);
 
- // Fetch training data for selected agent
-const handleAgentSelection = async (agentId) => {
-  setSelectedAgent(agentId); // Set the selected agent
-  setNewKnowledge({ ...newKnowledge, agentId }); // Update new knowledge's agentId
-  try {
-    const res = await fetch(`/api/admin?tab=training&agentId=${agentId}`); // Fetch data for the specific agent
-    if (!res.ok) throw new Error('Failed to fetch training data');
-    const trainingData = await res.json();
-
-    // Filter the training data to match the selected agentId (if server-side filtering is not in place)
-    const filteredData = trainingData.filter((item) => item.agentId === agentId);
-
-    setData(filteredData || []); // Set filtered data
-  } catch (error) {
-    console.error('Error fetching training data:', error);
-    setData([]); // Fallback to empty array
-  }
-};
+  // Fetch training data for selected agent
+  const handleAgentSelection = async (agentId) => {
+    setSelectedAgent(agentId);
+    setNewKnowledge({ ...newKnowledge, agentId });
+    try {
+      const res = await fetch(`/api/admin?tab=training&agentId=${agentId}`);
+      if (!res.ok) throw new Error('Failed to fetch training data');
+      const trainingData = await res.json();
+      const filteredData = trainingData.filter((item) => item.agentId === agentId);
+      setData(filteredData || []);
+    } catch (error) {
+      console.error('Error fetching training data:', error);
+      setData([]);
+    }
+  };
 
   // Add new knowledge for the selected agent
   const handleAddKnowledge = async () => {
@@ -86,7 +83,6 @@ const handleAgentSelection = async (agentId) => {
         },
       });
 
-      // Refresh training data
       handleAgentSelection(selectedAgent);
     } catch (error) {
       console.error('Error adding knowledge:', error);
