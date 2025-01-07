@@ -437,34 +437,202 @@ export default function Training() {
         ))}
       </select>
 
-      {/* Display Existing Training Data */}
-      {data.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {data.map((item, idx) => (
-            <div key={idx} className="p-4 bg-gray-100 shadow rounded">
-              <h3 className="font-bold">{item.dataType}</h3>
-              <p>{item.description}</p>
-              {item.URL && (
-                <a
-                  href={item.URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500"
-                >
-                  Learn More
-                </a>
-              )}
-              {item.milestone && <p className="text-green-600 font-semibold">Milestone</p>}
-            </div>
-          ))}
+     {/* Display Existing Training Data */}
+{data.length > 0 ? (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {data.map((item, idx) => (
+      <div key={idx} className="p-4 bg-gray-100 shadow rounded">
+        <div className="flex justify-between items-start mb-2">
+          <h3 className="font-bold">{item.dataType}</h3>
+          <button
+            onClick={() => setEditingItem(item)}
+            className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
+          >
+            Edit
+          </button>
         </div>
-      ) : (
-        <p className="text-gray-600">
-          {selectedAgent 
-            ? 'No training data available.' 
-            : 'Select an agent to view training data.'}
-        </p>
+        <p>{item.description}</p>
+        {item.URL && (
+          <a
+            href={item.URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500"
+          >
+            Learn More
+          </a>
+        )}
+        {item.milestone && <p className="text-green-600 font-semibold">Milestone</p>}
+        
+        {/* Display additional data based on type */}
+        {item.data && (
+          <div className="mt-2 text-sm">
+            {item.data.examples && (
+              <p><strong>Examples:</strong> {item.data.examples}</p>
+            )}
+            {item.data.tone && (
+              <p><strong>Tone:</strong> {item.data.tone}</p>
+            )}
+            {item.data.traits && item.data.traits.length > 0 && (
+              <p><strong>Traits:</strong> {item.data.traits.join(', ')}</p>
+            )}
+            {item.data.context?.purpose && (
+              <p><strong>Purpose:</strong> {item.data.context.purpose}</p>
+            )}
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
+) : (
+  <p className="text-gray-600">
+    {selectedAgent 
+      ? 'No training data available.' 
+      : 'Select an agent to view training data.'}
+  </p>
+)}
+
+{/* Edit Training Item Modal */}
+{editingItem && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <h3 className="text-lg font-bold mb-4">Edit {editingItem.dataType}</h3>
+      
+      <textarea
+        className="p-2 border rounded w-full mb-2"
+        placeholder="Description"
+        value={editingItem.description}
+        onChange={(e) => setEditingItem({
+          ...editingItem,
+          description: e.target.value
+        })}
+      />
+
+      <input
+        type="text"
+        className="p-2 border rounded w-full mb-2"
+        placeholder="URL (Optional)"
+        value={editingItem.URL || ''}
+        onChange={(e) => setEditingItem({
+          ...editingItem,
+          URL: e.target.value
+        })}
+      />
+
+      <div className="mb-2">
+        <label className="mr-2 font-bold">Milestone:</label>
+        <input
+          type="checkbox"
+          checked={editingItem.milestone || false}
+          onChange={(e) => setEditingItem({
+            ...editingItem,
+            milestone: e.target.checked
+          })}
+        />
+      </div>
+
+      {editingItem.order !== undefined && (
+        <input
+          type="number"
+          className="p-2 border rounded w-full mb-2"
+          placeholder="Order"
+          value={editingItem.order}
+          onChange={(e) => setEditingItem({
+            ...editingItem,
+            order: Number(e.target.value)
+          })}
+        />
       )}
+
+      {/* Data type specific fields */}
+      {editingItem.dataType === 'personality' && (
+        <>
+          <textarea
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Examples"
+            value={editingItem.data?.examples || ''}
+            onChange={(e) => setEditingItem({
+              ...editingItem,
+              data: { ...editingItem.data, examples: e.target.value }
+            })}
+          />
+          <textarea
+            className="p-2 border rounded w-full mb-2"
+            placeholder="Tone"
+            value={editingItem.data?.tone || ''}
+            onChange={(e) => setEditingItem({
+              ...editingItem,
+              data: { ...editingItem.data, tone: e.target.value }
+            })}
+          />
+          <div className="mb-2">
+            <label className="block font-bold mb-1">Traits</label>
+            {(editingItem.data?.traits || []).map((trait, idx) => (
+              <div key={idx} className="flex mb-2">
+                <input
+                  type="text"
+                  className="p-2 border rounded flex-1 mr-2"
+                  value={trait}
+                  onChange={(e) => {
+                    const newTraits = [...(editingItem.data?.traits || [])];
+                    newTraits[idx] = e.target.value;
+                    setEditingItem({
+                      ...editingItem,
+                      data: { ...editingItem.data, traits: newTraits }
+                    });
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    const newTraits = [...(editingItem.data?.traits || [])];
+                    newTraits.splice(idx, 1);
+                    setEditingItem({
+                      ...editingItem,
+                      data: { ...editingItem.data, traits: newTraits }
+                    });
+                  }}
+                  className="px-2 py-1 bg-red-500 text-white rounded"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setEditingItem({
+                ...editingItem,
+                data: {
+                  ...editingItem.data,
+                  traits: [...(editingItem.data?.traits || []), '']
+                }
+              })}
+              className="px-2 py-1 bg-gray-200 rounded"
+            >
+              + Add Trait
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Add similar sections for other data types */}
+
+      <div className="flex justify-end gap-2 mt-4">
+        <button
+          onClick={() => setEditingItem(null)}
+          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleUpdateKnowledge}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Add New Knowledge Form */}
       {selectedAgent && !loading && (
