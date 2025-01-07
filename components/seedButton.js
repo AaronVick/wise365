@@ -1,3 +1,5 @@
+// components/ui/seedButton.js
+
 import { useState } from 'react';
 
 export default function SeedButton() {

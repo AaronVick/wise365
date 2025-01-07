@@ -1,6 +1,27 @@
-import admin from '../../lib/firebaseAdmin';
+import { initializeApp, getApps, cert, getApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
-const db = admin.firestore();
+// Initialize Firebase Admin if not already initialized
+if (!getApps().length) {
+  const serviceAccount = {
+    type: process.env.FIREBASE_TYPE,
+    project_id: process.env.FIREBASE_PROJECT_ID,
+    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+    private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    client_email: process.env.FIREBASE_CLIENT_EMAIL,
+    client_id: process.env.FIREBASE_CLIENT_ID,
+    auth_uri: process.env.FIREBASE_AUTH_URI,
+    token_uri: process.env.FIREBASE_TOKEN_URI,
+    auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
+    client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
+  };
+
+  initializeApp({
+    credential: cert(serviceAccount)
+  });
+}
+
+const db = getFirestore();
 
 // Data to seed
 const dataToSeed = [
@@ -160,29 +181,65 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('Seeding data into Firestore...');
+    console.log('Starting seed process...');
+    const results = [];
 
     for (const item of dataToSeed) {
       const { agentId, dataType } = item;
       const collectionRef = db.collection('agentData');
 
-      const querySnapshot = await collectionRef
-        .where('agentId', '==', agentId)
-        .where('dataType', '==', dataType)
-        .get();
+      // Add timestamp to the item
+      const itemWithTimestamp = {
+        ...item,
+        lastUpdated: new Date()
+      };
 
-      if (querySnapshot.empty) {
-        console.log(`Adding record for agentId: ${agentId}, dataType: ${dataType}`);
-        await collectionRef.add(item);
-      } else {
-        console.log(`Record for agentId: ${agentId}, dataType: ${dataType} already exists.`);
+      try {
+        // Check for existing record
+        const querySnapshot = await collectionRef
+          .where('agentId', '==', agentId)
+          .where('dataType', '==', dataType)
+          .get();
+
+        if (querySnapshot.empty) {
+          const docRef = await collectionRef.add(itemWithTimestamp);
+          results.push({
+            status: 'added',
+            agentId,
+            dataType,
+            docId: docRef.id
+          });
+          console.log(`Added: ${agentId} - ${dataType}`);
+        } else {
+          results.push({
+            status: 'skipped',
+            agentId,
+            dataType,
+            reason: 'already exists'
+          });
+          console.log(`Skipped: ${agentId} - ${dataType} (already exists)`);
+        }
+      } catch (itemError) {
+        console.error(`Error processing item:`, itemError);
+        results.push({
+          status: 'error',
+          agentId,
+          dataType,
+          error: itemError.message
+        });
       }
     }
 
-    console.log('Seeding completed successfully.');
-    return res.status(200).json({ message: 'Seeding complete.' });
+    return res.status(200).json({
+      message: 'Seeding process completed',
+      results
+    });
   } catch (error) {
-    console.error('Error seeding data:', error.message, error.stack);
-    return res.status(500).json({ error: 'Error seeding data.', details: error.message });
+    console.error('Error in seed process:', error);
+    return res.status(500).json({
+      error: 'Error seeding data',
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }
