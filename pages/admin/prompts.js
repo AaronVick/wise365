@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { db } from '../../firebase'; // Adjust import path based on your Firebase setup
-import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase'; // Correct import path for Firebase configuration
+import { collection, doc, getDocs, getDoc, updateDoc } from 'firebase/firestore';
 
 export default function Prompts() {
   const [agents, setAgents] = useState([]);
@@ -35,10 +35,8 @@ export default function Prompts() {
     setSelectedAgent(agentId);
     setLoading(true);
     try {
-      console.log(`Fetching prompts for agentId: ${agentId}`);
       const agentDoc = doc(db, 'agentsDefined', agentId);
       const agentData = (await getDoc(agentDoc)).data();
-      console.log(`Fetched data for ${agentId}:`, agentData);
       setPrompts(agentData?.prompt || null);
     } catch (err) {
       console.error('Error fetching prompts:', err);
