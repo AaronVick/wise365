@@ -97,7 +97,8 @@ export default function Training() {
     { value: 'milestone', label: 'Milestone' },
     { value: 'knowledge_base', label: 'Knowledge Base' },
     { value: 'feedback_bank', label: 'Feedback Bank' },
-    { value: 'faqs', label: 'FAQs' }
+    { value: 'faqs', label: 'FAQs' },
+    { value: 'speakingStyle', label: 'Speaking Style'}
   ];
 
   // Handlers
