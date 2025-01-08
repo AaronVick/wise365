@@ -85,24 +85,6 @@ export default function Chat() {
     }
     fetchInitialData();
   }, []);
-
-        setConversations(conversationList);
-
-        // If there's a Default Chat, automatically select it
-        const defaultChat = conversationList.find(conv => conv.name === 'Default Chat');
-        if (defaultChat) {
-          handleConversationSelection(defaultChat);
-        }
-      } catch (error) {
-        console.error('Error fetching initial data:', error);
-        setError('Failed to load initial data');
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchInitialData();
-  }, []);
-
   const handleConversationSelection = (conversation) => {
     setSelectedConversation(conversation);
     // Sort messages by timestamp if available
