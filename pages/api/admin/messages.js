@@ -1,3 +1,6 @@
+
+// pages/api/admin/messages.js
+
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 
@@ -30,13 +33,17 @@ export default async function handler(req, res) {
 
   const { agentId } = req.query;
 
-  if (!agentId) {
-    return res.status(400).json({ error: 'Missing agentId in query' });
-  }
-
   try {
-    const messagesRef = db.collection('conversations');
-    const snapshot = await messagesRef.where('agentID', '==', agentId).get();
+    let messagesRef = db.collection('conversations');
+    let snapshot;
+
+    // If agentId is provided, filter by it
+    if (agentId) {
+      snapshot = await messagesRef.where('agentID', '==', agentId).get();
+    } else {
+      // If no agentId, get all messages
+      snapshot = await messagesRef.get();
+    }
 
     if (snapshot.empty) {
       return res.status(200).json([]);
