@@ -56,21 +56,36 @@ export default function Chat() {
     setSelectedConversation(null);
     setChatMessages([]);
     setLoading(true);
-
+  
     try {
-      // Fetch agent persona data
+      console.log(`Fetching training data for agentId: ${agentId}`);
       const trainingRes = await fetch(`/api/admin?tab=training&agentId=${agentId}`);
-      if (!trainingRes.ok) throw new Error('Failed to fetch agent training data');
+      if (!trainingRes.ok) {
+        const errorMessage = await trainingRes.text();
+        throw new Error(`Training API Error: ${errorMessage}`);
+      }
+  
       const trainingData = await trainingRes.json();
+      console.log('Fetched training data:', trainingData);
+  
       const persona = trainingData.find((data) => data.dataType === 'personality');
-      setAgentPersona(persona || null);
-
-      // Fetch all messages for the selected agent
+      if (!persona) {
+        throw new Error(`No personality data found for agentId: ${agentId}`);
+      }
+  
+      setAgentPersona(persona);
+  
+      // Fetch messages for the selected agent
       const messagesRes = await fetch(`/api/admin/messages?agentId=${agentId}`);
-      if (!messagesRes.ok) throw new Error('Failed to fetch messages');
+      if (!messagesRes.ok) {
+        const errorMessage = await messagesRes.text();
+        throw new Error(`Messages API Error: ${errorMessage}`);
+      }
+  
       const messagesData = await messagesRes.json();
-
-      // Group messages into conversations, including a default chat
+      console.log('Fetched messages data:', messagesData);
+  
+      // Group messages into conversations
       const groupedConversations = {};
       messagesData.forEach((msg) => {
         const conversationName = msg.chatName || 'Default Chat';
@@ -79,8 +94,7 @@ export default function Chat() {
         }
         groupedConversations[conversationName].push(msg);
       });
-
-      // Map grouped conversations to a format for the dropdown
+  
       const conversationList = Object.entries(groupedConversations).map(
         ([name, messages]) => ({
           name,
@@ -91,8 +105,9 @@ export default function Chat() {
           })),
         })
       );
-
+  
       setConversations(conversationList);
+  
       const defaultConversation = conversationList.find(
         (c) => c.name === 'Default Chat'
       );
@@ -101,11 +116,12 @@ export default function Chat() {
       }
     } catch (error) {
       console.error('Error fetching agent data:', error);
-      setError('Failed to load agent data');
+      setError(error.message || 'Failed to load agent data');
     } finally {
       setLoading(false);
     }
   };
+  
 
   // Handle selecting a conversation
   const handleConversationSelection = (conversation) => {
