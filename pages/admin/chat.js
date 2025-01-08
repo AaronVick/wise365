@@ -15,7 +15,6 @@ export default function Chat() {
 
   const llmOptions = ['chatGPT', 'Anthropic']; // Expandable for future LLMs
 
-  // Scroll to bottom when messages change
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -30,11 +29,13 @@ export default function Chat() {
       setLoading(true);
       setError(null);
       try {
+        // Fetch all agents
         const agentsRes = await fetch('/api/admin?tab=agents');
         if (!agentsRes.ok) throw new Error('Failed to fetch agents');
         const agentsData = await agentsRes.json();
         setAgents(agentsData || []);
 
+        // Fetch all conversations
         const conversationsRes = await fetch('/api/admin?tab=conversations');
         if (!conversationsRes.ok) throw new Error('Failed to fetch conversations');
         const conversationsData = await conversationsRes.json();
@@ -57,28 +58,64 @@ export default function Chat() {
     setLoading(true);
 
     try {
+      // Fetch agent persona data
       const trainingRes = await fetch(`/api/admin?tab=training&agentId=${agentId}`);
       if (!trainingRes.ok) throw new Error('Failed to fetch agent training data');
       const trainingData = await trainingRes.json();
       const persona = trainingData.find((data) => data.dataType === 'personality');
       setAgentPersona(persona || null);
 
+      // Fetch all messages for the selected agent
       const messagesRes = await fetch(`/api/admin/messages?agentId=${agentId}`);
       if (!messagesRes.ok) throw new Error('Failed to fetch messages');
       const messagesData = await messagesRes.json();
 
-      const formattedMessages = messagesData.map((msg) => ({
-        user: msg.from === 'admin' ? msg.content : null,
-        bot: msg.from !== 'admin' ? msg.content : null,
-      }));
+      // Group messages into conversations, including a default chat
+      const groupedConversations = {};
+      messagesData.forEach((msg) => {
+        const conversationName = msg.chatName || 'Default Chat';
+        if (!groupedConversations[conversationName]) {
+          groupedConversations[conversationName] = [];
+        }
+        groupedConversations[conversationName].push(msg);
+      });
 
-      setChatMessages(formattedMessages);
+      // Map grouped conversations to a format for the dropdown
+      const conversationList = Object.entries(groupedConversations).map(
+        ([name, messages]) => ({
+          name,
+          messages: messages.map((m) => ({
+            content: m.conversation,
+            from: m.from,
+            timestamp: m.timestamp,
+          })),
+        })
+      );
+
+      setConversations(conversationList);
+      const defaultConversation = conversationList.find(
+        (c) => c.name === 'Default Chat'
+      );
+      if (defaultConversation) {
+        handleConversationSelection(defaultConversation);
+      }
     } catch (error) {
       console.error('Error fetching agent data:', error);
       setError('Failed to load agent data');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle selecting a conversation
+  const handleConversationSelection = (conversation) => {
+    setSelectedConversation(conversation);
+    setChatMessages(
+      conversation.messages.map((msg) => ({
+        user: msg.from === 'admin' ? msg.content : null,
+        bot: msg.from !== 'admin' ? msg.content : null,
+      }))
+    );
   };
 
   // Send a new message
@@ -123,7 +160,6 @@ export default function Chat() {
         throw new Error('No reply received from server');
       }
 
-      // Append the new message to chat
       setChatMessages((prev) => [
         ...prev,
         { user: chatInput, bot: reply },
@@ -161,12 +197,16 @@ export default function Chat() {
 
         <select
           className="p-2 border rounded"
-          value={selectedLLM}
-          onChange={(e) => setSelectedLLM(e.target.value)}
+          value={selectedConversation?.name || ''}
+          onChange={(e) => {
+            const conv = conversations.find((c) => c.name === e.target.value);
+            if (conv) handleConversationSelection(conv);
+          }}
         >
-          {llmOptions.map((llm) => (
-            <option key={llm} value={llm}>
-              {llm}
+          <option value="Default Chat">Default Chat</option>
+          {conversations.map((conv) => (
+            <option key={conv.name} value={conv.name}>
+              {conv.name}
             </option>
           ))}
         </select>
