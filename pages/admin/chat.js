@@ -55,6 +55,7 @@ export default function Chat() {
     setSelectedConversation(null);
     setChatMessages([]);
     setLoading(true);
+
     try {
       const trainingRes = await fetch(`/api/admin?tab=training&agentId=${agentId}`);
       if (!trainingRes.ok) throw new Error('Failed to fetch agent training data');
@@ -62,13 +63,16 @@ export default function Chat() {
       const persona = trainingData.find((data) => data.dataType === 'personality');
       setAgentPersona(persona || null);
 
-      // Fetch default conversation for the selected agent
-      const defaultConversation = conversations.find(
-        (c) => c.agentID === agentId && !c.name
-      );
-      if (defaultConversation) {
-        handleConversationSelection(defaultConversation);
-      }
+      const messagesRes = await fetch(`/api/admin/messages?agentId=${agentId}`);
+      if (!messagesRes.ok) throw new Error('Failed to fetch messages');
+      const messagesData = await messagesRes.json();
+
+      const formattedMessages = messagesData.map((msg) => ({
+        user: msg.from === 'admin' ? msg.content : null,
+        bot: msg.from !== 'admin' ? msg.content : null,
+      }));
+
+      setChatMessages(formattedMessages);
     } catch (error) {
       console.error('Error fetching agent data:', error);
       setError('Failed to load agent data');
@@ -77,39 +81,27 @@ export default function Chat() {
     }
   };
 
-  // Handle selecting a conversation
-  const handleConversationSelection = (conversation) => {
-    setSelectedConversation(conversation);
-    setChatMessages(conversation.messages.map((msg) => ({
-      user: msg.from === 'admin' ? msg.content : null,
-      bot: msg.from === selectedAgent ? msg.content : null,
-    })));
-  };
-
   // Send a new message
   const handleSendMessage = async () => {
     if (!selectedAgent || !chatInput.trim()) {
       alert('Please select an agent and enter a message.');
       return;
     }
-  
+
     setLoading(true);
     setError(null);
-  
+
     try {
-      // Fetch the prompt for the selected agent and LLM from Firebase
       const agentDoc = await fetch(`/api/admin?tab=agents&agentId=${selectedAgent}`);
       if (!agentDoc.ok) throw new Error('Failed to fetch agent data');
-  
+
       const agentData = await agentDoc.json();
       if (!agentData.prompt || !agentData.prompt[selectedLLM]) {
         throw new Error(`No prompt found for agent ${selectedAgent} and LLM ${selectedLLM}`);
       }
-  
-      // Use the LLM-specific prompt directly
+
       const systemPrompt = agentData.prompt[selectedLLM].description;
-  
-      // Make the request to the chat API
+
       const res = await fetch('/api/admin/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -117,47 +109,26 @@ export default function Chat() {
           agentId: selectedAgent,
           message: chatInput,
           prompt: systemPrompt,
-          conversationId: selectedConversation?.id || null,
-          llm: selectedLLM, // Pass selected LLM
+          llm: selectedLLM,
         }),
       });
-  
+
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || 'Failed to send message');
       }
-  
-      const { reply, conversationId } = await res.json();
+
+      const { reply } = await res.json();
       if (!reply) {
         throw new Error('No reply received from server');
       }
-  
-      // Update messages
-      setChatMessages((prev) => [...prev, { user: chatInput, bot: reply }]);
+
+      // Append the new message to chat
+      setChatMessages((prev) => [
+        ...prev,
+        { user: chatInput, bot: reply },
+      ]);
       setChatInput('');
-  
-      // Update conversation in Firebase and local state
-      if (!selectedConversation) {
-        const newConversation = {
-          id: conversationId,
-          agentID: selectedAgent,
-          messages: [
-            { content: chatInput, from: 'admin' },
-            { content: reply, from: selectedAgent },
-          ],
-        };
-        setConversations((prev) => [...prev, newConversation]);
-        setSelectedConversation(newConversation);
-      } else {
-        setSelectedConversation((prev) => ({
-          ...prev,
-          messages: [
-            ...prev.messages,
-            { content: chatInput, from: 'admin' },
-            { content: reply, from: selectedAgent },
-          ],
-        }));
-      }
     } catch (error) {
       console.error('Error sending message:', error);
       setError('Failed to send message: ' + error.message);
@@ -165,7 +136,6 @@ export default function Chat() {
       setLoading(false);
     }
   };
-  
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -199,24 +169,6 @@ export default function Chat() {
               {llm}
             </option>
           ))}
-        </select>
-
-        <select
-          className="p-2 border rounded"
-          value={selectedConversation?.id || ''}
-          onChange={(e) => {
-            const conv = conversations.find((c) => c.id === e.target.value);
-            if (conv) handleConversationSelection(conv);
-          }}
-        >
-          <option value="">Default Chat</option>
-          {conversations
-            .filter((c) => c.agentID === selectedAgent)
-            .map((conv) => (
-              <option key={conv.id} value={conv.id}>
-                {conv.name || 'Unnamed Conversation'}
-              </option>
-            ))}
         </select>
       </div>
 
