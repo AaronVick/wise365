@@ -2,8 +2,9 @@
 
 import { Configuration, OpenAIApi } from 'openai';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
+// Initialize Firebase Admin
 if (!getApps().length) {
   const serviceAccount = {
     type: process.env.FIREBASE_TYPE,
@@ -15,11 +16,11 @@ if (!getApps().length) {
     auth_uri: process.env.FIREBASE_AUTH_URI,
     token_uri: process.env.FIREBASE_TOKEN_URI,
     auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
-    client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
+    client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
   };
 
   initializeApp({
-    credential: cert(serviceAccount)
+    credential: cert(serviceAccount),
   });
 }
 
@@ -36,22 +37,24 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { agentId, message, prompt, conversationId, isNewConversation } = req.body;
+  const { agentId, message, prompt, conversationId, llm = 'chatGPT' } = req.body;
 
+  // Validate the request body
   if (!agentId || !message || !prompt) {
     return res.status(400).json({
       error: 'Missing required fields',
-      details: { agentId: !agentId, message: !message, prompt: !prompt }
+      details: { agentId, message, prompt },
     });
   }
 
   try {
-    // Send to OpenAI
+    // Generate response from OpenAI
+    const model = llm === 'chatGPT' ? 'gpt-4' : 'other-model'; // Support for future LLMs
     const completion = await openai.createChatCompletion({
-      model: 'gpt-4',
+      model,
       messages: [
         { role: 'system', content: prompt },
-        { role: 'user', content: message }
+        { role: 'user', content: message },
       ],
       temperature: 0.7,
       max_tokens: 500,
@@ -63,43 +66,27 @@ export default async function handler(req, res) {
     }
 
     let chatDoc;
+
     if (conversationId) {
       // Update existing conversation
       const conversationRef = db.collection('conversations').doc(conversationId);
-      const conversation = await conversationRef.get();
-      
-      if (!conversation.exists) {
+      const conversationSnapshot = await conversationRef.get();
+
+      if (!conversationSnapshot.exists) {
         throw new Error('Conversation not found');
       }
 
-      const newMessages = [
-        `"role": "admin", "content": "${message}", "timestamp": "${new Date().toISOString()}"`,
-        `"role": "${agentId}", "content": "${reply}", "timestamp": "${new Date().toISOString()}"`
-      ];
-      
-      // When creating a new conversation:
-      chatDoc = await db.collection('conversations').add({
-        agentID: agentId,
-        createdAt: new Date(),
-        lastUpdatedAt: new Date(),
-        createdBy: 'admin',
-        isShared: true,
-        messages: [
-          `"role": "admin", "content": "${message}", "timestamp": "${new Date().toISOString()}"`,
-          `"role": "${agentId}", "content": "${reply}", "timestamp": "${new Date().toISOString()}"`
-        ],
-        participants: ['admin', agentId],
-        teamID: 'admin_team'
-      });
-
       await conversationRef.update({
-        messages: [...(conversation.data().messages || []), ...newMessages],
-        lastUpdatedAt: new Date()
+        messages: FieldValue.arrayUnion(
+          { role: 'admin', content: message, timestamp: new Date().toISOString() },
+          { role: agentId, content: reply, timestamp: new Date().toISOString() }
+        ),
+        lastUpdatedAt: new Date(),
       });
 
       chatDoc = conversationRef;
     } else {
-      // Create new conversation if needed
+      // Create a new conversation
       chatDoc = await db.collection('conversations').add({
         agentID: agentId,
         createdAt: new Date(),
@@ -107,30 +94,32 @@ export default async function handler(req, res) {
         createdBy: 'admin',
         isShared: true,
         messages: [
-          JSON.stringify({ role: 'admin', content: message }),
-          JSON.stringify({ role: agentId, content: reply })
+          { role: 'admin', content: message, timestamp: new Date().toISOString() },
+          { role: agentId, content: reply, timestamp: new Date().toISOString() },
         ],
         participants: ['admin', agentId],
-        teamID: 'admin_team'
+        teamID: 'admin_team',
       });
     }
 
-    return res.status(200).json({ 
+    return res.status(200).json({
       reply,
-      conversationId: chatDoc.id 
+      conversationId: chatDoc.id,
     });
   } catch (error) {
     console.error('Error in chat handler:', error);
-    
+
+    // Handle OpenAI API errors
     if (error.response?.data) {
       return res.status(500).json({
         error: 'OpenAI API Error',
-        details: error.response.data
+        details: error.response.data,
       });
     }
 
+    // General error handling
     return res.status(500).json({
-      error: error.message || 'Internal server error'
+      error: error.message || 'Internal server error',
     });
   }
 }
