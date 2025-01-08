@@ -98,43 +98,53 @@ export default function Chat() {
   };
 
   const handleAgentSelection = async (agentId) => {
-    setSelectedAgent(agentId);
+    setLoading(true);
+    setError(null);
     
-    // Find existing conversation for this agent in Default Chat
-    const defaultConversation = conversations.find(
-      (conv) => conv.name === 'Default Chat' && 
-      conv.messages.some(msg => msg.from === agentId)
-    );
-    
-    if (defaultConversation) {
-      // Filter messages for selected agent
-      const agentMessages = defaultConversation.messages.filter(
-        msg => msg.from === 'admin' || msg.from === agentId
+    try {
+      setSelectedAgent(agentId);
+      
+      // Find existing conversation for this agent in Default Chat
+      const defaultConversation = conversations.find(
+        (conv) => conv.name === 'Default Chat' && 
+        conv.messages.some(msg => msg.from === agentId)
       );
       
-      setSelectedConversation({
-        ...defaultConversation,
-        messages: agentMessages
-      });
-      
-      // Sort and set messages
-      const sortedMessages = [...agentMessages].sort((a, b) => {
-        if (a.timestamp && b.timestamp) {
-          return new Date(a.timestamp) - new Date(b.timestamp);
-        }
-        return 0;
-      });
-      
-      setChatMessages(
-        sortedMessages.map((msg) => ({
-          user: msg.from === 'admin' ? msg.content : null,
-          bot: msg.from !== 'admin' ? msg.content : null,
-        }))
-      );
-    } else {
-      // If no existing conversation, just clear the messages
-      setSelectedConversation(null);
-      setChatMessages([]);
+      if (defaultConversation) {
+        // Filter messages for selected agent
+        const agentMessages = defaultConversation.messages.filter(
+          msg => msg.from === 'admin' || msg.from === agentId
+        );
+        
+        setSelectedConversation({
+          ...defaultConversation,
+          messages: agentMessages
+        });
+        
+        // Sort and set messages
+        const sortedMessages = [...agentMessages].sort((a, b) => {
+          if (a.timestamp && b.timestamp) {
+            return new Date(a.timestamp) - new Date(b.timestamp);
+          }
+          return 0;
+        });
+        
+        setChatMessages(
+          sortedMessages.map((msg) => ({
+            user: msg.from === 'admin' ? msg.content : null,
+            bot: msg.from !== 'admin' ? msg.content : null,
+          }))
+        );
+      } else {
+        // If no existing conversation, just clear the messages
+        setSelectedConversation(null);
+        setChatMessages([]);
+      }
+    } catch (error) {
+      console.error('Error selecting agent:', error);
+      setError('Failed to select agent: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
