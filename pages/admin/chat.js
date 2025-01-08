@@ -29,21 +29,36 @@ export default function Chat() {
       setLoading(true);
       setError(null);
       try {
+        // Fetch agents
         const agentsRes = await fetch('/api/admin?tab=agents');
         if (!agentsRes.ok) throw new Error('Failed to fetch agents');
         const agentsData = await agentsRes.json();
         setAgents(agentsData || []);
 
-        const conversationsRes = await fetch('/api/admin?tab=conversations');
+        // Fetch conversations
+        const conversationsRes = await fetch('/api/admin/messages');
         if (!conversationsRes.ok) throw new Error('Failed to fetch conversations');
-        const conversationsData = await conversationsRes.json();
-        setConversations(
-          conversationsData.map((conv) => ({
-            id: conv.id,
-            name: conv.chatName || 'Default Chat',
-            messages: [],
-          }))
+        const messagesData = await conversationsRes.json();
+
+        // Group conversations by `chatName`
+        const groupedConversations = messagesData.reduce((acc, msg) => {
+          const chatName = msg.chatName || 'Default Chat';
+          if (!acc[chatName]) acc[chatName] = [];
+          acc[chatName].push(msg);
+          return acc;
+        }, {});
+
+        const conversationList = Object.entries(groupedConversations).map(
+          ([name, messages]) => ({
+            name,
+            messages: messages.map((m) => ({
+              content: m.conversation,
+              from: m.from,
+            })),
+          })
         );
+
+        setConversations(conversationList);
       } catch (error) {
         console.error('Error fetching initial data:', error);
         setError('Failed to load initial data');
@@ -60,34 +75,14 @@ export default function Chat() {
     setChatMessages([]);
     setLoading(true);
     try {
-      const messagesRes = await fetch(`/api/admin/messages?agentId=${agentId}`);
-      if (!messagesRes.ok) throw new Error('Failed to fetch messages');
-      const messagesData = await messagesRes.json();
-
-      const groupedConversations = messagesData.reduce((acc, msg) => {
-        const name = msg.chatName || 'Default Chat';
-        if (!acc[name]) acc[name] = [];
-        acc[name].push(msg);
-        return acc;
-      }, {});
-
-      const conversationList = Object.entries(groupedConversations).map(
-        ([name, messages]) => ({
-          name,
-          messages: messages.map((msg) => ({
-            content: msg.conversation,
-            from: msg.from,
-          })),
-        })
+      const defaultConversation = conversations.find(
+        (conv) => conv.name === 'Default Chat'
       );
-
-      setConversations(conversationList);
-      const defaultConversation = conversationList.find((c) => c.name === 'Default Chat');
       if (defaultConversation) {
         handleConversationSelection(defaultConversation);
       }
     } catch (error) {
-      console.error('Error fetching conversations:', error);
+      console.error('Error selecting agent:', error);
       setError(error.message || 'Failed to load agent data');
     } finally {
       setLoading(false);
@@ -116,8 +111,8 @@ export default function Chat() {
     try {
       const agentRes = await fetch(`/api/admin?tab=agents&agentId=${selectedAgent}`);
       if (!agentRes.ok) throw new Error('Failed to fetch agent data');
-      const agentData = await agentRes.json();
 
+      const agentData = await agentRes.json();
       const llmKey = selectedLLM === 'chatGPT' ? 'openAI' : 'Anthropic';
       const promptData = agentData.prompt?.[llmKey];
       if (!promptData?.description) {
@@ -185,10 +180,22 @@ export default function Chat() {
             if (conv) handleConversationSelection(conv);
           }}
         >
-          <option value="">Default Chat</option>
+          <option value="Default Chat">Default Chat</option>
           {conversations.map((conv) => (
             <option key={conv.name} value={conv.name}>
               {conv.name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="p-2 border rounded"
+          value={selectedLLM}
+          onChange={(e) => setSelectedLLM(e.target.value)}
+        >
+          {llmOptions.map((llm) => (
+            <option key={llm} value={llm}>
+              {llm}
             </option>
           ))}
         </select>
