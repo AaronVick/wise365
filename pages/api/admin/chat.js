@@ -95,18 +95,38 @@ export default async function handler(req, res) {
       // Update existing conversation
       const conversationRef = db.collection('conversations').doc(conversationId);
       const conversationSnapshot = await conversationRef.get();
-
+    
       if (!conversationSnapshot.exists) {
         throw new Error('Conversation not found');
       }
-
+    
       await conversationRef.update({
         messages: FieldValue.arrayUnion(
-          { role: 'admin', content: message, timestamp: new Date().toISOString() },
-          { role: agentId, content: reply, timestamp: new Date().toISOString() }
+          { from: 'admin', conversation: message, timestamp: new Date().toISOString() },
+          { from: agentId, conversation: reply, timestamp: new Date().toISOString() }
         ),
         lastUpdatedAt: new Date(),
       });
+    
+      chatDoc = conversationRef;
+    } else {
+      // Create a new conversation
+      chatDoc = await db.collection('conversations').add({
+        agentId: agentId,  // Changed from agentID to match your structure
+        createdAt: new Date(),
+        lastUpdatedAt: new Date(),
+        createdBy: 'admin',
+        isShared: true,
+        from: 'admin',
+        conversation: message,
+        chatName: '',
+        conversationName: '',
+        timestamp: new Date().toISOString(),
+        userId: 'admin'
+      });
+    }
+
+    
 
       chatDoc = conversationRef;
     } else {

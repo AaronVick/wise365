@@ -86,14 +86,22 @@ export default function Chat() {
     fetchInitialData();
   }, []);
   const handleConversationSelection = (conversation) => {
+    // Don't allow conversation selection if no agent is selected
+    if (!selectedAgent) {
+      setError("Please select an agent first");
+      return;
+    }
+  
     setSelectedConversation(conversation);
     // Sort messages by timestamp if available
-    const sortedMessages = [...conversation.messages].sort((a, b) => {
-      if (a.timestamp && b.timestamp) {
-        return new Date(a.timestamp) - new Date(b.timestamp);
-      }
-      return 0;
-    });
+    const sortedMessages = [...conversation.messages]
+      .filter(msg => msg.from === 'admin' || msg.from === selectedAgent) // Only show messages for selected agent
+      .sort((a, b) => {
+        if (a.timestamp && b.timestamp) {
+          return new Date(a.timestamp) - new Date(b.timestamp);
+        }
+        return 0;
+      });
     
     setChatMessages(
       sortedMessages.map((msg) => ({
@@ -173,23 +181,23 @@ export default function Chat() {
       alert('Please select an agent and enter a message.');
       return;
     }
-
+  
     setLoading(true);
     setError(null);
-
+  
     try {
       const agentRes = await fetch(`/api/admin?tab=agents&agentId=${selectedAgent}`);
       if (!agentRes.ok) throw new Error('Failed to fetch agent data');
-
+  
       const agentData = await agentRes.json();
       const llmKey = selectedLLM === 'chatGPT' ? 'openAI' : 'Anthropic';
       const promptData = agentData.prompt?.[llmKey];
       if (!promptData?.description) {
         throw new Error(`No prompt found for agent ${selectedAgent} and LLM ${selectedLLM}`);
       }
-
+  
       const systemPrompt = promptData.description;
-
+  
       const res = await fetch('/api/admin/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -201,19 +209,32 @@ export default function Chat() {
           llm: selectedLLM,
         }),
       });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to send message');
+  
+      let data;
+      try {
+        data = await res.json();
+      } catch (e) {
+        throw new Error('Failed to parse server response');
       }
-
-      const { reply } = await res.json();
+  
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send message');
+      }
+  
+      const { reply, conversationId } = data;
       if (!reply) {
         throw new Error('No reply received from server');
       }
-
-      setChatMessages((prev) => [...prev, { user: chatInput, bot: reply }]);
+  
+      // Update chat messages in UI
+      setChatMessages((prev) => [
+        ...prev, 
+        { user: chatInput, bot: null }, // User message
+        { user: null, bot: reply } // Bot response
+      ]);
+      
       setChatInput('');
+  
     } catch (error) {
       console.error('Error sending message:', error);
       setError('Failed to send message: ' + error.message);
@@ -222,6 +243,7 @@ export default function Chat() {
     }
   };
 
+  
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h2 className="text-2xl font-bold mb-4">Chat with Agents</h2>
