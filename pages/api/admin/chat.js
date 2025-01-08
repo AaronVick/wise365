@@ -95,11 +95,11 @@ export default async function handler(req, res) {
       // Update existing conversation
       const conversationRef = db.collection('conversations').doc(conversationId);
       const conversationSnapshot = await conversationRef.get();
-    
+
       if (!conversationSnapshot.exists) {
         throw new Error('Conversation not found');
       }
-    
+
       await conversationRef.update({
         messages: FieldValue.arrayUnion(
           { from: 'admin', conversation: message, timestamp: new Date().toISOString() },
@@ -107,12 +107,12 @@ export default async function handler(req, res) {
         ),
         lastUpdatedAt: new Date(),
       });
-    
+
       chatDoc = conversationRef;
     } else {
       // Create a new conversation
       chatDoc = await db.collection('conversations').add({
-        agentId: agentId,  // Changed from agentID to match your structure
+        agentId: agentId,
         createdAt: new Date(),
         lastUpdatedAt: new Date(),
         createdBy: 'admin',
@@ -124,25 +124,20 @@ export default async function handler(req, res) {
         timestamp: new Date().toISOString(),
         userId: 'admin'
       });
-    }
 
-    
-
-      chatDoc = conversationRef;
-    } else {
-      // Create a new conversation
-      chatDoc = await db.collection('conversations').add({
-        agentID: agentId,
+      // Add the agent's reply as a separate document
+      await db.collection('conversations').add({
+        agentId: agentId,
         createdAt: new Date(),
         lastUpdatedAt: new Date(),
         createdBy: 'admin',
         isShared: true,
-        messages: [
-          { role: 'admin', content: message, timestamp: new Date().toISOString() },
-          { role: agentId, content: reply, timestamp: new Date().toISOString() },
-        ],
-        participants: ['admin', agentId],
-        teamID: 'admin_team',
+        from: agentId,
+        conversation: reply,
+        chatName: '',
+        conversationName: '',
+        timestamp: new Date().toISOString(),
+        userId: 'admin'
       });
     }
 
