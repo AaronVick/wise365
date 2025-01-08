@@ -40,10 +40,13 @@ export default function Chat() {
         if (!conversationsRes.ok) throw new Error('Failed to fetch conversations');
         const messagesData = await conversationsRes.json();
 
-        // Group conversations by `chatName`
+        // Group conversations by chatName, using 'Default Chat' for empty chatNames
         const groupedConversations = messagesData.reduce((acc, msg) => {
-          const chatName = msg.chatName || 'Default Chat';
-          if (!acc[chatName]) acc[chatName] = [];
+          // Use 'Default Chat' for empty strings or undefined chatName
+          const chatName = msg.chatName || msg.conversationName || 'Default Chat';
+          if (!acc[chatName]) {
+            acc[chatName] = [];
+          }
           acc[chatName].push(msg);
           return acc;
         }, {});
@@ -54,11 +57,18 @@ export default function Chat() {
             messages: messages.map((m) => ({
               content: m.conversation,
               from: m.from,
+              timestamp: m.timestamp,
             })),
           })
         );
 
         setConversations(conversationList);
+
+        // If there's a Default Chat, automatically select it
+        const defaultChat = conversationList.find(conv => conv.name === 'Default Chat');
+        if (defaultChat) {
+          handleConversationSelection(defaultChat);
+        }
       } catch (error) {
         console.error('Error fetching initial data:', error);
         setError('Failed to load initial data');
@@ -69,35 +79,65 @@ export default function Chat() {
     fetchInitialData();
   }, []);
 
-  const handleAgentSelection = async (agentId) => {
-    setSelectedAgent(agentId);
-    setSelectedConversation(null);
-    setChatMessages([]);
-    setLoading(true);
-    try {
-      const defaultConversation = conversations.find(
-        (conv) => conv.name === 'Default Chat'
-      );
-      if (defaultConversation) {
-        handleConversationSelection(defaultConversation);
-      }
-    } catch (error) {
-      console.error('Error selecting agent:', error);
-      setError(error.message || 'Failed to load agent data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleConversationSelection = (conversation) => {
     setSelectedConversation(conversation);
+    // Sort messages by timestamp if available
+    const sortedMessages = [...conversation.messages].sort((a, b) => {
+      if (a.timestamp && b.timestamp) {
+        return new Date(a.timestamp) - new Date(b.timestamp);
+      }
+      return 0;
+    });
+    
     setChatMessages(
-      conversation.messages.map((msg) => ({
+      sortedMessages.map((msg) => ({
         user: msg.from === 'admin' ? msg.content : null,
         bot: msg.from !== 'admin' ? msg.content : null,
       }))
     );
   };
+
+  const handleAgentSelection = async (agentId) => {
+    setSelectedAgent(agentId);
+    
+    // Find existing conversation for this agent in Default Chat
+    const defaultConversation = conversations.find(
+      (conv) => conv.name === 'Default Chat' && 
+      conv.messages.some(msg => msg.from === agentId)
+    );
+    
+    if (defaultConversation) {
+      // Filter messages for selected agent
+      const agentMessages = defaultConversation.messages.filter(
+        msg => msg.from === 'admin' || msg.from === agentId
+      );
+      
+      setSelectedConversation({
+        ...defaultConversation,
+        messages: agentMessages
+      });
+      
+      // Sort and set messages
+      const sortedMessages = [...agentMessages].sort((a, b) => {
+        if (a.timestamp && b.timestamp) {
+          return new Date(a.timestamp) - new Date(b.timestamp);
+        }
+        return 0;
+      });
+      
+      setChatMessages(
+        sortedMessages.map((msg) => ({
+          user: msg.from === 'admin' ? msg.content : null,
+          bot: msg.from !== 'admin' ? msg.content : null,
+        }))
+      );
+    } else {
+      // If no existing conversation, just clear the messages
+      setSelectedConversation(null);
+      setChatMessages([]);
+    }
+  };
+
 
   const handleSendMessage = async () => {
     if (!selectedAgent || !chatInput.trim()) {
