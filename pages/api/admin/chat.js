@@ -39,7 +39,6 @@ export default async function handler(req, res) {
 
   const { agentId, message, conversationId, llm = 'chatGPT' } = req.body;
 
-  // Validate the request body
   if (!agentId || !message) {
     return res.status(400).json({
       error: 'Missing required fields',
@@ -48,29 +47,33 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Fetch agent data from Firebase
-    const agentDoc = await db.collection('agentsDefined').where('agentId', '==', agentId).get();
+    // Fetch agent data from `agentsDefined`
+    const agentQuerySnapshot = await db
+      .collection('agentsDefined')
+      .where('agentId', '==', agentId)
+      .get();
 
-    if (agentDoc.empty) {
-      return res.status(404).json({
-        error: `Agent ${agentId} not found in agentsDefined`,
-      });
+    if (agentQuerySnapshot.empty) {
+      return res.status(404).json({ error: `Agent ${agentId} not found.` });
     }
 
-    const agentData = agentDoc.docs[0].data();
-    const promptData = agentData.prompt?.[llm];
+    const agentData = agentQuerySnapshot.docs[0].data();
+
+    // Retrieve the appropriate prompt based on the selected LLM
+    const llmKey = llm === 'chatGPT' ? 'openAI' : 'Anthropic';
+    const promptData = agentData.prompt?.[llmKey];
 
     if (!promptData || !promptData.description) {
       return res.status(400).json({
         error: `No prompt found for agent ${agentId} and LLM ${llm}`,
-        details: { llm, promptKeys: Object.keys(agentData.prompt || {}) },
+        details: { availablePrompts: Object.keys(agentData.prompt || {}) },
       });
     }
 
     const systemPrompt = promptData.description;
 
     // Generate response from OpenAI
-    const model = llm === 'chatGPT' ? 'gpt-4' : 'other-model'; // Support for future LLMs
+    const model = llm === 'chatGPT' ? 'gpt-4' : 'claude-v1'; // Adjust model for each LLM
     const completion = await openai.createChatCompletion({
       model,
       messages: [
@@ -130,7 +133,6 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Error in chat handler:', error);
 
-    // Handle OpenAI API errors
     if (error.response?.data) {
       return res.status(500).json({
         error: 'OpenAI API Error',
@@ -138,7 +140,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // General error handling
     return res.status(500).json({
       error: error.message || 'Internal server error',
     });
