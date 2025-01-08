@@ -33,24 +33,29 @@ export default function Chat() {
         const agentsRes = await fetch('/api/admin?tab=agents');
         if (!agentsRes.ok) throw new Error('Failed to fetch agents');
         const agentsData = await agentsRes.json();
+        console.log('Fetched agents:', agentsData);
         setAgents(agentsData || []);
-
+  
         // Fetch conversations
         const conversationsRes = await fetch('/api/admin/messages');
         if (!conversationsRes.ok) throw new Error('Failed to fetch conversations');
         const messagesData = await conversationsRes.json();
-
+        console.log('Fetched messages:', messagesData);
+  
         // Group conversations by chatName, using 'Default Chat' for empty chatNames
         const groupedConversations = messagesData.reduce((acc, msg) => {
           // Use 'Default Chat' for empty strings or undefined chatName
           const chatName = msg.chatName || msg.conversationName || 'Default Chat';
+          console.log('Processing message:', msg, 'into chatName:', chatName);
           if (!acc[chatName]) {
             acc[chatName] = [];
           }
           acc[chatName].push(msg);
           return acc;
         }, {});
-
+  
+        console.log('Grouped conversations:', groupedConversations);
+  
         const conversationList = Object.entries(groupedConversations).map(
           ([name, messages]) => ({
             name,
@@ -61,6 +66,25 @@ export default function Chat() {
             })),
           })
         );
+  
+        console.log('Final conversation list:', conversationList);
+        setConversations(conversationList);
+  
+        // If there's a Default Chat, automatically select it
+        const defaultChat = conversationList.find(conv => conv.name === 'Default Chat');
+        console.log('Found default chat:', defaultChat);
+        if (defaultChat) {
+          handleConversationSelection(defaultChat);
+        }
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+        setError('Failed to load initial data: ' + error.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchInitialData();
+  }, []);
 
         setConversations(conversationList);
 
@@ -103,18 +127,30 @@ export default function Chat() {
     
     try {
       setSelectedAgent(agentId);
+      console.log('Selected agent:', agentId);
+      console.log('Current conversations:', conversations);
       
       // Find existing conversation for this agent in Default Chat
       const defaultConversation = conversations.find(
-        (conv) => conv.name === 'Default Chat' && 
-        conv.messages.some(msg => msg.from === agentId)
+        (conv) => {
+          console.log('Checking conversation:', conv);
+          const hasAgentMessage = conv.messages.some(msg => {
+            console.log('Checking message:', msg, 'against agent:', agentId);
+            return msg.from === agentId;
+          });
+          return conv.name === 'Default Chat' && hasAgentMessage;
+        }
       );
+      
+      console.log('Found default conversation:', defaultConversation);
       
       if (defaultConversation) {
         // Filter messages for selected agent
         const agentMessages = defaultConversation.messages.filter(
           msg => msg.from === 'admin' || msg.from === agentId
         );
+        
+        console.log('Filtered agent messages:', agentMessages);
         
         setSelectedConversation({
           ...defaultConversation,
@@ -128,6 +164,8 @@ export default function Chat() {
           }
           return 0;
         });
+        
+        console.log('Sorted messages:', sortedMessages);
         
         setChatMessages(
           sortedMessages.map((msg) => ({
@@ -147,7 +185,6 @@ export default function Chat() {
       setLoading(false);
     }
   };
-
 
   const handleSendMessage = async () => {
     if (!selectedAgent || !chatInput.trim()) {
