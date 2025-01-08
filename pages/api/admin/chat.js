@@ -37,23 +37,44 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { agentId, message, prompt, conversationId, llm = 'chatGPT' } = req.body;
+  const { agentId, message, conversationId, llm = 'chatGPT' } = req.body;
 
   // Validate the request body
-  if (!agentId || !message || !prompt) {
+  if (!agentId || !message) {
     return res.status(400).json({
       error: 'Missing required fields',
-      details: { agentId, message, prompt },
+      details: { agentId, message },
     });
   }
 
   try {
+    // Fetch agent data from Firebase
+    const agentDoc = await db.collection('agentsDefined').where('agentId', '==', agentId).get();
+
+    if (agentDoc.empty) {
+      return res.status(404).json({
+        error: `Agent ${agentId} not found in agentsDefined`,
+      });
+    }
+
+    const agentData = agentDoc.docs[0].data();
+    const promptData = agentData.prompt?.[llm];
+
+    if (!promptData || !promptData.description) {
+      return res.status(400).json({
+        error: `No prompt found for agent ${agentId} and LLM ${llm}`,
+        details: { llm, promptKeys: Object.keys(agentData.prompt || {}) },
+      });
+    }
+
+    const systemPrompt = promptData.description;
+
     // Generate response from OpenAI
     const model = llm === 'chatGPT' ? 'gpt-4' : 'other-model'; // Support for future LLMs
     const completion = await openai.createChatCompletion({
       model,
       messages: [
-        { role: 'system', content: prompt },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: message },
       ],
       temperature: 0.7,
