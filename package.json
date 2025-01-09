@@ -35,7 +35,8 @@
     "socket.io": "^4.7.4",
     "stripe": "^14.14.0",
     "tailwind-merge": "^2.6.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "openai": "^4.0.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
