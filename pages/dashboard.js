@@ -55,7 +55,7 @@ const Dashboard = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentChat, setCurrentChat] = useState(null);
   const [nestedChats, setNestedChats] = useState({});
-  const [sidebarWidth, setSidebarWidth] = useState(250); // Default sidebar width
+  const [sidebarWidth, setSidebarWidth] = useState(250);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -91,17 +91,14 @@ const Dashboard = () => {
     const chats = snapshot.docs.map((doc) => ({ 
       id: doc.id, 
       ...doc.data(),
-      // If no conversation name, use the agent's name as default
       conversationName: doc.data().conversationName || `Chat with ${agents.find(a => a.id === agentId)?.name || 'Agent'}`
     }));
     
-    // Organize chats without the extra nesting
     setNestedChats((prev) => ({ 
       ...prev, 
       [agentId]: chats 
     }));
   };
-  
 
   const renderNestedChats = (agentId) => {
     const chats = nestedChats[agentId] || [];
@@ -128,7 +125,6 @@ const Dashboard = () => {
     );
   };
 
-  //const handleAgentClick
   const handleAgentClick = async (agent) => {
     await fetchNestedChats(agent.id);
     setCurrentChat({
@@ -162,32 +158,6 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Error creating new conversation:', error);
     }
-  };
-
-  const renderNestedChats = (agentId) => {
-    const chats = nestedChats[agentId] || {};
-    return Object.keys(chats).map((name) => (
-      <div key={name} className="ml-2">
-        <h4 className="text-xs font-semibold mb-1">{name}</h4>
-        {chats[name].map((chat) => (
-          <Button
-            key={chat.id}
-            variant="ghost"
-            className="text-left text-xs w-full truncate"
-            onClick={() =>
-              setCurrentChat({
-                id: chat.id,
-                title: chat.conversationName || 'Default Chat',
-                agentId: chat.agentId,
-                participants: [currentUser.uid],
-              })
-            }
-          >
-            {chat.conversationName || 'Default Chat'}
-          </Button>
-        ))}
-      </div>
-    ));
   };
 
   const handleSidebarResize = (e) => {
