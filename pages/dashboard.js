@@ -1,4 +1,5 @@
 
+
 // /pages/dashboard.js
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -16,8 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import DashboardContent from '../components/DashboardContent';
-import { ChevronRight, Home, Settings } from 'lucide-react';
-import { ChatInterface } from '../components/ChatInterface'; // Ensure correct import
+import ChatInterface from '../components/ChatInterface'; // Ensure correct import
 
 // Agents data
 const agents = [
@@ -52,6 +52,7 @@ const Dashboard = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentChat, setCurrentChat] = useState(null);
   const [nestedChats, setNestedChats] = useState({});
+  const [sidebarWidth, setSidebarWidth] = useState(250); // Default sidebar width
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -151,6 +152,11 @@ const Dashboard = () => {
     ));
   };
 
+  const handleSidebarResize = (e) => {
+    const newWidth = Math.min(Math.max(e.clientX, 200), window.innerWidth / 3);
+    setSidebarWidth(newWidth);
+  };
+
   if (!authChecked) {
     return <div>Loading...</div>;
   }
@@ -158,7 +164,10 @@ const Dashboard = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className="w-64 bg-gray-900 text-white">
+      <div
+        className="bg-gray-900 text-white"
+        style={{ width: `${sidebarWidth}px`, resize: 'horizontal', overflow: 'hidden' }}
+      >
         <div className="p-4 border-b border-gray-700">
           <h1 className="text-lg font-bold">Agents</h1>
         </div>
@@ -182,6 +191,17 @@ const Dashboard = () => {
           </Button>
         </div>
       </div>
+      {/* Resize Handle */}
+      <div
+        className="w-1 cursor-ew-resize bg-gray-700"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          document.addEventListener('mousemove', handleSidebarResize);
+          document.addEventListener('mouseup', () => {
+            document.removeEventListener('mousemove', handleSidebarResize);
+          });
+        }}
+      />
       {/* Main Content */}
       <div className="flex-1">
         {currentChat ? (
@@ -191,7 +211,7 @@ const Dashboard = () => {
             userId={currentUser.uid}
           />
         ) : (
-          <DashboardContent />
+          <DashboardContent currentUser={currentUser} />
         )}
       </div>
     </div>
