@@ -99,121 +99,70 @@ useEffect(() => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    console.log('=== Starting handleSendMessage ===');
-    console.log('Current message:', newMessage);
-    console.log('ConversationNameRef:', conversationNameRef);
-    console.log('Props:', { chatId, agentId, userId, isDefault, title });
-  
     if (!newMessage.trim() || !conversationNameRef) {
-      console.log('Missing required data:', {
-        hasMessage: !!newMessage.trim(),
-        hasConversationNameRef: !!conversationNameRef
-      });
-      return;
+        console.log('Missing required data for sending a message');
+        return;
     }
-  
+
     setLoading(true);
-  
+
     try {
-      // Get agent prompt
-      console.log('Fetching agent prompt from agentsDefined:', agentId);
-      const agentDoc = await getDoc(doc(db, 'agentsDefined', agentId));
-      console.log('Agent doc exists?', agentDoc.exists());
-      
-      if (!agentDoc.exists()) {
-        throw new Error('Agent prompt not found');
-      }
-  
-      const agentData = agentDoc.data();
-      console.log('Agent data:', agentData);
-      console.log('Agent prompts:', {
-        anthropic: agentData.prompt?.Anthropic?.description,
-        openai: agentData.prompt?.openAI?.description
-      });
-  
-      const prompt = agentData.prompt?.Anthropic?.description || 
-                    agentData.prompt?.openAI?.description;
-  
-      if (!prompt) {
-        throw new Error('No prompt found for agent');
-      }
-  
-      // Save user message
-      console.log('Saving user message to Firebase...');
-      const messageData = {
-        agentId,
-        content: newMessage,
-        conversationName: conversationNameRef,
-        from: userId,
-        isDefault,
-        timestamp: serverTimestamp(),
-        type: 'user'
-      };
-      console.log('Message data to save:', messageData);
-  
-      const messagesRef = collection(db, 'conversations');
-      const userMessageDoc = await addDoc(messagesRef, messageData);
-      console.log('User message saved with ID:', userMessageDoc.id);
-  
-      setNewMessage('');
-  
-      // Call LLM API
-      console.log('Calling LLM API with payload:', {
-        system: prompt,
-        user: newMessage
-      });
-      
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: prompt },
-            { role: 'user', content: newMessage }
-          ],
-          agentId,
-          conversationName: conversationNameRef,
-          isDefault
-        }),
-      });
-      
-      console.log('LLM API response status:', response.status);
-      if (!response.ok) {
-        console.error('LLM API error details:', {
-          status: response.status,
-          statusText: response.statusText,
-          text: await response.text()
+        const messageData = {
+            agentId,
+            content: newMessage,
+            conversationName: conversationNameRef,
+            from: userId,
+            isDefault,
+            timestamp: serverTimestamp(),
+            type: 'user',
+        };
+
+        // Add user message to Firebase
+        const messagesRef = collection(db, 'conversations');
+        await addDoc(messagesRef, messageData);
+
+        // Clear input field
+        setNewMessage('');
+
+        // Invoke LLM API to get agent response
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                messages: [
+                    { role: 'system', content: agentPrompt },
+                    { role: 'user', content: newMessage }
+                ],
+                agentId,
+                conversationName: conversationNameRef,
+                isDefault,
+            }),
         });
-        throw new Error('Failed to get LLM response');
-      }
-  
-      const result = await response.json();
-      console.log('LLM API result:', result);
-  
-      // Save agent response
-      console.log('Saving agent response to Firebase...');
-      const agentMessageData = {
-        agentId,
-        content: result.reply,
-        conversationName: conversationNameRef,
-        from: agentId,
-        isDefault,
-        timestamp: serverTimestamp(),
-        type: 'agent'
-      };
-      console.log('Agent message data to save:', agentMessageData);
-  
-      const agentMessageDoc = await addDoc(messagesRef, agentMessageData);
-      console.log('Agent response saved with ID:', agentMessageDoc.id);
-  
+
+        if (response.ok) {
+            const result = await response.json();
+            const agentMessage = {
+                agentId,
+                content: result.reply,
+                conversationName: conversationNameRef,
+                from: agentId,
+                isDefault,
+                timestamp: serverTimestamp(),
+                type: 'agent',
+            };
+
+            // Add agent response to Firebase
+            await addDoc(messagesRef, agentMessage);
+        } else {
+            console.error('LLM API error:', await response.text());
+        }
     } catch (error) {
-      console.error('Error in chat:', error);
-      console.error('Error stack:', error.stack);
+        console.error('Error sending message or retrieving response:', error);
     } finally {
-      setLoading(false);
-      console.log('=== Message handling complete ===');
+        setLoading(false);
     }
-  };
+};
+
   
 
   return (

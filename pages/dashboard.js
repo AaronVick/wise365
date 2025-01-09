@@ -232,66 +232,82 @@ const Dashboard = () => {
 
   const handleAgentClick = async (agent) => {
     try {
-      console.log('Starting handleAgentClick:', agent.name);
-      
-      // Create default conversation in conversationNames if it doesn't exist
-      const namesRef = collection(db, 'conversationNames');
-      const defaultNameQuery = query(
-        namesRef,
-        where('agentId', '==', agent.id),
-        where('userId', '==', currentUser.uid),
-        where('isDefault', '==', true)
-      );
-      
-      let conversationNameId;
-      const namesSnapshot = await getDocs(defaultNameQuery);
-      
-      if (namesSnapshot.empty) {
-        // Create new default conversationName
-        console.log('Creating new default conversationName');
-        const nameDoc = await addDoc(namesRef, {
-          agentId: agent.id,
-          conversationName: 'Default',
-          userId: currentUser.uid,
-          isDefault: true,
-          projectName: ''
-        });
-        conversationNameId = nameDoc.id;
-      } else {
-        conversationNameId = namesSnapshot.docs[0].id;
-      }
-  
-      console.log('ConversationNameId:', conversationNameId);
-  
-      // Create conversation document
-      const conversationsRef = collection(db, 'conversations');
-      const chatDoc = await addDoc(conversationsRef, {
-        agentId: agent.id,
-        from: currentUser.uid,
-        conversationName: conversationNameId,
-        timestamp: serverTimestamp(),
-        isDefault: true
-      });
-  
-      console.log('Created chat document:', chatDoc.id);
-  
-      // Set current chat
-      const newChat = {
-        id: chatDoc.id,
-        title: `Chat with ${agent.name}`,
-        agentId: agent.id,
-        participants: [currentUser.uid],
-        isDefault: true,
-        conversationName: conversationNameId
-      };
-      
-      console.log('Setting currentChat:', newChat);
-      setCurrentChat(newChat);
-      
+        console.log('Starting handleAgentClick:', agent.name);
+
+        // Step 1: Check for an existing default conversationName
+        const namesRef = collection(db, 'conversationNames');
+        const defaultNameQuery = query(
+            namesRef,
+            where('agentId', '==', agent.id),
+            where('userId', '==', currentUser.uid),
+            where('isDefault', '==', true)
+        );
+
+        let conversationNameId;
+        const namesSnapshot = await getDocs(defaultNameQuery);
+
+        if (namesSnapshot.empty) {
+            // Create new default conversationName if it doesn't exist
+            console.log('Creating new default conversationName');
+            const nameDoc = await addDoc(namesRef, {
+                agentId: agent.id,
+                conversationName: 'Default',
+                userId: currentUser.uid,
+                isDefault: true,
+                projectName: '',
+            });
+            conversationNameId = nameDoc.id;
+        } else {
+            conversationNameId = namesSnapshot.docs[0].id;
+        }
+
+        console.log('ConversationNameId:', conversationNameId);
+
+        // Step 2: Create or fetch the conversation
+        const conversationsRef = collection(db, 'conversations');
+        const conversationQuery = query(
+            conversationsRef,
+            where('agentId', '==', agent.id),
+            where('conversationName', '==', conversationNameId),
+            where('isDefault', '==', true)
+        );
+
+        const conversationSnapshot = await getDocs(conversationQuery);
+
+        let chatId;
+        if (conversationSnapshot.empty) {
+            console.log('Creating new default conversation');
+            const chatDoc = await addDoc(conversationsRef, {
+                agentId: agent.id,
+                from: currentUser.uid,
+                conversationName: conversationNameId,
+                timestamp: serverTimestamp(),
+                isDefault: true,
+            });
+            chatId = chatDoc.id;
+        } else {
+            chatId = conversationSnapshot.docs[0].id;
+        }
+
+        console.log('ChatId:', chatId);
+
+        // Step 3: Update currentChat state
+        const newChat = {
+            id: chatId,
+            title: `Chat with ${agent.name}`,
+            agentId: agent.id,
+            participants: [currentUser.uid],
+            isDefault: true,
+            conversationName: conversationNameId,
+        };
+
+        console.log('Setting currentChat:', newChat);
+        setCurrentChat(newChat);
     } catch (error) {
-      console.error('Error in handleAgentClick:', error);
+        console.error('Error in handleAgentClick:', error);
     }
-  };
+};
+
 
   
 
