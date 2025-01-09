@@ -341,56 +341,7 @@ export default function Chat() {
       <h2 className="text-2xl font-bold mb-4">Chat with Agents</h2>
       {error && <div className="text-red-500 mb-4">{error}</div>}
 
-      {/* Prompt Management Section */}
-      <div className="mb-8 bg-white shadow rounded p-6">
-        <h3 className="text-xl font-semibold mb-4">Prompt Management</h3>
-        <div className="grid grid-cols-1 gap-4">
-          <div className="flex gap-4">
-            <button
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
-              onClick={handleGeneratePrompt}
-              disabled={!selectedAgent || !selectedLLM || generatingPrompt}
-            >
-              {generatingPrompt ? 'Generating...' : 'Generate New Prompt'}
-            </button>
-          </div>
-
-          {generatedPrompt && (
-            <div className="mt-4">
-              <h4 className="font-medium mb-2">Generated Prompt:</h4>
-              <div className="bg-gray-50 p-4 rounded mb-4 whitespace-pre-wrap">
-                {generatedPrompt}
-              </div>
-              <button
-                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-                onClick={handleSavePrompt}
-              >
-                Save & Update Agent Prompt
-              </button>
-            </div>
-          )}
-
-          {promptHistory && Object.keys(promptHistory).length > 0 && (
-            <div className="mt-4">
-              <h4 className="font-medium mb-2">Prompt History:</h4>
-              {Object.entries(promptHistory).map(([llm, history]) => (
-                <div key={llm} className="mb-4">
-                  <h5 className="font-medium">{llm}:</h5>
-                  {history.map((entry, index) => (
-                    <div key={index} className="bg-gray-50 p-4 rounded mb-2">
-                      <div className="text-sm text-gray-600 mb-1">
-                        Updated: {new Date(entry.timestamp).toLocaleString()}
-                      </div>
-                      <div className="whitespace-pre-wrap">{entry.prompt}</div>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
+     
       {/* Agent Selection Controls */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <select

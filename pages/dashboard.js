@@ -1,3 +1,6 @@
+
+// pages/dashboard.js
+
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
@@ -7,7 +10,9 @@ import {
   getDoc, 
   query, 
   where, 
-  doc 
+  doc, 
+  addDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -47,40 +52,28 @@ const Dashboard = () => {
   const [authChecked, setAuthChecked] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [userTeam, setUserTeam] = useState(null);
-  const [hasShawnChat, setHasShawnChat] = useState(false); // Check if Shawn's chat exists
-  const [currentChat, setCurrentChat] = useState(null); // Manage the current chat session
+  const [currentChat, setCurrentChat] = useState(null);
 
-  // Authentication and data loading
+  // Check authentication and load user data
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
-        console.log('No user found, redirecting to login');
         router.replace('/');
         return;
       }
-
       try {
-        console.log('Fetching user document...');
         const userDoc = await getDoc(doc(db, 'users', user.uid));
-
         if (!userDoc.exists()) {
-          console.log('User document not found in Firestore');
           router.replace('/');
           return;
         }
-
         const userData = { uid: user.uid, ...userDoc.data() };
         setCurrentUser(userData);
 
-        // Fetch user team data if available
         if (userData.teamId) {
           const teamDoc = await getDoc(doc(db, 'teams', userData.teamId));
-          if (teamDoc.exists()) {
-            setUserTeam(teamDoc.data());
-          }
+          if (teamDoc.exists()) setUserTeam(teamDoc.data());
         }
-
-        await checkShawnChat(user.uid);
       } catch (err) {
         console.error('Error loading user data:', err);
         router.replace('/');
@@ -88,24 +81,66 @@ const Dashboard = () => {
         setAuthChecked(true);
       }
     });
-
     return () => unsubscribe();
   }, []);
 
-  // Check if the user has a chat with Shawn
-  const checkShawnChat = async (userId) => {
+  // Open the default conversation for an agent
+  const handleAgentClick = async (agent) => {
     try {
-      const conversationsRef = collection(db, 'conversations');
-      const q = query(conversationsRef, where('agentId', '==', 'shawn'), where('participants', 'array-contains', userId));
-      const querySnapshot = await getDocs(q);
-      setHasShawnChat(!querySnapshot.empty);
+      const q = query(
+        collection(db, 'conversations'),
+        where('agentId', '==', agent.id),
+        where('conversationName', '==', null)
+      );
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        setCurrentChat({
+          id: null,
+          title: `Chat with ${agent.name}`,
+          agentId: agent.id,
+          participants: [currentUser.uid],
+        });
+      } else {
+        await addDoc(collection(db, 'conversations'), {
+          agentId: agent.id,
+          conversationName: null,
+          from: currentUser.uid,
+          timestamp: serverTimestamp(),
+        });
+        setCurrentChat({
+          id: null,
+          title: `Chat with ${agent.name}`,
+          agentId: agent.id,
+          participants: [currentUser.uid],
+        });
+      }
     } catch (error) {
-      console.error('Error checking Shawn chat:', error);
-      setHasShawnChat(false);
+      console.error('Error opening chat:', error);
     }
   };
 
-  // Show loading state while checking auth
+  // Create and open a new conversation
+  const handleNewConversation = async (agent, name) => {
+    try {
+      await addDoc(collection(db, 'conversations'), {
+        agentId: agent.id,
+        conversationName: name,
+        from: currentUser.uid,
+        timestamp: serverTimestamp(),
+      });
+      setCurrentChat({
+        id: name,
+        title: name,
+        agentId: agent.id,
+        participants: [currentUser.uid],
+      });
+    } catch (error) {
+      console.error('Error creating new conversation:', error);
+    }
+  };
+
+  // Loading state
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -117,114 +152,59 @@ const Dashboard = () => {
     );
   }
 
-  if (!currentUser) {
-    return null;
-  }
+  if (!currentUser) return null;
 
-  // Categorize agents by category
+  // Categorize agents
   const categorizedAgents = agents.reduce((categories, agent) => {
-    const category = agent.category;
-    if (!categories[category]) {
-      categories[category] = [];
-    }
-    categories[category].push(agent);
+    if (!categories[agent.category]) categories[agent.category] = [];
+    categories[agent.category].push(agent);
     return categories;
   }, {});
 
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className="w-64 bg-gray-900 text-white flex flex-col font-medium text-sm">
+      <div className="w-64 bg-gray-900 text-white flex flex-col">
         <div className="p-4 border-b border-gray-700">
           <h1 className="text-xl font-bold">Business Wise365</h1>
         </div>
-
         <ScrollArea className="flex-1">
           <nav className="p-2">
-            {/* Home Button */}
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start mb-1"
-              onClick={() => router.push('/dashboard')}
-            >
+            <Button variant="ghost" onClick={() => router.push('/dashboard')} className="w-full mb-2">
               <Home className="mr-2 h-4 w-4" />
+              Home
             </Button>
-
-            {/* Admin Group First */}
-            {categorizedAgents['Administrative'] && (
-              <div>
-                <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">Admin</div>
-                {categorizedAgents['Administrative'].map((agent) => (
-                  <Button 
-                    key={agent.id} 
-                    variant="ghost" 
-                    className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
-                    onClick={() => setCurrentChat({ id: agent.id, title: `Chat with ${agent.name}`, agentId: agent.id, participants: [currentUser.uid] })}
-                  >
-                    <div className="flex items-center w-full">
-                      <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
-                      <span className="truncate text-sm">{`${agent.name} - ${agent.role}`}</span>
-                    </div>
-                  </Button>
+            {Object.keys(categorizedAgents).map((category) => (
+              <div key={category}>
+                <div className="px-2 text-gray-400">{category}</div>
+                {categorizedAgents[category].map((agent) => (
+                  <div key={agent.id} className="flex items-center gap-2">
+                    <Button variant="ghost" onClick={() => handleAgentClick(agent)} className="flex-1">
+                      {agent.name}
+                    </Button>
+                    <Button size="sm" onClick={() => handleNewConversation(agent, 'New Chat')}>
+                      New Chat
+                    </Button>
+                  </div>
                 ))}
               </div>
-            )}
-
-            {/* Other Categories */}
-            {Object.keys(categorizedAgents).map((category) => (
-              category !== 'Administrative' && category !== 'Projects' && (
-                <div key={category}>
-                  <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">{category}</div>
-                  {categorizedAgents[category].map((agent) => (
-                    <Button 
-                      key={agent.id} 
-                      variant="ghost" 
-                      className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
-                      onClick={() => setCurrentChat({ id: agent.id, title: `Chat with ${agent.name}`, agentId: agent.id, participants: [currentUser.uid] })}
-                    >
-                      <div className="flex items-center w-full">
-                        <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
-                        <span className="truncate text-sm">{`${agent.name} - ${agent.role}`}</span>
-                      </div>
-                    </Button>
-                  ))}
-                </div>
-              )
             ))}
-
-            {/* Projects */}
-            <div className="px-2 mb-1 text-sm text-gray-400 font-semibold">Projects</div>
-            <Button 
-              variant="ghost" 
-              className="w-full h-8 justify-start group px-2 py-1 mb-0.5"
-              onClick={() => router.push('/projects')}
-            >
-              <div className="flex items-center w-full">
-                <ChevronRight className="h-4 w-4 min-w-4 mr-1" />
-                <span className="text-sm">Manage Projects</span>
-              </div>
-            </Button>
           </nav>
         </ScrollArea>
-
-        <div className="p-4 border-t border-gray-700">
-          <Button variant="ghost" className="w-full justify-start">
+        <div className="p-4">
+          <Button variant="ghost">
             <Settings className="h-4 w-4 mr-2" />
             Settings
           </Button>
         </div>
       </div>
-
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1">
         {currentChat ? (
           <ChatInterface
             chatId={currentChat.id}
-            chatType="agent_chat"
-            participants={currentChat.participants}
-            title={currentChat.title}
-            userId={currentUser.uid}
             agentId={currentChat.agentId}
+            userId={currentUser.uid}
           />
         ) : (
           <DashboardContent currentUser={currentUser} userTeam={userTeam} />
