@@ -170,10 +170,13 @@ useEffect(() => {
           messages: [
             { role: 'system', content: prompt },
             { role: 'user', content: newMessage }
-          ]
+          ],
+          agentId,
+          conversationName: conversationNameRef,
+          isDefault
         }),
       });
-  
+      
       console.log('LLM API response status:', response.status);
       if (!response.ok) {
         console.error('LLM API error details:', {
