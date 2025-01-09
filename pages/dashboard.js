@@ -57,6 +57,14 @@ const Dashboard = () => {
   const [nestedChats, setNestedChats] = useState({});
   const [sidebarWidth, setSidebarWidth] = useState(250);
 
+  const handleContextMenu = async (e, agent) => {
+    e.preventDefault(); // Prevent default right-click menu
+    const name = prompt('Enter a name for the new chat:');
+    if (name) {
+      await handleNewConversation(agent, name);
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -126,40 +134,32 @@ const Dashboard = () => {
   };
 
   const handleAgentClick = async (agent) => {
-    await fetchNestedChats(agent.id);
-    
-    // Try to find or create a default chat for this agent
-    const conversationsRef = collection(db, 'conversations');
-    const defaultChatQuery = query(
-      conversationsRef,
-      where('agentId', '==', agent.id),
-      where('from', '==', currentUser.uid),
-      where('isDefault', '==', true)
-    );
-    
-    const snapshot = await getDocs(defaultChatQuery);
-    let chatId;
-    
-    if (snapshot.empty) {
-      // Create a new default chat
+    try {
+      console.log('Agent clicked:', agent.name);
+      await fetchNestedChats(agent.id);
+      
+      // Create a default chat document
+      const conversationsRef = collection(db, 'conversations');
       const docRef = await addDoc(conversationsRef, {
         agentId: agent.id,
         from: currentUser.uid,
         isDefault: true,
         timestamp: serverTimestamp(),
+        messages: [] // Initialize empty messages array
       });
-      chatId = docRef.id;
-    } else {
-      chatId = snapshot.docs[0].id;
-    }
   
-    setCurrentChat({
-      id: chatId,
-      title: `Chat with ${agent.name}`,
-      agentId: agent.id,
-      participants: [currentUser.uid],
-      isDefault: true
-    });
+      console.log('Created default chat with ID:', docRef.id);
+      
+      setCurrentChat({
+        id: docRef.id,
+        title: `Chat with ${agent.name}`,
+        agentId: agent.id,
+        participants: [currentUser.uid],
+        isDefault: true
+      });
+    } catch (error) {
+      console.error('Error in handleAgentClick:', error);
+    }
   };
 
 
@@ -215,6 +215,7 @@ const Dashboard = () => {
               <div
                 className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700"
                 onClick={() => handleAgentClick(agent)}
+                onContextMenu={(e) => handleContextMenu(e, agent)} // Add right-click handler
               >
                 <span className="text-sm">{agent.name}</span>
                 <span className="text-xs text-gray-400">{agent.role}</span>
@@ -247,6 +248,8 @@ const Dashboard = () => {
             chatId={currentChat.id}
             agentId={currentChat.agentId}
             userId={currentUser.uid}
+            isDefault={currentChat.isDefault}
+            title={currentChat.title}
           />
         ) : (
           <DashboardContent currentUser={currentUser} />
