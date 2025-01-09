@@ -15,36 +15,44 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [agentPrompt, setAgentPrompt] = useState('');
-  const [conversationNameRef, setConversationNameRef] = useState(chatId || null);
   const scrollRef = useRef(null);
+
+  // Initialize conversationNameRef
+  const conversationNameRef = chatId;
 
   // Fetch Agent Prompt
   useEffect(() => {
     const fetchAgentPrompt = async () => {
       try {
-        if (!agentId) return;
+        if (!agentId) {
+          console.error('Agent ID is missing');
+          return;
+        }
+
         const agentDoc = await getDoc(doc(db, 'agentsDefined', agentId));
-        const agentData = agentDoc.exists() ? agentDoc.data() : null;
-        if (agentData) {
+        if (agentDoc.exists()) {
+          const agentData = agentDoc.data();
           setAgentPrompt(agentData.prompt?.openAI?.description || '');
+          console.log('Agent prompt loaded:', agentData.prompt?.openAI?.description);
         } else {
-          console.error('Agent prompt not found for agentId:', agentId);
+          console.error('Agent not found:', agentId);
         }
       } catch (error) {
         console.error('Error fetching agent prompt:', error);
       }
     };
+
     fetchAgentPrompt();
   }, [agentId]);
 
   // Fetch Messages
   useEffect(() => {
     if (!conversationNameRef) {
-      console.error('No conversationNameRef provided. Skipping message fetch.');
+      console.error('Conversation name reference is missing.');
       return;
     }
 
-    console.log('Fetching messages for conversationNameRef:', conversationNameRef);
+    console.log('Setting up listener for messages with conversationNameRef:', conversationNameRef);
 
     const messagesRef = collection(db, 'conversations');
     const q = query(
@@ -54,7 +62,7 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const fetchedMessages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       console.log('Fetched messages:', fetchedMessages);
       setMessages(fetchedMessages);
 
@@ -71,14 +79,20 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
   const handleSendMessage = async (e) => {
     e.preventDefault();
 
-    if (!newMessage.trim() || !conversationNameRef || !agentPrompt) {
-      console.error('Missing required fields for sending a message.');
+    if (!newMessage.trim()) {
+      console.error('Message input is empty.');
+      return;
+    }
+
+    if (!conversationNameRef) {
+      console.error('Conversation name reference is missing.');
       return;
     }
 
     setLoading(true);
 
     try {
+      // Save user message to Firebase
       const userMessage = {
         agentId,
         content: newMessage,
@@ -89,10 +103,9 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
         type: 'user',
       };
 
-      // Save user message to Firebase
       const messagesRef = collection(db, 'conversations');
       await addDoc(messagesRef, userMessage);
-      console.log('User message saved:', userMessage);
+      console.log('User message logged in Firebase:', userMessage);
 
       // Clear input field
       setNewMessage('');
@@ -123,9 +136,9 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
 
         // Save agent response to Firebase
         await addDoc(messagesRef, agentMessage);
-        console.log('Agent response saved:', agentMessage);
+        console.log('Agent response logged in Firebase:', agentMessage);
       } else {
-        console.error('Error from LLM API:', await response.text());
+        console.error('LLM API error:', await response.text());
       }
     } catch (error) {
       console.error('Error sending message:', error);
