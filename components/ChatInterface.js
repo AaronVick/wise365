@@ -26,32 +26,44 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
   }, [chatId, agentId, userId, isDefault, title]);
 
   // First get the conversationName reference
-  useEffect(() => {
-    const getConversationRef = async () => {
-      if (!chatId) return;
+useEffect(() => {
+  const getConversationRef = async () => {
+    console.log('Starting getConversationRef with chatId:', chatId);
+    if (!chatId) {
+      console.log('No chatId provided');
+      return;
+    }
 
-      try {
-        const chatDoc = await getDoc(doc(db, 'conversations', chatId));
-        if (!chatDoc.exists()) {
-          console.error('Chat document not found:', chatId);
-          return;
-        }
-
-        const chatData = chatDoc.data();
-        console.log('Found chat data:', chatData);
-        setConversationNameRef(chatData.conversationName);
-      } catch (error) {
-        console.error('Error getting conversation reference:', error);
+    try {
+      const chatDoc = await getDoc(doc(db, 'conversations', chatId));
+      console.log('ChatDoc exists?', chatDoc.exists());
+      if (!chatDoc.exists()) {
+        console.error('Chat document not found:', chatId);
+        return;
       }
-    };
 
-    getConversationRef();
-  }, [chatId]);
+      const chatData = chatDoc.data();
+      console.log('Found chat data:', {
+        chatData,
+        conversationName: chatData.conversationName
+      });
+      setConversationNameRef(chatData.conversationName);
+    } catch (error) {
+      console.error('Error getting conversation reference:', error);
+    }
+  };
+
+  getConversationRef();
+}, [chatId]);
 
   // Fetch messages for the selected conversation
   useEffect(() => {
-    if (!conversationNameRef) return;
-
+    console.log('Fetch messages useEffect triggered with conversationNameRef:', conversationNameRef);
+    if (!conversationNameRef) {
+      console.log('No conversationNameRef, skipping message fetch');
+      return;
+    }
+  
     console.log('Fetching messages for conversationName:', conversationNameRef);
     const messagesRef = collection(db, 'conversations');
     const q = query(
@@ -59,33 +71,43 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
       where('conversationName', '==', conversationNameRef),
       orderBy('timestamp', 'asc')
     );
-
+  
+    console.log('Setting up message listener');
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const chatMessages = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      console.log('Found messages:', chatMessages);
+      console.log('Message snapshot received, docs count:', snapshot.docs.length);
+      const chatMessages = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        console.log('Message data:', data);
+        return {
+          id: doc.id,
+          ...data,
+        };
+      });
+      console.log('Processed messages:', chatMessages);
       setMessages(chatMessages);
-
+  
       if (scrollRef.current) {
         scrollRef.current.scrollIntoView({ behavior: 'smooth' });
       }
     });
-
-    return () => unsubscribe();
+  
+    return () => {
+      console.log('Cleaning up message listener');
+      unsubscribe();
+    };
   }, [conversationNameRef]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    console.log('Starting handleSendMessage...');
+    console.log('=== Starting handleSendMessage ===');
     console.log('Current message:', newMessage);
     console.log('ConversationNameRef:', conversationNameRef);
+    console.log('Props:', { chatId, agentId, userId, isDefault, title });
   
     if (!newMessage.trim() || !conversationNameRef) {
       console.log('Missing required data:', {
-        newMessage: !!newMessage.trim(),
-        conversationNameRef: !!conversationNameRef
+        hasMessage: !!newMessage.trim(),
+        hasConversationNameRef: !!conversationNameRef
       });
       return;
     }
@@ -93,15 +115,21 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
     setLoading(true);
   
     try {
-      console.log('Getting agent prompt for:', agentId);
-      // Get the agent's prompt from agentsDefined
+      // Get agent prompt
+      console.log('Fetching agent prompt from agentsDefined:', agentId);
       const agentDoc = await getDoc(doc(db, 'agentsDefined', agentId));
+      console.log('Agent doc exists?', agentDoc.exists());
+      
       if (!agentDoc.exists()) {
         throw new Error('Agent prompt not found');
       }
   
       const agentData = agentDoc.data();
       console.log('Agent data:', agentData);
+      console.log('Agent prompts:', {
+        anthropic: agentData.prompt?.Anthropic?.description,
+        openai: agentData.prompt?.openAI?.description
+      });
   
       const prompt = agentData.prompt?.Anthropic?.description || 
                     agentData.prompt?.openAI?.description;
@@ -110,10 +138,9 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
         throw new Error('No prompt found for agent');
       }
   
-      console.log('Saving user message...');
-      // Log the user's message
-      const messagesRef = collection(db, 'conversations');
-      await addDoc(messagesRef, {
+      // Save user message
+      console.log('Saving user message to Firebase...');
+      const messageData = {
         agentId,
         content: newMessage,
         conversationName: conversationNameRef,
@@ -121,13 +148,21 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
         isDefault,
         timestamp: serverTimestamp(),
         type: 'user'
-      });
+      };
+      console.log('Message data to save:', messageData);
   
-      console.log('User message saved, clearing input...');
+      const messagesRef = collection(db, 'conversations');
+      const userMessageDoc = await addDoc(messagesRef, messageData);
+      console.log('User message saved with ID:', userMessageDoc.id);
+  
       setNewMessage('');
   
-      console.log('Sending to LLM API...');
-      // Send to LLM API with agent's prompt
+      // Call LLM API
+      console.log('Calling LLM API with payload:', {
+        system: prompt,
+        user: newMessage
+      });
+      
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -139,17 +174,22 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
         }),
       });
   
+      console.log('LLM API response status:', response.status);
       if (!response.ok) {
-        console.error('LLM API error:', response.status, response.statusText);
+        console.error('LLM API error details:', {
+          status: response.status,
+          statusText: response.statusText,
+          text: await response.text()
+        });
         throw new Error('Failed to get LLM response');
       }
   
       const result = await response.json();
-      console.log('Got LLM response:', result);
+      console.log('LLM API result:', result);
   
-      console.log('Saving agent response...');
-      // Log the agent's response
-      await addDoc(messagesRef, {
+      // Save agent response
+      console.log('Saving agent response to Firebase...');
+      const agentMessageData = {
         agentId,
         content: result.reply,
         conversationName: conversationNameRef,
@@ -157,13 +197,18 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
         isDefault,
         timestamp: serverTimestamp(),
         type: 'agent'
-      });
+      };
+      console.log('Agent message data to save:', agentMessageData);
+  
+      const agentMessageDoc = await addDoc(messagesRef, agentMessageData);
+      console.log('Agent response saved with ID:', agentMessageDoc.id);
   
     } catch (error) {
       console.error('Error in chat:', error);
+      console.error('Error stack:', error.stack);
     } finally {
       setLoading(false);
-      console.log('Message handling complete');
+      console.log('=== Message handling complete ===');
     }
   };
   
