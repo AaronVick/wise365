@@ -15,70 +15,118 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversation
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [agentPrompt, setAgentPrompt] = useState('');
+  const [userName, setUserName] = useState('');
   const scrollRef = useRef(null);
 
   // Use the conversationName from props
   const conversationNameRef = conversationName;
 
-  // Fetch Agent Prompt
+  // Function to get chat summary
+  const getChatSummary = async (previousMessages) => {
+    if (previousMessages.length === 0) return '';
+
+    try {
+      // Format previous messages for summarization
+      const chatHistory = previousMessages
+        .map(msg => `${msg.type === 'user' ? 'User' : 'Agent'}: ${msg.content}`)
+        .join('\n');
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: 'Please provide a brief, relevant summary of the following conversation history. Focus on key points, decisions, and important context. Keep it concise and actionable.'
+            },
+            { role: 'user', content: chatHistory }
+          ],
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        return result.reply;
+      }
+      return '';
+    } catch (error) {
+      console.error('Error getting chat summary:', error);
+      return '';
+    }
+  };
+
+  // Fetch Agent Prompt and User Info
   useEffect(() => {
-    const fetchAgentPrompt = async () => {
+    const fetchAgentPromptAndUser = async () => {
       try {
-        if (!agentId) {
-          console.error('Agent ID is missing');
+        if (!agentId || !userId) {
+          console.error('Agent ID or User ID is missing');
           return;
         }
         
-        // Query agentsDefined collection by agentId field
+        // Get agent prompt
         const agentsDefinedRef = collection(db, 'agentsDefined');
         const q = query(agentsDefinedRef, where('agentId', '==', agentId));
         const querySnapshot = await getDocs(q);
+
+        // Get user info
+        const usersRef = collection(db, 'users');
+        const userQuery = query(usersRef, where('uid', '==', userId));
+        const userSnapshot = await getDocs(userQuery);
+        
+        if (userSnapshot.docs.length > 0) {
+          const userData = userSnapshot.docs[0].data();
+          const firstName = userData.name?.split(' ')[0] || 'User';
+          setUserName(firstName);
+        }
 
         if (!querySnapshot.empty) {
           const agentDoc = querySnapshot.docs[0];
           const agentData = agentDoc.data();
           const openAIPrompt = agentData.prompt?.openAI?.description;
           if (openAIPrompt) {
-            setAgentPrompt(openAIPrompt);
+            const promptWithUser = `You are speaking with ${userName || 'the user'}. ${openAIPrompt}`;
+            setAgentPrompt(promptWithUser);
           }
         }
       } catch (error) {
-        console.error('Error fetching agent prompt:', error);
+        console.error('Error fetching agent prompt or user info:', error);
       }
     };
 
-    fetchAgentPrompt();
-  }, [agentId]);
+    fetchAgentPromptAndUser();
+  }, [agentId, userId, userName]);
 
   // Fetch Messages
   useEffect(() => {
     if (!conversationNameRef) {
-        console.error('No conversationNameRef provided. Skipping message fetch.');
-        return;
+      console.error('No conversationNameRef provided. Skipping message fetch.');
+      return;
     }
 
     const messagesRef = collection(db, 'conversations');
     const q = query(
-        messagesRef,
-        where('conversationName', '==', conversationNameRef),
-        orderBy('timestamp', 'asc')
+      messagesRef,
+      where('conversationName', '==', conversationNameRef),
+      orderBy('timestamp', 'asc')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        const fetchedMessages = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
-        setMessages(fetchedMessages);
+      const fetchedMessages = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setMessages(fetchedMessages);
 
-        // Automatically scroll to the bottom of the chat
-        if (scrollRef.current) {
-            scrollRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
+      // Automatically scroll to the bottom of the chat
+      if (scrollRef.current) {
+        scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
     });
 
     return () => unsubscribe();
-}, [conversationNameRef]);
+  }, [conversationNameRef]);
 
   // Handle Sending Messages
   const handleSendMessage = async (e) => {
@@ -89,56 +137,60 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversation
     setLoading(true);
 
     try {
-        // Save user message to Firebase
-        const userMessage = {
-            agentId,
-            content: newMessage,
-            conversationName: conversationNameRef,
-            from: userId,
-            isDefault,
-            timestamp: serverTimestamp(),
-            type: 'user',
+      // Save user message to Firebase
+      const userMessage = {
+        agentId,
+        content: newMessage,
+        conversationName: conversationNameRef,
+        from: userId,
+        isDefault,
+        timestamp: serverTimestamp(),
+        type: 'user',
+      };
+
+      const messagesRef = collection(db, 'conversations');
+      await addDoc(messagesRef, userMessage);
+
+      // Clear input field
+      setNewMessage('');
+
+      // Get summary of previous messages
+      const chatSummary = await getChatSummary(messages);
+      const contextPrefix = chatSummary ? `Previous conversation summary: ${chatSummary}\n\nCurrent conversation:` : '';
+
+      // Call LLM API for response
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: agentPrompt },
+            { role: 'user', content: `${contextPrefix}\n\n${newMessage}` },
+          ],
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const agentMessage = {
+          agentId,
+          content: result.reply,
+          conversationName: conversationNameRef,
+          from: agentId,
+          isDefault,
+          timestamp: serverTimestamp(),
+          type: 'agent',
         };
 
-        const messagesRef = collection(db, 'conversations');
-        await addDoc(messagesRef, userMessage);
-
-        // Clear input field
-        setNewMessage('');
-
-        // Call LLM API for response
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                messages: [
-                    { role: 'system', content: agentPrompt },
-                    { role: 'user', content: newMessage },
-                ],
-            }),
-        });
-
-        if (response.ok) {
-            const result = await response.json();
-            const agentMessage = {
-                agentId,
-                content: result.reply,
-                conversationName: conversationNameRef,
-                from: agentId,
-                isDefault,
-                timestamp: serverTimestamp(),
-                type: 'agent',
-            };
-
-            // Save agent response to Firebase
-            await addDoc(messagesRef, agentMessage);
-        }
+        // Save agent response to Firebase
+        await addDoc(messagesRef, agentMessage);
+      }
     } catch (error) {
-        console.error('Error sending message:', error);
+      console.error('Error sending message:', error);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-};
+  };
 
   return (
     <div className="flex flex-col h-full">
