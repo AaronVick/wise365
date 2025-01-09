@@ -28,8 +28,6 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversation
           console.error('Agent ID is missing');
           return;
         }
-
-        console.log('Fetching prompt for agent:', agentId);
         
         // Query agentsDefined collection by agentId field
         const agentsDefinedRef = collection(db, 'agentsDefined');
@@ -39,24 +37,10 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversation
         if (!querySnapshot.empty) {
           const agentDoc = querySnapshot.docs[0];
           const agentData = agentDoc.data();
-          
-          // Get OpenAI-specific prompt
           const openAIPrompt = agentData.prompt?.openAI?.description;
-          console.log('Found agent data:', {
-            agentId,
-            hasPrompt: !!openAIPrompt,
-            promptStart: openAIPrompt ? openAIPrompt.substring(0, 100) + '...' : null,
-            promptLength: openAIPrompt?.length || 0
-          });
-
           if (openAIPrompt) {
             setAgentPrompt(openAIPrompt);
-            console.log('Successfully set agent prompt');
-          } else {
-            console.error('OpenAI prompt missing in agent data:', agentData);
           }
-        } else {
-          console.error('No agent definition found with agentId:', agentId);
         }
       } catch (error) {
         console.error('Error fetching agent prompt:', error);
@@ -69,121 +53,92 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversation
   // Fetch Messages
   useEffect(() => {
     if (!conversationNameRef) {
-      console.error('No conversationNameRef provided. Skipping message fetch.');
-      return;
+        console.error('No conversationNameRef provided. Skipping message fetch.');
+        return;
     }
-
-    console.log('Fetching messages for conversationNameRef:', conversationNameRef);
 
     const messagesRef = collection(db, 'conversations');
     const q = query(
-      messagesRef,
-      where('conversationName', '==', conversationNameRef),
-      orderBy('timestamp', 'asc')
+        messagesRef,
+        where('conversationName', '==', conversationNameRef),
+        orderBy('timestamp', 'asc')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedMessages = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      console.log('Fetched messages count:', fetchedMessages.length);
+        const fetchedMessages = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+        setMessages(fetchedMessages);
 
-      setMessages(fetchedMessages);
-
-      // Automatically scroll to the bottom of the chat
-      if (scrollRef.current) {
-        scrollRef.current.scrollIntoView({ behavior: 'smooth' });
-      }
+        // Automatically scroll to the bottom of the chat
+        if (scrollRef.current) {
+            scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
     });
 
     return () => unsubscribe();
-  }, [conversationNameRef]);
+}, [conversationNameRef]);
 
   // Handle Sending Messages
   const handleSendMessage = async (e) => {
     e.preventDefault();
 
-    if (!newMessage.trim()) {
-      console.error('Message input is empty.');
-      return;
-    }
-
-    if (!conversationNameRef) {
-      console.error('Conversation name reference is missing.');
-      return;
-    }
-
-    if (!agentPrompt) {
-      console.error('Agent prompt is not loaded yet.');
-      return;
-    }
+    if (!newMessage.trim() || !conversationNameRef) return;
 
     setLoading(true);
 
     try {
-      // Save user message to Firebase
-      const userMessage = {
-        agentId,
-        content: newMessage,
-        conversationName: conversationNameRef,
-        from: userId,
-        isDefault,
-        timestamp: serverTimestamp(),
-        type: 'user',
-      };
-
-      const messagesRef = collection(db, 'conversations');
-      await addDoc(messagesRef, userMessage);
-      console.log('User message saved to Firebase');
-
-      // Clear input field
-      setNewMessage('');
-
-      // Prepare messages for LLM
-      const messages = [
-        { role: 'system', content: agentPrompt },
-        { role: 'user', content: newMessage }
-      ];
-
-      console.log('Sending to LLM:', {
-        agentId,
-        hasSystemPrompt: !!agentPrompt,
-        systemPromptLength: agentPrompt.length,
-        messageContent: newMessage
-      });
-
-      // Call LLM API for response
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const agentMessage = {
-          agentId,
-          content: result.reply,
-          conversationName: conversationNameRef,
-          from: agentId,
-          isDefault,
-          timestamp: serverTimestamp(),
-          type: 'agent',
+        // Save user message to Firebase
+        const userMessage = {
+            agentId,
+            content: newMessage,
+            conversationName: conversationNameRef,
+            from: userId,
+            isDefault,
+            timestamp: serverTimestamp(),
+            type: 'user',
         };
 
-        // Save agent response to Firebase
-        await addDoc(messagesRef, agentMessage);
-        console.log('Agent response saved to Firebase');
-      } else {
-        console.error('Error from LLM API:', await response.text());
-      }
+        const messagesRef = collection(db, 'conversations');
+        await addDoc(messagesRef, userMessage);
+
+        // Clear input field
+        setNewMessage('');
+
+        // Call LLM API for response
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                messages: [
+                    { role: 'system', content: agentPrompt },
+                    { role: 'user', content: newMessage },
+                ],
+            }),
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            const agentMessage = {
+                agentId,
+                content: result.reply,
+                conversationName: conversationNameRef,
+                from: agentId,
+                isDefault,
+                timestamp: serverTimestamp(),
+                type: 'agent',
+            };
+
+            // Save agent response to Firebase
+            await addDoc(messagesRef, agentMessage);
+        }
     } catch (error) {
-      console.error('Error in message handling:', error);
+        console.error('Error sending message:', error);
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
 
   return (
     <div className="flex flex-col h-full">
