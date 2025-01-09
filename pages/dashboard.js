@@ -82,6 +82,43 @@ const Dashboard = () => {
     return () => unsubscribe();
   }, []);
 
+
+  useEffect(() => {
+    const loadAllNestedChats = async () => {
+      if (!currentUser?.uid) return;
+      
+      try {
+        // Get all agents' nested chats at once
+        const namesQuery = query(
+          collection(db, 'conversationNames'),
+          where('userId', '==', currentUser.uid)
+        );
+        const namesSnapshot = await getDocs(namesQuery);
+        const conversationsByAgent = {};
+        
+        // Group conversations by agentId
+        namesSnapshot.docs.forEach(doc => {
+          const data = doc.data();
+          if (!conversationsByAgent[data.agentId]) {
+            conversationsByAgent[data.agentId] = [];
+          }
+          conversationsByAgent[data.agentId].push({
+            id: doc.id,
+            displayName: data.conversationName,
+            ...data
+          });
+        });
+  
+        setNestedChats(conversationsByAgent);
+      } catch (error) {
+        console.error('Error loading nested chats:', error);
+      }
+    };
+  
+    loadAllNestedChats();
+  }, [currentUser?.uid]);
+
+
   const fetchNestedChats = async (agentId) => {
     try {
       // First get all conversationNames for this agent
@@ -119,31 +156,32 @@ const Dashboard = () => {
   };
 
   const renderNestedChats = (agentId) => {
-  const chats = nestedChats[agentId] || [];
-  return (
-    <div className="ml-4 space-y-1">
-      {chats.map((chat) => (
-        <Button
-          key={chat.id}
-          variant="ghost"
-          className="text-left text-sm w-full truncate py-1"
-          onClick={() =>
-            setCurrentChat({
-              id: chat.id,
-              title: chat.displayName,  // Use the display name
-              agentId: chat.agentId,
-              participants: [currentUser.uid],
-              isDefault: false,
-              conversationName: chat.conversationName  // Keep the reference ID
-            })
-          }
-        >
-          {chat.displayName}  {/* Use the display name */}
-        </Button>
-      ))}
-    </div>
-  );
-};
+    const chats = nestedChats[agentId] || [];
+    return (
+      <div className="ml-4 space-y-1">
+        {chats.filter(chat => !chat.isDefault).map((chat) => (
+          <Button
+            key={chat.id}
+            variant="ghost"
+            className="text-left text-sm w-full truncate py-1"
+            onClick={() =>
+              setCurrentChat({
+                id: chat.id,
+                title: chat.displayName,
+                agentId: chat.agentId,
+                participants: [currentUser.uid],
+                isDefault: false,
+                conversationName: chat.id
+              })
+            }
+          >
+            {chat.displayName}
+          </Button>
+        ))}
+      </div>
+    );
+  };
+  
 
   const handleContextMenu = async (e, agent) => {
     e.preventDefault();
@@ -190,55 +228,74 @@ const Dashboard = () => {
   };
 
   const handleAgentClick = async (agent) => {
-    try {
-      console.log('1. Agent clicked:', agent.name);
-      await fetchNestedChats(agent.id);
-      
-      const conversationsRef = collection(db, 'conversations');
-      const defaultChatQuery = query(
-        conversationsRef,
-        where('agentId', '==', agent.id),
-        where('from', '==', currentUser.uid),
-        where('isDefault', '==', true)
-      );
-      
-      console.log('2. Searching for existing default chat');
-      const snapshot = await getDocs(defaultChatQuery);
-      let chatId;
-      
-      if (snapshot.empty) {
-        console.log('3a. No default chat found, creating new one');
-        const docRef = await addDoc(conversationsRef, {
-          agentId: agent.id,
-          from: currentUser.uid,
-          isDefault: true,
-          timestamp: serverTimestamp(),
-          type: 'parent',
-          conversationName: null
-        });
-        chatId = docRef.id;
-        console.log('3b. Created new chat with ID:', chatId);
-      } else {
-        console.log('3c. Found existing default chat');
-        chatId = snapshot.docs[0].id;
-        console.log('3d. Using existing chat ID:', chatId);
-      }
-  
-      const newChat = {
-        id: chatId,
-        title: `Chat with ${agent.name}`,
+  try {
+    console.log('1. Agent clicked:', agent.name);
+    
+    // Check for existing default chat in conversationNames
+    const namesQuery = query(
+      collection(db, 'conversationNames'),
+      where('agentId', '==', agent.id),
+      where('userId', '==', currentUser.uid),
+      where('isDefault', '==', true)
+    );
+    
+    const namesSnapshot = await getDocs(namesQuery);
+    let conversationNameId;
+    
+    if (namesSnapshot.empty) {
+      // Create new default chat in conversationNames
+      const nameRef = await addDoc(collection(db, 'conversationNames'), {
         agentId: agent.id,
-        participants: [currentUser.uid],
+        conversationName: `Chat with ${agent.name}`,
+        userId: currentUser.uid,
         isDefault: true,
-        conversationName: null
-      };
-      
-      console.log('4. Setting currentChat to:', newChat);
-      setCurrentChat(newChat);
-    } catch (error) {
-      console.error('Error in handleAgentClick:', error);
+        projectName: ""
+      });
+      conversationNameId = nameRef.id;
+    } else {
+      conversationNameId = namesSnapshot.docs[0].id;
     }
-  };
+
+    // Now get or create the conversation document
+    const conversationsQuery = query(
+      collection(db, 'conversations'),
+      where('conversationName', '==', conversationNameId),
+      where('from', '==', currentUser.uid),
+      limit(1)
+    );
+
+    const conversationSnapshot = await getDocs(conversationsQuery);
+    let chatId;
+
+    if (conversationSnapshot.empty) {
+      // Create new conversation document
+      const docRef = await addDoc(collection(db, 'conversations'), {
+        agentId: agent.id,
+        from: currentUser.uid,
+        conversationName: conversationNameId,
+        timestamp: serverTimestamp()
+      });
+      chatId = docRef.id;
+    } else {
+      chatId = conversationSnapshot.docs[0].id;
+    }
+
+    const newChat = {
+      id: chatId,
+      title: `Chat with ${agent.name}`,
+      agentId: agent.id,
+      participants: [currentUser.uid],
+      isDefault: true,
+      conversationName: conversationNameId
+    };
+    
+    console.log('4. Setting currentChat to:', newChat);
+    setCurrentChat(newChat);
+  } catch (error) {
+    console.error('Error in handleAgentClick:', error);
+  }
+};
+
   
 
   const handleSidebarResize = (e) => {
