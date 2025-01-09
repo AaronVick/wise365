@@ -57,14 +57,7 @@ const Dashboard = () => {
   const [nestedChats, setNestedChats] = useState({});
   const [sidebarWidth, setSidebarWidth] = useState(250);
 
-  const handleContextMenu = async (e, agent) => {
-    e.preventDefault(); // Prevent default right-click menu
-    const name = prompt('Enter a name for the new chat:');
-    if (name) {
-      await handleNewConversation(agent, name);
-    }
-  };
-
+  
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -133,25 +126,70 @@ const Dashboard = () => {
     );
   };
 
+  const handleContextMenu = async (e, agent) => {
+    e.preventDefault();
+    const name = prompt('Enter a name for the new chat:');
+    if (name) {
+      try {
+        const docRef = await addDoc(collection(db, 'conversations'), {
+          agentId: agent.id,
+          conversationName: name,
+          from: currentUser.uid,
+          timestamp: serverTimestamp(),
+          isDefault: false,
+          messages: []
+        });
+  
+        setCurrentChat({
+          id: docRef.id,
+          title: name,
+          agentId: agent.id,
+          participants: [currentUser.uid],
+          isDefault: false
+        });
+  
+        await fetchNestedChats(agent.id);
+      } catch (error) {
+        console.error('Error creating named chat:', error);
+      }
+    }
+  };
+
+
   const handleAgentClick = async (agent) => {
     try {
-      console.log('Agent clicked:', agent.name);
       await fetchNestedChats(agent.id);
       
-      // Create a default chat document
+      // Check for existing default chat first
       const conversationsRef = collection(db, 'conversations');
-      const docRef = await addDoc(conversationsRef, {
-        agentId: agent.id,
-        from: currentUser.uid,
-        isDefault: true,
-        timestamp: serverTimestamp(),
-        messages: [] // Initialize empty messages array
-      });
-  
-      console.log('Created default chat with ID:', docRef.id);
+      const defaultChatQuery = query(
+        conversationsRef,
+        where('agentId', '==', agent.id),
+        where('from', '==', currentUser.uid),
+        where('isDefault', '==', true)
+      );
       
+      const snapshot = await getDocs(defaultChatQuery);
+      let chatId;
+      
+      if (snapshot.empty) {
+        // Create new default chat if none exists
+        const docRef = await addDoc(conversationsRef, {
+          agentId: agent.id,
+          from: currentUser.uid,
+          isDefault: true,
+          timestamp: serverTimestamp(),
+          messages: [],
+          conversationName: null  // Explicitly set to null for default chats
+        });
+        chatId = docRef.id;
+      } else {
+        // Use existing default chat
+        chatId = snapshot.docs[0].id;
+      }
+  
       setCurrentChat({
-        id: docRef.id,
+        id: chatId,
         title: `Chat with ${agent.name}`,
         agentId: agent.id,
         participants: [currentUser.uid],
@@ -163,32 +201,7 @@ const Dashboard = () => {
   };
 
 
-  const handleNewConversation = async (agent) => {
-  const name = prompt('Enter a name for the new chat:');
-  if (!name) return;
-
-  try {
-    const docRef = await addDoc(collection(db, 'conversations'), {
-      agentId: agent.id,
-      conversationName: name,
-      from: currentUser.uid,
-      timestamp: serverTimestamp(),
-      isDefault: false
-    });
-
-    setCurrentChat({
-      id: docRef.id,
-      title: name,
-      agentId: agent.id,
-      participants: [currentUser.uid],
-      isDefault: false
-    });
-
-    await fetchNestedChats(agent.id);
-  } catch (error) {
-    console.error('Error creating new conversation:', error);
-  }
-};
+  
 
   const handleSidebarResize = (e) => {
     const newWidth = Math.min(Math.max(e.clientX, 200), window.innerWidth / 3);

@@ -1,14 +1,6 @@
-// components/ui/ChatInterface.js
-import React, { useState, useEffect, useRef } from 'react';
-import { Send } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+// components/ChatInterface.js
 
-const ChatInterface = ({ chatId, agentId, userId }) => {
+const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,11 +8,13 @@ const ChatInterface = ({ chatId, agentId, userId }) => {
 
   // Fetch messages for the selected conversation
   useEffect(() => {
+    if (!chatId) return;
+
     const messagesRef = collection(db, 'conversations');
     const q = query(
       messagesRef,
       where('agentId', '==', agentId),
-      where('conversationId', '==', chatId),
+      where('chatId', '==', chatId),  // Use chatId to group messages
       orderBy('timestamp', 'asc')
     );
 
@@ -48,44 +42,41 @@ const ChatInterface = ({ chatId, agentId, userId }) => {
     setLoading(true);
 
     try {
+      // Get the parent chat document to get conversation details
+      const chatDoc = await getDoc(doc(db, 'conversations', chatId));
+      if (!chatDoc.exists()) throw new Error('Chat not found');
+      const chatData = chatDoc.data();
+
       // Log the user's message in Firebase
       const messagesRef = collection(db, 'conversations');
-      const messageDoc = await addDoc(messagesRef, {
+      await addDoc(messagesRef, {
         agentId,
-        conversationId: chatId,
+        chatId: chatId,
         content: newMessage,
         from: userId,
         timestamp: serverTimestamp(),
-        type: 'user'
+        type: 'user',
+        conversationName: chatData.conversationName, // Inherit from parent chat
+        isDefault: isDefault
       });
-
-      // Get the agent's prompt and role
-      let agentPrompt = '';
-      const agentRef = collection(db, 'agents');
-      const agentSnapshot = await getDocs(query(agentRef, where('id', '==', agentId)));
-      
-      if (!agentSnapshot.empty) {
-        const agentData = agentSnapshot.docs[0].data();
-        agentPrompt = agentData.prompt || `You are ${agentData.name}, ${agentData.role}. Respond accordingly.`;
-      }
 
       setNewMessage('');
 
-      // Communicate with the agent (default ChatGPT for now)
-      const agentDoc = await getDoc(doc(db, 'agentsDefined', agentId));
-      if (!agentDoc.exists()) throw new Error('Agent not found');
+      // Get agent information including prompt
+      const agent = agents.find(a => a.id === agentId);
+      const systemPrompt = `You are ${agent.name}, ${agent.role}. ${
+        isDefault ? 'This is a new conversation.' : `This is a conversation about ${chatData.conversationName}.`
+      } Respond accordingly.`;
 
-      const agentData = agentDoc.data();
-      const prompt = agentData.prompt?.openAI?.description;
-      if (!prompt) throw new Error('No prompt found for the selected agent');
-
-      const response = await fetch('/api/admin/chat', {
+      // Send to LLM API
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          agentId,
-          message: newMessage,
-          prompt,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: newMessage }
+          ]
         }),
       });
 
@@ -95,10 +86,13 @@ const ChatInterface = ({ chatId, agentId, userId }) => {
       // Log the agent's response
       await addDoc(messagesRef, {
         agentId,
-        conversationName: chatId || null,
+        chatId: chatId,
         content: result.reply,
         from: agentId,
         timestamp: serverTimestamp(),
+        type: 'agent',
+        conversationName: chatData.conversationName, // Inherit from parent chat
+        isDefault: isDefault
       });
     } catch (error) {
       console.error('Error sending message:', error);
@@ -109,7 +103,13 @@ const ChatInterface = ({ chatId, agentId, userId }) => {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Add chat title */}
+      <div className="border-b p-4 bg-white">
+        <h2 className="text-lg font-semibold">{title}</h2>
+      </div>
+      
       <ScrollArea className="flex-1 p-4">
+        {/* Rest of the component remains the same */}
         <div className="space-y-4">
           {messages.map((message) => (
             <div
@@ -132,6 +132,7 @@ const ChatInterface = ({ chatId, agentId, userId }) => {
           <div ref={scrollRef} />
         </div>
       </ScrollArea>
+
       <form onSubmit={handleSendMessage} className="border-t p-4">
         <div className="flex space-x-2">
           <Input
@@ -156,5 +157,3 @@ const ChatInterface = ({ chatId, agentId, userId }) => {
     </div>
   );
 };
-
-export default ChatInterface;
