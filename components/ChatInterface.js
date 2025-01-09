@@ -1,11 +1,12 @@
 // components/ui/ChatInterface.js
 import React, { useState, useEffect, useRef } from 'react';
 import { Send } from 'lucide-react';
-import Badge from '@/components/ui/badge'; 
+import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const ChatInterface = ({ chatId, agentId, userId }) => {
   const [messages, setMessages] = useState([]);
@@ -15,8 +16,6 @@ const ChatInterface = ({ chatId, agentId, userId }) => {
 
   // Fetch messages for the selected conversation
   useEffect(() => {
-    if (!chatId) return;
-
     const messagesRef = collection(db, 'conversations');
     const q = query(
       messagesRef,
@@ -66,7 +65,7 @@ const ChatInterface = ({ chatId, agentId, userId }) => {
       if (!agentDoc.exists()) throw new Error('Agent not found');
 
       const agentData = agentDoc.data();
-      const prompt = agentData.prompt.openAI?.description;
+      const prompt = agentData.prompt?.openAI?.description;
       if (!prompt) throw new Error('No prompt found for the selected agent');
 
       const response = await fetch('/api/admin/chat', {
@@ -108,7 +107,13 @@ const ChatInterface = ({ chatId, agentId, userId }) => {
                 message.from === userId ? 'justify-end' : 'justify-start'
               }`}
             >
-              <div className={`p-3 rounded-lg ${message.from === userId ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-800'}`}>
+              <div 
+                className={`p-3 rounded-lg max-w-[70%] ${
+                  message.from === userId 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-gray-100 text-gray-800'
+                }`}
+              >
                 <p>{message.content}</p>
               </div>
             </div>
@@ -117,15 +122,23 @@ const ChatInterface = ({ chatId, agentId, userId }) => {
         </div>
       </ScrollArea>
       <form onSubmit={handleSendMessage} className="border-t p-4">
-        <div className="flex">
+        <div className="flex space-x-2">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type your message..."
             className="flex-1"
+            disabled={loading}
           />
           <Button type="submit" disabled={loading}>
-            {loading ? 'Sending...' : 'Send'}
+            {loading ? (
+              'Sending...'
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                Send
+              </>
+            )}
           </Button>
         </div>
       </form>
