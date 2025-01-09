@@ -20,11 +20,11 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
 
   // Initialize conversationNameRef
   useEffect(() => {
-    if (!conversationNameRef && chatId) {
+    if (chatId && conversationNameRef !== chatId) {
       console.log('Initializing conversationNameRef with chatId:', chatId);
       setConversationNameRef(chatId);
     }
-  }, [conversationNameRef, chatId]);
+  }, [chatId, conversationNameRef]);
 
   // Fetch Agent Prompt
   useEffect(() => {
