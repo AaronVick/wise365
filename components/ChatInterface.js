@@ -5,8 +5,8 @@ import { Send } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { 
-    collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc 
+import {
+    collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -15,7 +15,16 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [agentPrompt, setAgentPrompt] = useState('');
+  const [conversationNameRef, setConversationNameRef] = useState(null);
   const scrollRef = useRef(null);
+
+  // Initialize conversationNameRef
+  useEffect(() => {
+    if (!conversationNameRef && chatId) {
+      console.log('Initializing conversationNameRef with chatId:', chatId);
+      setConversationNameRef(chatId);
+    }
+  }, [conversationNameRef, chatId]);
 
   // Fetch Agent Prompt
   useEffect(() => {
@@ -41,23 +50,27 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
 
   // Fetch Messages
   useEffect(() => {
-    if (!chatId) {
-      console.error('No chatId provided. Skipping message fetch.');
+    if (!conversationNameRef) {
+      console.error('No conversationNameRef, skipping message fetch.');
       return;
     }
 
     const messagesRef = collection(db, 'conversations');
     const q = query(
       messagesRef,
-      where('conversationName', '==', chatId),
+      where('conversationName', '==', conversationNameRef),
       orderBy('timestamp', 'asc')
     );
+
+    console.log('Setting up listener for messages in conversation:', conversationNameRef);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const chatMessages = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
+      console.log('Fetched messages:', chatMessages);
+
       setMessages(chatMessages);
 
       // Scroll to the bottom of the chat
@@ -67,7 +80,7 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
     });
 
     return () => unsubscribe();
-  }, [chatId]);
+  }, [conversationNameRef]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -82,7 +95,7 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
       const userMessage = {
         agentId,
         content: newMessage,
-        conversationName: chatId,
+        conversationName: conversationNameRef,
         from: userId,
         isDefault,
         timestamp: serverTimestamp(),
@@ -113,7 +126,7 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
         const agentMessage = {
           agentId,
           content: result.reply,
-          conversationName: chatId,
+          conversationName: conversationNameRef,
           from: agentId,
           isDefault,
           timestamp: serverTimestamp(),
