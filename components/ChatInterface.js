@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-    collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc
+  collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -15,26 +15,18 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [agentPrompt, setAgentPrompt] = useState('');
-  const [conversationNameRef, setConversationNameRef] = useState(null);
+  const [conversationNameRef, setConversationNameRef] = useState(chatId || null);
   const scrollRef = useRef(null);
-
-  // Initialize conversationNameRef
-  useEffect(() => {
-    if (chatId && conversationNameRef !== chatId) {
-      console.log('Initializing conversationNameRef with chatId:', chatId);
-      setConversationNameRef(chatId);
-    }
-  }, [chatId, conversationNameRef]);
 
   // Fetch Agent Prompt
   useEffect(() => {
     const fetchAgentPrompt = async () => {
       try {
+        if (!agentId) return;
         const agentDoc = await getDoc(doc(db, 'agentsDefined', agentId));
         const agentData = agentDoc.exists() ? agentDoc.data() : null;
         if (agentData) {
-          const prompt = agentData.prompt?.openAI?.description || '';
-          setAgentPrompt(prompt);
+          setAgentPrompt(agentData.prompt?.openAI?.description || '');
         } else {
           console.error('Agent prompt not found for agentId:', agentId);
         }
@@ -42,18 +34,17 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
         console.error('Error fetching agent prompt:', error);
       }
     };
-
-    if (agentId) {
-      fetchAgentPrompt();
-    }
+    fetchAgentPrompt();
   }, [agentId]);
 
   // Fetch Messages
   useEffect(() => {
     if (!conversationNameRef) {
-      console.error('No conversationNameRef, skipping message fetch.');
+      console.error('No conversationNameRef provided. Skipping message fetch.');
       return;
     }
+
+    console.log('Fetching messages for conversationNameRef:', conversationNameRef);
 
     const messagesRef = collection(db, 'conversations');
     const q = query(
@@ -62,16 +53,10 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
       orderBy('timestamp', 'asc')
     );
 
-    console.log('Setting up listener for messages in conversation:', conversationNameRef);
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const chatMessages = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      console.log('Fetched messages:', chatMessages);
-
-      setMessages(chatMessages);
+      const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log('Fetched messages:', fetchedMessages);
+      setMessages(fetchedMessages);
 
       // Scroll to the bottom of the chat
       if (scrollRef.current) {
@@ -82,10 +67,12 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
     return () => unsubscribe();
   }, [conversationNameRef]);
 
+  // Handle Sending Messages
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !agentPrompt) {
-      console.error('Missing data for sending a message.');
+
+    if (!newMessage.trim() || !conversationNameRef || !agentPrompt) {
+      console.error('Missing required fields for sending a message.');
       return;
     }
 
@@ -105,13 +92,12 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
       // Save user message to Firebase
       const messagesRef = collection(db, 'conversations');
       await addDoc(messagesRef, userMessage);
-
       console.log('User message saved:', userMessage);
 
-      // Clear input
+      // Clear input field
       setNewMessage('');
 
-      // Call LLM API for agent response
+      // Call LLM API for response
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
