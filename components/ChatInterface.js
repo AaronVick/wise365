@@ -11,6 +11,7 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [conversationNameRef, setConversationNameRef] = useState(null);
   const scrollRef = useRef(null);
 
   // Debug logging
@@ -24,15 +25,38 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
     });
   }, [chatId, agentId, userId, isDefault, title]);
 
+  // First get the conversationName reference
+  useEffect(() => {
+    const getConversationRef = async () => {
+      if (!chatId) return;
+
+      try {
+        const chatDoc = await getDoc(doc(db, 'conversations', chatId));
+        if (!chatDoc.exists()) {
+          console.error('Chat document not found:', chatId);
+          return;
+        }
+
+        const chatData = chatDoc.data();
+        console.log('Found chat data:', chatData);
+        setConversationNameRef(chatData.conversationName);
+      } catch (error) {
+        console.error('Error getting conversation reference:', error);
+      }
+    };
+
+    getConversationRef();
+  }, [chatId]);
+
   // Fetch messages for the selected conversation
   useEffect(() => {
-    if (!chatId) return;
+    if (!conversationNameRef) return;
 
-    console.log('Fetching messages for conversation:', chatId);
+    console.log('Fetching messages for conversationName:', conversationNameRef);
     const messagesRef = collection(db, 'conversations');
     const q = query(
       messagesRef,
-      where('conversationName', '==', chatId),
+      where('conversationName', '==', conversationNameRef),
       orderBy('timestamp', 'asc')
     );
 
@@ -50,16 +74,16 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
     });
 
     return () => unsubscribe();
-  }, [chatId]);
+  }, [conversationNameRef]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !conversationNameRef) return;
 
     setLoading(true);
 
     try {
-      console.log('Sending message in conversation:', chatId);
+      console.log('Sending message in conversation:', conversationNameRef);
 
       // Get the agent's prompt from agentsDefined
       const agentDoc = await getDoc(doc(db, 'agentsDefined', agentId));
@@ -81,7 +105,7 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
       await addDoc(messagesRef, {
         agentId,
         content: newMessage,
-        conversationName: chatId,
+        conversationName: conversationNameRef,
         from: userId,
         isDefault,
         timestamp: serverTimestamp(),
@@ -109,7 +133,7 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
       await addDoc(messagesRef, {
         agentId,
         content: result.reply,
-        conversationName: chatId,
+        conversationName: conversationNameRef,
         from: agentId,
         isDefault,
         timestamp: serverTimestamp(),
