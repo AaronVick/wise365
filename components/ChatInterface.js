@@ -78,28 +78,39 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !conversationNameRef) return;
-
+    console.log('Starting handleSendMessage...');
+    console.log('Current message:', newMessage);
+    console.log('ConversationNameRef:', conversationNameRef);
+  
+    if (!newMessage.trim() || !conversationNameRef) {
+      console.log('Missing required data:', {
+        newMessage: !!newMessage.trim(),
+        conversationNameRef: !!conversationNameRef
+      });
+      return;
+    }
+  
     setLoading(true);
-
+  
     try {
-      console.log('Sending message in conversation:', conversationNameRef);
-
+      console.log('Getting agent prompt for:', agentId);
       // Get the agent's prompt from agentsDefined
       const agentDoc = await getDoc(doc(db, 'agentsDefined', agentId));
       if (!agentDoc.exists()) {
         throw new Error('Agent prompt not found');
       }
-
-      // Get the appropriate prompt (preferring Anthropic's version)
+  
       const agentData = agentDoc.data();
+      console.log('Agent data:', agentData);
+  
       const prompt = agentData.prompt?.Anthropic?.description || 
                     agentData.prompt?.openAI?.description;
-
+  
       if (!prompt) {
         throw new Error('No prompt found for agent');
       }
-
+  
+      console.log('Saving user message...');
       // Log the user's message
       const messagesRef = collection(db, 'conversations');
       await addDoc(messagesRef, {
@@ -111,9 +122,11 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
         timestamp: serverTimestamp(),
         type: 'user'
       });
-
+  
+      console.log('User message saved, clearing input...');
       setNewMessage('');
-
+  
+      console.log('Sending to LLM API...');
       // Send to LLM API with agent's prompt
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -125,10 +138,16 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
           ]
         }),
       });
-
-      if (!response.ok) throw new Error('Failed to get LLM response');
+  
+      if (!response.ok) {
+        console.error('LLM API error:', response.status, response.statusText);
+        throw new Error('Failed to get LLM response');
+      }
+  
       const result = await response.json();
-
+      console.log('Got LLM response:', result);
+  
+      console.log('Saving agent response...');
       // Log the agent's response
       await addDoc(messagesRef, {
         agentId,
@@ -139,13 +158,15 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
         timestamp: serverTimestamp(),
         type: 'agent'
       });
-
+  
     } catch (error) {
       console.error('Error in chat:', error);
     } finally {
       setLoading(false);
+      console.log('Message handling complete');
     }
   };
+  
 
   return (
     <div className="flex flex-col h-full">
