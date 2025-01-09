@@ -369,68 +369,6 @@ const handleProjectClick = async (project) => {
 
   console.log('Current chat state:', currentChat);
 
-  return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <div
-        className="bg-gray-900 text-white"
-        style={{ width: `${sidebarWidth}px`, resize: 'horizontal', overflow: 'hidden' }}
-      >
-        <div className="p-4 border-b border-gray-700">
-          <h1 className="text-lg font-bold">Agents</h1>
-        </div>
-        <ScrollArea className="flex-1">
-          {agents.map((agent) => (
-            <div key={agent.id} className="mb-2">
-              <div
-                className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700"
-                onClick={() => handleAgentClick(agent)}
-                onContextMenu={(e) => handleContextMenu(e, agent)} // Add right-click handler
-              >
-                <span className="text-sm">{agent.name}</span>
-                <span className="text-xs text-gray-400">{agent.role}</span>
-              </div>
-              {nestedChats[agent.id] && renderNestedChats(agent.id)}
-            </div>
-          ))}
-        </ScrollArea>
-        <div className="p-4">
-          <Button variant="ghost">
-            <Settings className="h-4 w-4 mr-2" /> Settings
-          </Button>
-        </div>
-      </div>
-      {/* Resize Handle */}
-      <div
-        className="w-1 cursor-ew-resize bg-gray-700"
-        onMouseDown={(e) => {
-          e.preventDefault();
-          document.addEventListener('mousemove', handleSidebarResize);
-          document.addEventListener('mouseup', () => {
-            document.removeEventListener('mousemove', handleSidebarResize);
-          });
-        }}
-      />
-      {/* Main Content */}
-      <div className="flex-1">
-        {currentChat ? (
-               <ChatInterface
-               chatId={currentChat.id}
-               agentId={currentChat.agentId}
-               userId={currentUser.uid}
-               isDefault={currentChat.isDefault}
-               title={currentChat.title}
-               conversationName={currentChat.conversationName}
-             />
-        ) : (
-          <DashboardContent currentUser={currentUser} />
-        )}
-      </div>
-    </div>
-  );
-};
-
-
 
 return (
   <div className="flex h-screen bg-gray-50">
