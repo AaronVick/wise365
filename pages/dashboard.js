@@ -14,11 +14,12 @@ import {
   addDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import DashboardContent from '../components/DashboardContent';
-import ChatInterface from '../components/ChatInterface'; // Ensure correct import
-import { ChevronRight, Home, Settings } from 'lucide-react'; // Added `Settings`
+import { Button } from '@/components/ui/button'; // Correct Button component
+import { ScrollArea } from '@/components/ui/scroll-area'; // For scrollable sidebar
+import DashboardContent from '../components/DashboardContent'; // Dashboard main content
+import ChatInterface from '../components/ChatInterface'; // Chat functionality
+import { ChevronRight, Home, Settings } from 'lucide-react'; // Icons
+import ErrorBoundary from '../components/ErrorBoundary'; // Optional: Wrap components in error boundaries
 
 
 // Agents data
