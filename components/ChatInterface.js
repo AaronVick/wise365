@@ -48,32 +48,47 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
   // Fetch Messages
   useEffect(() => {
     if (!conversationNameRef) {
-      console.error('Conversation name reference is missing.');
+      console.error('No conversationNameRef provided. Skipping message fetch.');
       return;
     }
-
-    console.log('Setting up listener for messages with conversationNameRef:', conversationNameRef);
-
+  
+    console.log('Setting up listener for messages in conversation:', conversationNameRef);
+  
     const messagesRef = collection(db, 'conversations');
     const q = query(
       messagesRef,
       where('conversationName', '==', conversationNameRef),
       orderBy('timestamp', 'asc')
     );
-
+  
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedMessages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      console.log('Fetched messages:', fetchedMessages);
-      setMessages(fetchedMessages);
-
-      // Scroll to the bottom of the chat
+      const fetchedMessages = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+  
+      console.log('Fetched messages from Firebase:', fetchedMessages);
+  
+      setMessages((prevMessages) => {
+        // Check if the new messages are different from the previous state
+        if (JSON.stringify(prevMessages) !== JSON.stringify(fetchedMessages)) {
+          console.log('Updating messages state.');
+          return fetchedMessages;
+        }
+        console.log('No changes in messages state.');
+        return prevMessages;
+      });
+  
+      // Automatically scroll to the bottom
       if (scrollRef.current) {
         scrollRef.current.scrollIntoView({ behavior: 'smooth' });
       }
     });
-
+  
     return () => unsubscribe();
   }, [conversationNameRef]);
+  
+
 
   // Handle Sending Messages
   const handleSendMessage = async (e) => {
