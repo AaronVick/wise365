@@ -1,4 +1,5 @@
-//  /pages/dashboard.js
+
+// /pages/dashboard.js
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
@@ -16,9 +17,9 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import DashboardContent from '../components/DashboardContent';
 import { ChevronRight, Home, Settings } from 'lucide-react';
-import { ChatInterface } from '../components/ChatInterface';
+import { ChatInterface } from '../components/ChatInterface'; // Ensure correct import
 
-// Agents data with categories
+// Agents data
 const agents = [
   { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist', category: 'Marketing' },
   { id: 'shawn', name: 'Shawn', role: 'Tool Guidance Assistant', category: 'Administrative' },
@@ -58,15 +59,13 @@ const Dashboard = () => {
         router.replace('/');
         return;
       }
-
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (!userDoc.exists()) {
+        if (userDoc.exists()) {
+          setCurrentUser({ uid: user.uid, ...userDoc.data() });
+        } else {
           router.replace('/');
-          return;
         }
-
-        setCurrentUser({ uid: user.uid, ...userDoc.data() });
       } catch (err) {
         console.error('Error loading user data:', err);
         router.replace('/');
@@ -79,10 +78,7 @@ const Dashboard = () => {
   }, []);
 
   const fetchNestedChats = async (agentId) => {
-    const q = query(
-      collection(db, 'conversations'),
-      where('agentId', '==', agentId)
-    );
+    const q = query(collection(db, 'conversations'), where('agentId', '==', agentId));
     const snapshot = await getDocs(q);
     const chats = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     const organized = chats.reduce((acc, chat) => {
@@ -132,8 +128,8 @@ const Dashboard = () => {
   const renderNestedChats = (agentId) => {
     const chats = nestedChats[agentId] || {};
     return Object.keys(chats).map((name) => (
-      <div key={name} className="ml-4">
-        <h4 className="text-sm font-semibold mb-2">{name}</h4>
+      <div key={name} className="ml-2">
+        <h4 className="text-xs font-semibold mb-1">{name}</h4>
         {chats[name].map((chat) => (
           <Button
             key={chat.id}
@@ -161,18 +157,19 @@ const Dashboard = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
+      {/* Sidebar */}
       <div className="w-64 bg-gray-900 text-white">
         <div className="p-4 border-b border-gray-700">
-          <h1 className="text-xl font-bold">Agents</h1>
+          <h1 className="text-lg font-bold">Agents</h1>
         </div>
         <ScrollArea className="flex-1">
           {agents.map((agent) => (
-            <div key={agent.id} className="mb-4">
+            <div key={agent.id} className="mb-2">
               <div
                 className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700"
                 onClick={() => handleAgentClick(agent)}
               >
-                <span>{agent.name}</span>
+                <span className="text-sm">{agent.name}</span>
                 <span className="text-xs text-gray-400">{agent.role}</span>
               </div>
               {nestedChats[agent.id] && renderNestedChats(agent.id)}
@@ -185,6 +182,7 @@ const Dashboard = () => {
           </Button>
         </div>
       </div>
+      {/* Main Content */}
       <div className="flex-1">
         {currentChat ? (
           <ChatInterface
