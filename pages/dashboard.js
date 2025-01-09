@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import DashboardContent from '../components/DashboardContent';
 import ChatInterface from '../components/ChatInterface'; // Ensure correct import
+import { ChevronRight, Home, Settings } from 'lucide-react'; // Added `Settings`
+
 
 // Agents data
 const agents = [
