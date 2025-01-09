@@ -131,29 +131,50 @@ const Dashboard = () => {
     const name = prompt('Enter a name for the new chat:');
     if (name) {
       try {
+        // First create the parent chat document
         const docRef = await addDoc(collection(db, 'conversations'), {
           agentId: agent.id,
           conversationName: name,
           from: currentUser.uid,
           timestamp: serverTimestamp(),
           isDefault: false,
-          messages: []
+          type: 'parent' // Add this to differentiate parent chats
         });
   
-        setCurrentChat({
+        // Set the current chat with all required properties
+        const newChat = {
           id: docRef.id,
           title: name,
           agentId: agent.id,
           participants: [currentUser.uid],
-          isDefault: false
-        });
-  
+          isDefault: false,
+          conversationName: name // Make sure this is included
+        };
+        
+        console.log('Setting new named chat:', newChat);
+        setCurrentChat(newChat);
+        
+        // Refresh the nested chats list
         await fetchNestedChats(agent.id);
       } catch (error) {
         console.error('Error creating named chat:', error);
       }
     }
   };
+  
+  // function to check currentChat properties
+  useEffect(() => {
+    if (currentChat) {
+      console.log('Current chat updated:', currentChat);
+      // Verify all required properties are present
+      const requiredProps = ['id', 'title', 'agentId', 'participants', 'isDefault'];
+      requiredProps.forEach(prop => {
+        if (currentChat[prop] === undefined) {
+          console.error(`Missing required property: ${prop}`);
+        }
+      });
+    }
+  }, [currentChat]);
 
 
   const handleAgentClick = async (agent) => {
@@ -161,7 +182,6 @@ const Dashboard = () => {
       console.log('1. Agent clicked:', agent.name);
       await fetchNestedChats(agent.id);
       
-      // Check for existing default chat first
       const conversationsRef = collection(db, 'conversations');
       const defaultChatQuery = query(
         conversationsRef,
@@ -176,14 +196,13 @@ const Dashboard = () => {
       
       if (snapshot.empty) {
         console.log('3a. No default chat found, creating new one');
-        // Create new default chat if none exists
         const docRef = await addDoc(conversationsRef, {
           agentId: agent.id,
           from: currentUser.uid,
           isDefault: true,
           timestamp: serverTimestamp(),
-          messages: [],
-          conversationName: null  // Explicitly set to null for default chats
+          type: 'parent',
+          conversationName: null
         });
         chatId = docRef.id;
         console.log('3b. Created new chat with ID:', chatId);
@@ -198,15 +217,16 @@ const Dashboard = () => {
         title: `Chat with ${agent.name}`,
         agentId: agent.id,
         participants: [currentUser.uid],
-        isDefault: true
+        isDefault: true,
+        conversationName: null
       };
+      
       console.log('4. Setting currentChat to:', newChat);
       setCurrentChat(newChat);
     } catch (error) {
       console.error('Error in handleAgentClick:', error);
     }
   };
-
   
 
   const handleSidebarResize = (e) => {
