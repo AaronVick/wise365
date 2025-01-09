@@ -102,6 +102,7 @@ const Dashboard = () => {
     }));
   };
   
+
   const renderNestedChats = (agentId) => {
     const chats = nestedChats[agentId] || [];
     return (
@@ -126,7 +127,8 @@ const Dashboard = () => {
       </div>
     );
   };
-  
+
+  //const handleAgentClick
   const handleAgentClick = async (agent) => {
     await fetchNestedChats(agent.id);
     setCurrentChat({
