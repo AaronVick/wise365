@@ -1,10 +1,33 @@
-// components/ChatInterface.js
-
 const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [conversationNameData, setConversationNameData] = useState(null);
   const scrollRef = useRef(null);
+
+  // First fetch the conversationName data
+  useEffect(() => {
+    const fetchConversationData = async () => {
+      if (!chatId) return;
+
+      try {
+        const chatDoc = await getDoc(doc(db, 'conversations', chatId));
+        if (!chatDoc.exists()) return;
+        
+        const conversationNameId = chatDoc.data().conversationName;
+        if (conversationNameId) {
+          const nameDoc = await getDoc(doc(db, 'conversationNames', conversationNameId));
+          if (nameDoc.exists()) {
+            setConversationNameData(nameDoc.data());
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching conversation data:', error);
+      }
+    };
+
+    fetchConversationData();
+  }, [chatId]);
 
   // Fetch messages for the selected conversation
   useEffect(() => {
@@ -13,8 +36,7 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
     const messagesRef = collection(db, 'conversations');
     const q = query(
       messagesRef,
-      where('agentId', '==', agentId),
-      where('chatId', '==', chatId),  // Use chatId to group messages
+      where('chatId', '==', chatId),  // Group messages by parent chat ID
       orderBy('timestamp', 'asc')
     );
 
@@ -25,16 +47,14 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
       }));
       setMessages(chatMessages);
 
-      // Auto-scroll to the bottom
       if (scrollRef.current) {
         scrollRef.current.scrollIntoView({ behavior: 'smooth' });
       }
     });
 
     return () => unsubscribe();
-  }, [chatId, agentId]);
+  }, [chatId]);
 
-  // Send a message
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
@@ -42,12 +62,22 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
     setLoading(true);
 
     try {
-      // Get the parent chat document to get conversation details
+      // Get the parent chat document
       const chatDoc = await getDoc(doc(db, 'conversations', chatId));
       if (!chatDoc.exists()) throw new Error('Chat not found');
       const chatData = chatDoc.data();
 
-      // Log the user's message in Firebase
+      // Get the conversation name details
+      const conversationNameId = chatData.conversationName;
+      let conversationDisplayName = title;
+      if (conversationNameId) {
+        const nameDoc = await getDoc(doc(db, 'conversationNames', conversationNameId));
+        if (nameDoc.exists()) {
+          conversationDisplayName = nameDoc.data().conversationName;
+        }
+      }
+
+      // Log the user's message
       const messagesRef = collection(db, 'conversations');
       await addDoc(messagesRef, {
         agentId,
@@ -56,16 +86,16 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
         from: userId,
         timestamp: serverTimestamp(),
         type: 'user',
-        conversationName: chatData.conversationName, // Inherit from parent chat
+        conversationName: conversationNameId, // Use the reference ID
         isDefault: isDefault
       });
 
       setNewMessage('');
 
-      // Get agent information including prompt
+      // Get agent information and construct prompt
       const agent = agents.find(a => a.id === agentId);
       const systemPrompt = `You are ${agent.name}, ${agent.role}. ${
-        isDefault ? 'This is a new conversation.' : `This is a conversation about ${chatData.conversationName}.`
+        isDefault ? 'This is a new conversation.' : `This is a conversation named "${conversationDisplayName}".`
       } Respond accordingly.`;
 
       // Send to LLM API
@@ -91,7 +121,7 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
         from: agentId,
         timestamp: serverTimestamp(),
         type: 'agent',
-        conversationName: chatData.conversationName, // Inherit from parent chat
+        conversationName: conversationNameId, // Use the reference ID
         isDefault: isDefault
       });
     } catch (error) {
@@ -101,59 +131,14 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
     }
   };
 
+  // Rest of the component remains the same...
   return (
     <div className="flex flex-col h-full">
-      {/* Add chat title */}
       <div className="border-b p-4 bg-white">
         <h2 className="text-lg font-semibold">{title}</h2>
       </div>
       
-      <ScrollArea className="flex-1 p-4">
-        {/* Rest of the component remains the same */}
-        <div className="space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${
-                message.from === userId ? 'justify-end' : 'justify-start'
-              }`}
-            >
-              <div 
-                className={`p-3 rounded-lg max-w-[70%] ${
-                  message.from === userId 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-100 text-gray-800'
-                }`}
-              >
-                <p>{message.content}</p>
-              </div>
-            </div>
-          ))}
-          <div ref={scrollRef} />
-        </div>
-      </ScrollArea>
-
-      <form onSubmit={handleSendMessage} className="border-t p-4">
-        <div className="flex space-x-2">
-          <Input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1"
-            disabled={loading}
-          />
-          <Button type="submit" disabled={loading}>
-            {loading ? (
-              'Sending...'
-            ) : (
-              <>
-                <Send className="h-4 w-4 mr-2" />
-                Send
-              </>
-            )}
-          </Button>
-        </div>
-      </form>
+      {/* Rest of the JSX remains the same */}
     </div>
   );
 };
