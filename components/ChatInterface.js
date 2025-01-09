@@ -1,176 +1,143 @@
+// components/ChatInterface.js
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Send } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore';
+import { 
+    collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc 
+} from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [conversationNameRef, setConversationNameRef] = useState(null);
+  const [agentPrompt, setAgentPrompt] = useState('');
   const scrollRef = useRef(null);
 
-  // Debug logging
+  // Fetch Agent Prompt
   useEffect(() => {
-    console.log('ChatInterface mounted with props:', {
-      chatId,
-      agentId,
-      userId,
-      isDefault,
-      title
-    });
-  }, [chatId, agentId, userId, isDefault, title]);
-
-  // First get the conversationName reference
-useEffect(() => {
-  const getConversationRef = async () => {
-    console.log('Starting getConversationRef with chatId:', chatId);
-    if (!chatId) {
-      console.log('No chatId provided');
-      return;
-    }
-
-    try {
-      const chatDoc = await getDoc(doc(db, 'conversations', chatId));
-      console.log('ChatDoc exists?', chatDoc.exists());
-      if (!chatDoc.exists()) {
-        console.error('Chat document not found:', chatId);
-        return;
+    const fetchAgentPrompt = async () => {
+      try {
+        const agentDoc = await getDoc(doc(db, 'agentsDefined', agentId));
+        const agentData = agentDoc.exists() ? agentDoc.data() : null;
+        if (agentData) {
+          const prompt = agentData.prompt?.openAI?.description || '';
+          setAgentPrompt(prompt);
+        } else {
+          console.error('Agent prompt not found for agentId:', agentId);
+        }
+      } catch (error) {
+        console.error('Error fetching agent prompt:', error);
       }
+    };
 
-      const chatData = chatDoc.data();
-      console.log('Found chat data:', {
-        chatData,
-        conversationName: chatData.conversationName
-      });
-      setConversationNameRef(chatData.conversationName);
-    } catch (error) {
-      console.error('Error getting conversation reference:', error);
+    if (agentId) {
+      fetchAgentPrompt();
     }
-  };
+  }, [agentId]);
 
-  getConversationRef();
-}, [chatId]);
-
-  // Fetch messages for the selected conversation
+  // Fetch Messages
   useEffect(() => {
-    console.log('Fetch messages useEffect triggered with conversationNameRef:', conversationNameRef);
-    if (!conversationNameRef) {
-      console.log('No conversationNameRef, skipping message fetch');
+    if (!chatId) {
+      console.error('No chatId provided. Skipping message fetch.');
       return;
     }
-  
-    console.log('Fetching messages for conversationName:', conversationNameRef);
+
     const messagesRef = collection(db, 'conversations');
     const q = query(
       messagesRef,
-      where('conversationName', '==', conversationNameRef),
+      where('conversationName', '==', chatId),
       orderBy('timestamp', 'asc')
     );
-  
-    console.log('Setting up message listener');
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      console.log('Message snapshot received, docs count:', snapshot.docs.length);
-      const chatMessages = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        console.log('Message data:', data);
-        return {
-          id: doc.id,
-          ...data,
-        };
-      });
-      console.log('Processed messages:', chatMessages);
+      const chatMessages = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
       setMessages(chatMessages);
-  
+
+      // Scroll to the bottom of the chat
       if (scrollRef.current) {
         scrollRef.current.scrollIntoView({ behavior: 'smooth' });
       }
     });
-  
-    return () => {
-      console.log('Cleaning up message listener');
-      unsubscribe();
-    };
-  }, [conversationNameRef]);
+
+    return () => unsubscribe();
+  }, [chatId]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !conversationNameRef) {
-        console.log('Missing required data for sending a message');
-        return;
+    if (!newMessage.trim() || !agentPrompt) {
+      console.error('Missing data for sending a message.');
+      return;
     }
 
     setLoading(true);
 
     try {
-        const messageData = {
-            agentId,
-            content: newMessage,
-            conversationName: conversationNameRef,
-            from: userId,
-            isDefault,
-            timestamp: serverTimestamp(),
-            type: 'user',
+      const userMessage = {
+        agentId,
+        content: newMessage,
+        conversationName: chatId,
+        from: userId,
+        isDefault,
+        timestamp: serverTimestamp(),
+        type: 'user',
+      };
+
+      // Save user message to Firebase
+      const messagesRef = collection(db, 'conversations');
+      await addDoc(messagesRef, userMessage);
+
+      // Clear input
+      setNewMessage('');
+
+      // Call LLM API for agent response
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: agentPrompt },
+            { role: 'user', content: newMessage },
+          ],
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const agentMessage = {
+          agentId,
+          content: result.reply,
+          conversationName: chatId,
+          from: agentId,
+          isDefault,
+          timestamp: serverTimestamp(),
+          type: 'agent',
         };
 
-        // Add user message to Firebase
-        const messagesRef = collection(db, 'conversations');
-        await addDoc(messagesRef, messageData);
-
-        // Clear input field
-        setNewMessage('');
-
-        // Invoke LLM API to get agent response
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                messages: [
-                    { role: 'system', content: agentPrompt },
-                    { role: 'user', content: newMessage }
-                ],
-                agentId,
-                conversationName: conversationNameRef,
-                isDefault,
-            }),
-        });
-
-        if (response.ok) {
-            const result = await response.json();
-            const agentMessage = {
-                agentId,
-                content: result.reply,
-                conversationName: conversationNameRef,
-                from: agentId,
-                isDefault,
-                timestamp: serverTimestamp(),
-                type: 'agent',
-            };
-
-            // Add agent response to Firebase
-            await addDoc(messagesRef, agentMessage);
-        } else {
-            console.error('LLM API error:', await response.text());
-        }
+        // Save agent response to Firebase
+        await addDoc(messagesRef, agentMessage);
+      } else {
+        console.error('Error from LLM API:', await response.text());
+      }
     } catch (error) {
-        console.error('Error sending message or retrieving response:', error);
+      console.error('Error sending message:', error);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-};
-
-  
+  };
 
   return (
     <div className="flex flex-col h-full">
       <div className="border-b p-4 bg-white">
         <h2 className="text-lg font-semibold">{title}</h2>
       </div>
-      
+
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {messages.map((message) => (
@@ -180,10 +147,10 @@ useEffect(() => {
                 message.from === userId ? 'justify-end' : 'justify-start'
               }`}
             >
-              <div 
+              <div
                 className={`p-3 rounded-lg max-w-[70%] ${
-                  message.from === userId 
-                    ? 'bg-blue-500 text-white' 
+                  message.from === userId
+                    ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-800'
                 }`}
               >
@@ -205,14 +172,7 @@ useEffect(() => {
             disabled={loading}
           />
           <Button type="submit" disabled={loading}>
-            {loading ? (
-              'Sending...'
-            ) : (
-              <>
-                <Send className="h-4 w-4 mr-2" />
-                Send
-              </>
-            )}
+            {loading ? 'Sending...' : <Send className="h-4 w-4 mr-2" />}
           </Button>
         </div>
       </form>
