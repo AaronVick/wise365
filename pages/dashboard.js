@@ -82,18 +82,51 @@ const Dashboard = () => {
   }, []);
 
   const fetchNestedChats = async (agentId) => {
-    const q = query(collection(db, 'conversations'), where('agentId', '==', agentId));
+    const q = query(
+      collection(db, 'conversations'), 
+      where('agentId', '==', agentId),
+      where('from', '==', currentUser.uid)
+    );
     const snapshot = await getDocs(q);
-    const chats = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const organized = chats.reduce((acc, chat) => {
-      const name = chat.conversationName || 'Default';
-      if (!acc[name]) acc[name] = [];
-      acc[name].push(chat);
-      return acc;
-    }, {});
-    setNestedChats((prev) => ({ ...prev, [agentId]: organized }));
+    const chats = snapshot.docs.map((doc) => ({ 
+      id: doc.id, 
+      ...doc.data(),
+      // If no conversation name, use the agent's name as default
+      conversationName: doc.data().conversationName || `Chat with ${agents.find(a => a.id === agentId)?.name || 'Agent'}`
+    }));
+    
+    // Organize chats without the extra nesting
+    setNestedChats((prev) => ({ 
+      ...prev, 
+      [agentId]: chats 
+    }));
   };
-
+  
+  const renderNestedChats = (agentId) => {
+    const chats = nestedChats[agentId] || [];
+    return (
+      <div className="ml-4 space-y-1">
+        {chats.map((chat) => (
+          <Button
+            key={chat.id}
+            variant="ghost"
+            className="text-left text-sm w-full truncate py-1"
+            onClick={() =>
+              setCurrentChat({
+                id: chat.id,
+                title: chat.conversationName,
+                agentId: chat.agentId,
+                participants: [currentUser.uid],
+              })
+            }
+          >
+            {chat.conversationName}
+          </Button>
+        ))}
+      </div>
+    );
+  };
+  
   const handleAgentClick = async (agent) => {
     await fetchNestedChats(agent.id);
     setCurrentChat({

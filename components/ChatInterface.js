@@ -20,7 +20,7 @@ const ChatInterface = ({ chatId, agentId, userId }) => {
     const q = query(
       messagesRef,
       where('agentId', '==', agentId),
-      where('conversationName', '==', chatId || null),
+      where('conversationId', '==', chatId),
       orderBy('timestamp', 'asc')
     );
 
@@ -50,13 +50,24 @@ const ChatInterface = ({ chatId, agentId, userId }) => {
     try {
       // Log the user's message in Firebase
       const messagesRef = collection(db, 'conversations');
-      await addDoc(messagesRef, {
+      const messageDoc = await addDoc(messagesRef, {
         agentId,
-        conversationName: chatId || null,
+        conversationId: chatId,
         content: newMessage,
         from: userId,
         timestamp: serverTimestamp(),
+        type: 'user'
       });
+
+      // Get the agent's prompt and role
+      let agentPrompt = '';
+      const agentRef = collection(db, 'agents');
+      const agentSnapshot = await getDocs(query(agentRef, where('id', '==', agentId)));
+      
+      if (!agentSnapshot.empty) {
+        const agentData = agentSnapshot.docs[0].data();
+        agentPrompt = agentData.prompt || `You are ${agentData.name}, ${agentData.role}. Respond accordingly.`;
+      }
 
       setNewMessage('');
 
