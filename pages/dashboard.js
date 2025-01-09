@@ -83,72 +83,99 @@ const Dashboard = () => {
   }, []);
 
   const fetchNestedChats = async (agentId) => {
-    const q = query(
-      collection(db, 'conversations'), 
-      where('agentId', '==', agentId),
-      where('from', '==', currentUser.uid),
-      where('conversationName', '!=', null) // Only get named chats, not default ones
-    );
-    const snapshot = await getDocs(q);
-    const chats = snapshot.docs.map((doc) => ({ 
-      id: doc.id, 
-      ...doc.data()
-    }));
-    
-    setNestedChats((prev) => ({ 
-      ...prev, 
-      [agentId]: chats 
-    }));
+    try {
+      // First get all conversationNames for this agent
+      const namesQuery = query(
+        collection(db, 'conversationNames'),
+        where('agentId', '==', agentId),
+        where('userId', '==', currentUser.uid)
+      );
+      const namesSnapshot = await getDocs(namesQuery);
+      const namesMap = new Map(
+        namesSnapshot.docs.map(doc => [doc.id, doc.data().conversationName])
+      );
+  
+      // Then get conversations using these IDs
+      const q = query(
+        collection(db, 'conversations'),
+        where('agentId', '==', agentId),
+        where('from', '==', currentUser.uid),
+        where('conversationName', 'in', [...namesMap.keys()])
+      );
+      const snapshot = await getDocs(q);
+      const chats = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        displayName: namesMap.get(doc.data().conversationName) // Use the actual name for display
+      }));
+      
+      setNestedChats((prev) => ({
+        ...prev,
+        [agentId]: chats
+      }));
+    } catch (error) {
+      console.error('Error fetching nested chats:', error);
+    }
   };
 
   const renderNestedChats = (agentId) => {
-    const chats = nestedChats[agentId] || [];
-    return (
-      <div className="ml-4 space-y-1">
-        {chats.map((chat) => (
-          <Button
-            key={chat.id}
-            variant="ghost"
-            className="text-left text-sm w-full truncate py-1"
-            onClick={() =>
-              setCurrentChat({
-                id: chat.id,
-                title: chat.conversationName,
-                agentId: chat.agentId,
-                participants: [currentUser.uid],
-              })
-            }
-          >
-            {chat.conversationName}
-          </Button>
-        ))}
-      </div>
-    );
-  };
+  const chats = nestedChats[agentId] || [];
+  return (
+    <div className="ml-4 space-y-1">
+      {chats.map((chat) => (
+        <Button
+          key={chat.id}
+          variant="ghost"
+          className="text-left text-sm w-full truncate py-1"
+          onClick={() =>
+            setCurrentChat({
+              id: chat.id,
+              title: chat.displayName,  // Use the display name
+              agentId: chat.agentId,
+              participants: [currentUser.uid],
+              isDefault: false,
+              conversationName: chat.conversationName  // Keep the reference ID
+            })
+          }
+        >
+          {chat.displayName}  {/* Use the display name */}
+        </Button>
+      ))}
+    </div>
+  );
+};
 
   const handleContextMenu = async (e, agent) => {
     e.preventDefault();
     const name = prompt('Enter a name for the new chat:');
     if (name) {
       try {
-        // First create the parent chat document
-        const docRef = await addDoc(collection(db, 'conversations'), {
+        // First create the conversationName document
+        const conversationNameRef = await addDoc(collection(db, 'conversationNames'), {
           agentId: agent.id,
           conversationName: name,
+          projectName: "",  // Empty string for agent conversations
+          userId: currentUser.uid
+        });
+  
+        // Then create the parent chat document using the conversationName ID
+        const docRef = await addDoc(collection(db, 'conversations'), {
+          agentId: agent.id,
+          conversationName: conversationNameRef.id,  // Use the ID from conversationNames
           from: currentUser.uid,
           timestamp: serverTimestamp(),
           isDefault: false,
-          type: 'parent' // Add this to differentiate parent chats
+          type: 'parent'
         });
   
         // Set the current chat with all required properties
         const newChat = {
           id: docRef.id,
-          title: name,
+          title: name,  // Use the display name
           agentId: agent.id,
           participants: [currentUser.uid],
           isDefault: false,
-          conversationName: name // Make sure this is included
+          conversationName: conversationNameRef.id  // Store the reference ID
         };
         
         console.log('Setting new named chat:', newChat);
@@ -161,21 +188,6 @@ const Dashboard = () => {
       }
     }
   };
-  
-  // function to check currentChat properties
-  useEffect(() => {
-    if (currentChat) {
-      console.log('Current chat updated:', currentChat);
-      // Verify all required properties are present
-      const requiredProps = ['id', 'title', 'agentId', 'participants', 'isDefault'];
-      requiredProps.forEach(prop => {
-        if (currentChat[prop] === undefined) {
-          console.error(`Missing required property: ${prop}`);
-        }
-      });
-    }
-  }, [currentChat]);
-
 
   const handleAgentClick = async (agent) => {
     try {
