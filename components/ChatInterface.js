@@ -19,7 +19,7 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversation
 
   // Use the conversationName from props
   const conversationNameRef = conversationName;
-
+  
   // Fetch Agent Prompt
   useEffect(() => {
     const fetchAgentPrompt = async () => {
