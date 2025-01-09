@@ -1,5 +1,3 @@
-// pages/aip/chat.js
-
 import { Configuration, OpenAIApi } from 'openai';
 
 const configuration = new Configuration({
@@ -16,8 +14,11 @@ export default async function handler(req, res) {
         const { messages } = req.body;
 
         if (!messages || !Array.isArray(messages)) {
-            return res.status(400).json({ error: 'Invalid message format' });
+            console.error('Invalid messages format:', messages);
+            return res.status(400).json({ error: 'Invalid messages format' });
         }
+
+        console.log('Sending request to OpenAI with messages:', messages);
 
         const completion = await openai.createChatCompletion({
             model: 'gpt-4',
@@ -26,10 +27,19 @@ export default async function handler(req, res) {
             max_tokens: 2000,
         });
 
-        const reply = completion.data.choices[0].message.content;
+        const reply = completion.data.choices[0]?.message?.content;
+        if (!reply) {
+            console.error('No reply received from OpenAI:', completion.data);
+            return res.status(500).json({ error: 'Failed to receive response from OpenAI' });
+        }
+
+        console.log('OpenAI response received:', reply);
         return res.status(200).json({ reply });
     } catch (error) {
-        console.error('Error processing LLM request:', error);
-        res.status(500).json({ error: 'Failed to process request', details: error.message });
+        console.error('Error processing LLM request:', error.message, error.stack);
+        if (error.response) {
+            console.error('OpenAI API error response:', error.response.data);
+        }
+        return res.status(500).json({ error: 'Failed to process request', details: error.message });
     }
 }

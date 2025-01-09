@@ -48,45 +48,38 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
   // Fetch Messages
   useEffect(() => {
     if (!conversationNameRef) {
-      console.error('No conversationNameRef provided. Skipping message fetch.');
-      return;
+        console.error('No conversationNameRef provided. Skipping message fetch.');
+        return;
     }
-  
-    console.log('Setting up listener for messages in conversation:', conversationNameRef);
-  
+
+    console.log('Fetching messages for conversationNameRef:', conversationNameRef);
+
     const messagesRef = collection(db, 'conversations');
     const q = query(
-      messagesRef,
-      where('conversationName', '==', conversationNameRef),
-      orderBy('timestamp', 'asc')
+        messagesRef,
+        where('conversationName', '==', conversationNameRef),
+        orderBy('timestamp', 'asc')
     );
-  
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedMessages = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-  
-      console.log('Fetched messages from Firebase:', fetchedMessages);
-  
-      setMessages((prevMessages) => {
-        // Check if the new messages are different from the previous state
-        if (JSON.stringify(prevMessages) !== JSON.stringify(fetchedMessages)) {
-          console.log('Updating messages state.');
-          return fetchedMessages;
+        const fetchedMessages = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+        console.log('Fetched messages from Firebase:', fetchedMessages);
+
+        setMessages(fetchedMessages);
+
+        // Automatically scroll to the bottom of the chat
+        if (scrollRef.current) {
+            scrollRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-        console.log('No changes in messages state.');
-        return prevMessages;
-      });
-  
-      // Automatically scroll to the bottom
-      if (scrollRef.current) {
-        scrollRef.current.scrollIntoView({ behavior: 'smooth' });
-      }
     });
-  
+
     return () => unsubscribe();
-  }, [conversationNameRef]);
+}, [conversationNameRef]);
+
+  
   
 
 
@@ -95,72 +88,73 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
     e.preventDefault();
 
     if (!newMessage.trim()) {
-      console.error('Message input is empty.');
-      return;
+        console.error('Message input is empty.');
+        return;
     }
 
     if (!conversationNameRef) {
-      console.error('Conversation name reference is missing.');
-      return;
+        console.error('Conversation name reference is missing.');
+        return;
     }
 
     setLoading(true);
 
     try {
-      // Save user message to Firebase
-      const userMessage = {
-        agentId,
-        content: newMessage,
-        conversationName: conversationNameRef,
-        from: userId,
-        isDefault,
-        timestamp: serverTimestamp(),
-        type: 'user',
-      };
-
-      const messagesRef = collection(db, 'conversations');
-      await addDoc(messagesRef, userMessage);
-      console.log('User message logged in Firebase:', userMessage);
-
-      // Clear input field
-      setNewMessage('');
-
-      // Call LLM API for response
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: agentPrompt },
-            { role: 'user', content: newMessage },
-          ],
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const agentMessage = {
-          agentId,
-          content: result.reply,
-          conversationName: conversationNameRef,
-          from: agentId,
-          isDefault,
-          timestamp: serverTimestamp(),
-          type: 'agent',
+        // Save user message to Firebase
+        const userMessage = {
+            agentId,
+            content: newMessage,
+            conversationName: conversationNameRef,
+            from: userId,
+            isDefault,
+            timestamp: serverTimestamp(),
+            type: 'user',
         };
 
-        // Save agent response to Firebase
-        await addDoc(messagesRef, agentMessage);
-        console.log('Agent response logged in Firebase:', agentMessage);
-      } else {
-        console.error('LLM API error:', await response.text());
-      }
+        const messagesRef = collection(db, 'conversations');
+        await addDoc(messagesRef, userMessage);
+        console.log('User message logged in Firebase:', userMessage);
+
+        // Clear input field
+        setNewMessage('');
+
+        // Call LLM API for response
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                messages: [
+                    { role: 'system', content: agentPrompt },
+                    { role: 'user', content: newMessage },
+                ],
+            }),
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            const agentMessage = {
+                agentId,
+                content: result.reply,
+                conversationName: conversationNameRef,
+                from: agentId,
+                isDefault,
+                timestamp: serverTimestamp(),
+                type: 'agent',
+            };
+
+            // Save agent response to Firebase
+            await addDoc(messagesRef, agentMessage);
+            console.log('Agent response logged in Firebase:', agentMessage);
+        } else {
+            console.error('Error from LLM API:', await response.text());
+        }
     } catch (error) {
-      console.error('Error sending message:', error);
+        console.error('Error sending message:', error);
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
+
 
   return (
     <div className="flex flex-col h-full">
