@@ -12,6 +12,16 @@ import { db } from '../lib/firebase';
 // Import agents data
 import { agents } from '../pages/dashboard';
 
+useEffect(() => {
+  console.log('ChatInterface mounted with props:', {
+    chatId,
+    agentId,
+    userId,
+    isDefault,
+    title
+  });
+}, []);
+
 const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -20,56 +30,75 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
   const scrollRef = useRef(null);
 
   // Fetch messages for the selected conversation
-  useEffect(() => {
-    if (!chatId) return;
+useEffect(() => {
+  if (!chatId) return;
 
-    const messagesRef = collection(db, 'conversations');
-    const q = query(
-      messagesRef,
-      where('agentId', '==', agentId),
-      where('chatId', '==', chatId),
-      orderBy('timestamp', 'asc')
-    );
+  console.log('Fetching messages for conversation:', chatId);
+  const messagesRef = collection(db, 'conversations');
+  const q = query(
+    messagesRef,
+    where('conversationName', '==', chatId), // Changed from chatId to match your data structure
+    orderBy('timestamp', 'asc')
+  );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const chatMessages = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setMessages(chatMessages);
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const chatMessages = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    console.log('Found messages:', chatMessages);
+    setMessages(chatMessages);
 
-      // Auto-scroll to the bottom
-      if (scrollRef.current) {
-        scrollRef.current.scrollIntoView({ behavior: 'smooth' });
-      }
-    });
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
 
-    return () => unsubscribe();
-  }, [chatId, agentId]);
+  return () => unsubscribe();
+}, [chatId]);
+
+
 
   // Send a message
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
-
+  
     setLoading(true);
-
+  
     try {
-      // Get the parent chat document
-      const chatDoc = await getDoc(doc(db, 'conversations', chatId));
-      if (!chatDoc.exists()) throw new Error('Chat not found');
-
-      const chatData = chatDoc.data();
-      const conversationNameId = chatData.conversationName;
-
-      // Get the conversation name details if it exists
-      let conversationDisplayName = isDefault ? 'Default' : title;
-      if (conversationNameId) {
-        const nameDoc = await getDoc(doc(db, 'conversationNames', conversationNameId));
-        if (nameDoc.exists()) {
-          conversationDisplayName = nameDoc.data().conversationName;
-        }
+      console.log('Sending message in conversation:', chatId);
+  
+      // First, get the agent's prompt
+      const agentDoc = await getDoc(doc(db, 'agentsDefined', agentId));
+      if (!agentDoc.exists()) {
+        throw new Error('Agent prompt not found');
       }
+  
+      // Get the appropriate prompt (preferring Anthropic's version)
+      const agentData = agentDoc.data();
+      const prompt = agentData.prompt?.Anthropic?.description || 
+                    agentData.prompt?.openAI?.description;
+  
+      if (!prompt) {
+        throw new Error('No prompt found for agent');
+      }
+  
+      // Log the user's message
+      const messagesRef = collection(db, 'conversations');
+      await addDoc(messagesRef, {
+        agentId,
+        chatId,
+        content: newMessage,
+        conversationName: chatId,
+        from: userId,
+        isDefault,
+        timestamp: serverTimestamp(),
+        type: 'user'
+      });
+  
+      setNewMessage('');
+
 
       // Add user message
       const messagesRef = collection(db, 'conversations');

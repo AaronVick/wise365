@@ -227,6 +227,45 @@ const Dashboard = () => {
     }
   };
 
+  
+  
+      // Send to LLM API with agent's prompt
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { 
+              role: 'system',
+              content: prompt
+            },
+            { role: 'user', content: newMessage }
+          ]
+        }),
+      });
+  
+      if (!response.ok) throw new Error('Failed to get LLM response');
+      const result = await response.json();
+  
+      // Log the agent's response
+      await addDoc(messagesRef, {
+        agentId,
+        chatId,
+        content: result.reply,
+        conversationName: chatId,
+        from: agentId,
+        isDefault,
+        timestamp: serverTimestamp(),
+        type: 'agent'
+      });
+  
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAgentClick = async (agent) => {
     try {
       console.log('Starting handleAgentClick:', agent.name);
