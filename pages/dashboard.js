@@ -367,12 +367,13 @@ const Dashboard = () => {
       {/* Main Content */}
       <div className="flex-1">
         {currentChat ? (
-          <ChatInterface
+            <ChatInterface
             chatId={currentChat.id}
             agentId={currentChat.agentId}
             userId={currentUser.uid}
             isDefault={currentChat.isDefault}
             title={currentChat.title}
+            conversationName={currentChat.conversationName}
           />
         ) : (
           <DashboardContent currentUser={currentUser} />

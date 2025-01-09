@@ -10,15 +10,16 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
-const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
+const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversationName }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [agentPrompt, setAgentPrompt] = useState('');
   const scrollRef = useRef(null);
 
-  // Initialize conversationNameRef
-  const conversationNameRef = chatId;
+  // Use the conversationName from props
+  const conversationNameRef = conversationName;
+
 
   // Fetch Agent Prompt
   useEffect(() => {
