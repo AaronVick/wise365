@@ -106,6 +106,8 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
       const messagesRef = collection(db, 'conversations');
       await addDoc(messagesRef, userMessage);
 
+      console.log('User message saved:', userMessage);
+
       // Clear input
       setNewMessage('');
 
@@ -135,6 +137,7 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title }) => {
 
         // Save agent response to Firebase
         await addDoc(messagesRef, agentMessage);
+        console.log('Agent response saved:', agentMessage);
       } else {
         console.error('Error from LLM API:', await response.text());
       }
