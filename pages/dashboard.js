@@ -1,24 +1,22 @@
-
-// pages/dashboard.js
-
+//  /pages/dashboard.js
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
-import { 
-  collection, 
-  getDocs, 
-  getDoc, 
-  query, 
-  where, 
-  doc, 
+import {
+  collection,
+  getDocs,
+  getDoc,
+  query,
+  where,
+  doc,
   addDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import DashboardContent from '../components/DashboardContent';
 import { ChevronRight, Home, Settings } from 'lucide-react';
-import { ChatInterface } from '../components/ChatInterface'; // Named export
+import { ChatInterface } from '../components/ChatInterface';
 
 // Agents data with categories
 const agents = [
@@ -51,29 +49,24 @@ const Dashboard = () => {
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [userTeam, setUserTeam] = useState(null);
   const [currentChat, setCurrentChat] = useState(null);
+  const [nestedChats, setNestedChats] = useState({});
 
-  // Check authentication and load user data
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
         router.replace('/');
         return;
       }
+
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (!userDoc.exists()) {
           router.replace('/');
           return;
         }
-        const userData = { uid: user.uid, ...userDoc.data() };
-        setCurrentUser(userData);
 
-        if (userData.teamId) {
-          const teamDoc = await getDoc(doc(db, 'teams', userData.teamId));
-          if (teamDoc.exists()) setUserTeam(teamDoc.data());
-        }
+        setCurrentUser({ uid: user.uid, ...userDoc.data() });
       } catch (err) {
         console.error('Error loading user data:', err);
         router.replace('/');
@@ -81,124 +74,117 @@ const Dashboard = () => {
         setAuthChecked(true);
       }
     });
+
     return () => unsubscribe();
   }, []);
 
-  // Open the default conversation for an agent
-  const handleAgentClick = async (agent) => {
-    try {
-      const q = query(
-        collection(db, 'conversations'),
-        where('agentId', '==', agent.id),
-        where('conversationName', '==', null)
-      );
-      const snapshot = await getDocs(q);
-
-      if (!snapshot.empty) {
-        setCurrentChat({
-          id: null,
-          title: `Chat with ${agent.name}`,
-          agentId: agent.id,
-          participants: [currentUser.uid],
-        });
-      } else {
-        await addDoc(collection(db, 'conversations'), {
-          agentId: agent.id,
-          conversationName: null,
-          from: currentUser.uid,
-          timestamp: serverTimestamp(),
-        });
-        setCurrentChat({
-          id: null,
-          title: `Chat with ${agent.name}`,
-          agentId: agent.id,
-          participants: [currentUser.uid],
-        });
-      }
-    } catch (error) {
-      console.error('Error opening chat:', error);
-    }
+  const fetchNestedChats = async (agentId) => {
+    const q = query(
+      collection(db, 'conversations'),
+      where('agentId', '==', agentId)
+    );
+    const snapshot = await getDocs(q);
+    const chats = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const organized = chats.reduce((acc, chat) => {
+      const name = chat.conversationName || 'Default';
+      if (!acc[name]) acc[name] = [];
+      acc[name].push(chat);
+      return acc;
+    }, {});
+    setNestedChats((prev) => ({ ...prev, [agentId]: organized }));
   };
 
-  // Create and open a new conversation
-  const handleNewConversation = async (agent, name) => {
+  const handleAgentClick = async (agent) => {
+    await fetchNestedChats(agent.id);
+    setCurrentChat({
+      id: null,
+      title: `Chat with ${agent.name}`,
+      agentId: agent.id,
+      participants: [currentUser.uid],
+    });
+  };
+
+  const handleNewConversation = async (agent) => {
+    const name = prompt('Enter a name for the new chat:');
+    if (!name) return;
+
     try {
-      await addDoc(collection(db, 'conversations'), {
+      const docRef = await addDoc(collection(db, 'conversations'), {
         agentId: agent.id,
         conversationName: name,
         from: currentUser.uid,
         timestamp: serverTimestamp(),
       });
+
       setCurrentChat({
-        id: name,
+        id: docRef.id,
         title: name,
         agentId: agent.id,
         participants: [currentUser.uid],
       });
+
+      await fetchNestedChats(agent.id);
     } catch (error) {
       console.error('Error creating new conversation:', error);
     }
   };
 
-  // Loading state
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
+  const renderNestedChats = (agentId) => {
+    const chats = nestedChats[agentId] || {};
+    return Object.keys(chats).map((name) => (
+      <div key={name} className="ml-4">
+        <h4 className="text-sm font-semibold mb-2">{name}</h4>
+        {chats[name].map((chat) => (
+          <Button
+            key={chat.id}
+            variant="ghost"
+            className="text-left text-xs w-full truncate"
+            onClick={() =>
+              setCurrentChat({
+                id: chat.id,
+                title: chat.conversationName || 'Default Chat',
+                agentId: chat.agentId,
+                participants: [currentUser.uid],
+              })
+            }
+          >
+            {chat.conversationName || 'Default Chat'}
+          </Button>
+        ))}
       </div>
-    );
+    ));
+  };
+
+  if (!authChecked) {
+    return <div>Loading...</div>;
   }
-
-  if (!currentUser) return null;
-
-  // Categorize agents
-  const categorizedAgents = agents.reduce((categories, agent) => {
-    if (!categories[agent.category]) categories[agent.category] = [];
-    categories[agent.category].push(agent);
-    return categories;
-  }, {});
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <div className="w-64 bg-gray-900 text-white flex flex-col">
+      <div className="w-64 bg-gray-900 text-white">
         <div className="p-4 border-b border-gray-700">
-          <h1 className="text-xl font-bold">Business Wise365</h1>
+          <h1 className="text-xl font-bold">Agents</h1>
         </div>
         <ScrollArea className="flex-1">
-          <nav className="p-2">
-            <Button variant="ghost" onClick={() => router.push('/dashboard')} className="w-full mb-2">
-              <Home className="mr-2 h-4 w-4" />
-              Home
-            </Button>
-            {Object.keys(categorizedAgents).map((category) => (
-              <div key={category}>
-                <div className="px-2 text-gray-400">{category}</div>
-                {categorizedAgents[category].map((agent) => (
-                  <div key={agent.id} className="flex items-center gap-2">
-                    <Button variant="ghost" onClick={() => handleAgentClick(agent)} className="flex-1">
-                      {agent.name}
-                    </Button>
-                    <Button size="sm" onClick={() => handleNewConversation(agent, 'New Chat')}>
-                      New Chat
-                    </Button>
-                  </div>
-                ))}
+          {agents.map((agent) => (
+            <div key={agent.id} className="mb-4">
+              <div
+                className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700"
+                onClick={() => handleAgentClick(agent)}
+              >
+                <span>{agent.name}</span>
+                <span className="text-xs text-gray-400">{agent.role}</span>
               </div>
-            ))}
-          </nav>
+              {nestedChats[agent.id] && renderNestedChats(agent.id)}
+            </div>
+          ))}
         </ScrollArea>
         <div className="p-4">
           <Button variant="ghost">
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
+            <Settings className="h-4 w-4 mr-2" /> Settings
           </Button>
         </div>
       </div>
-      {/* Main Content */}
       <div className="flex-1">
         {currentChat ? (
           <ChatInterface
@@ -207,7 +193,7 @@ const Dashboard = () => {
             userId={currentUser.uid}
           />
         ) : (
-          <DashboardContent currentUser={currentUser} userTeam={userTeam} />
+          <DashboardContent />
         )}
       </div>
     </div>
