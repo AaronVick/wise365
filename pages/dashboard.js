@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import DashboardContent from '../components/DashboardContent';
 import { ChevronRight, Home, Settings } from 'lucide-react';
-import ChatInterface from '../components/ChatInterface';  // Ensure this is correctly imported
+import { ChatInterface } from '../components/ChatInterface'; // Named export
 
 // Agents data with categories
 const agents = [

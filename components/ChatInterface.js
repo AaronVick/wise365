@@ -1,7 +1,7 @@
 // components/ui/ChatInterface.js
 import React, { useState, useEffect, useRef } from 'react';
 import { Send } from 'lucide-react';
-import { Button } from "@/components/ui/button";
+import Badge from '@/components/ui/badge'; 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { db } from '../lib/firebase';
@@ -132,3 +132,5 @@ const ChatInterface = ({ chatId, agentId, userId }) => {
     </div>
   );
 };
+
+export default ChatInterface;

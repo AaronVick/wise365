@@ -5,7 +5,10 @@ import { collection, doc, getDocs, getDoc, updateDoc } from 'firebase/firestore'
 export default function Prompts() {
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [selectedLLM, setSelectedLLM] = useState(''); // To allow selecting LLM type
   const [prompts, setPrompts] = useState(null);
+  const [generatedPrompt, setGeneratedPrompt] = useState('');
+  const [generatingPrompt, setGeneratingPrompt] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -63,6 +66,35 @@ export default function Prompts() {
     }
   };
 
+  const handleGeneratePrompt = async () => {
+    if (!selectedAgent || !selectedLLM) {
+      alert('Please select an agent and LLM before generating a prompt.');
+      return;
+    }
+
+    setGeneratingPrompt(true);
+    try {
+      // Simulate prompt generation logic
+      const newPrompt = `Generated prompt for ${selectedAgent} using ${selectedLLM}`;
+      setGeneratedPrompt(newPrompt);
+    } catch (err) {
+      console.error('Error generating prompt:', err);
+      alert('Failed to generate prompt. Please try again.');
+    } finally {
+      setGeneratingPrompt(false);
+    }
+  };
+
+  const handleSavePrompt = async () => {
+    if (!generatedPrompt) {
+      alert('No generated prompt to save.');
+      return;
+    }
+
+    await handlePromptUpdate('GeneratedVersion', generatedPrompt);
+    setGeneratedPrompt('');
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -88,8 +120,22 @@ export default function Prompts() {
         ))}
       </select>
 
-       {/* Prompt Management Section */}
-       <div className="mb-8 bg-white shadow rounded p-6">
+      {/* LLM Selection Dropdown */}
+      <select
+        className="p-2 border rounded w-full mb-4"
+        value={selectedLLM}
+        onChange={(e) => setSelectedLLM(e.target.value)}
+        disabled={!selectedAgent}
+      >
+        <option value="" disabled>
+          Select LLM
+        </option>
+        <option value="Anthropic">Anthropic</option>
+        <option value="OpenAI">OpenAI</option>
+      </select>
+
+      {/* Prompt Management Section */}
+      <div className="mb-8 bg-white shadow rounded p-6">
         <h3 className="text-xl font-semibold mb-4">Prompt Management</h3>
         <div className="grid grid-cols-1 gap-4">
           <div className="flex gap-4">
@@ -116,28 +162,8 @@ export default function Prompts() {
               </button>
             </div>
           )}
-
-          {promptHistory && Object.keys(promptHistory).length > 0 && (
-            <div className="mt-4">
-              <h4 className="font-medium mb-2">Prompt History:</h4>
-              {Object.entries(promptHistory).map(([llm, history]) => (
-                <div key={llm} className="mb-4">
-                  <h5 className="font-medium">{llm}:</h5>
-                  {history.map((entry, index) => (
-                    <div key={index} className="bg-gray-50 p-4 rounded mb-2">
-                      <div className="text-sm text-gray-600 mb-1">
-                        Updated: {new Date(entry.timestamp).toLocaleString()}
-                      </div>
-                      <div className="whitespace-pre-wrap">{entry.prompt}</div>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
-
 
       {/* Display Prompts for the Selected Agent */}
       {selectedAgent && prompts && (
