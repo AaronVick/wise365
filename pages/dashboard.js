@@ -158,6 +158,7 @@ const Dashboard = () => {
 
   const handleAgentClick = async (agent) => {
     try {
+      console.log('1. Agent clicked:', agent.name);
       await fetchNestedChats(agent.id);
       
       // Check for existing default chat first
@@ -169,10 +170,12 @@ const Dashboard = () => {
         where('isDefault', '==', true)
       );
       
+      console.log('2. Searching for existing default chat');
       const snapshot = await getDocs(defaultChatQuery);
       let chatId;
       
       if (snapshot.empty) {
+        console.log('3a. No default chat found, creating new one');
         // Create new default chat if none exists
         const docRef = await addDoc(conversationsRef, {
           agentId: agent.id,
@@ -183,23 +186,26 @@ const Dashboard = () => {
           conversationName: null  // Explicitly set to null for default chats
         });
         chatId = docRef.id;
+        console.log('3b. Created new chat with ID:', chatId);
       } else {
-        // Use existing default chat
+        console.log('3c. Found existing default chat');
         chatId = snapshot.docs[0].id;
+        console.log('3d. Using existing chat ID:', chatId);
       }
   
-      setCurrentChat({
+      const newChat = {
         id: chatId,
         title: `Chat with ${agent.name}`,
         agentId: agent.id,
         participants: [currentUser.uid],
         isDefault: true
-      });
+      };
+      console.log('4. Setting currentChat to:', newChat);
+      setCurrentChat(newChat);
     } catch (error) {
       console.error('Error in handleAgentClick:', error);
     }
   };
-
 
   
 
@@ -211,6 +217,8 @@ const Dashboard = () => {
   if (!authChecked) {
     return <div>Loading...</div>;
   }
+
+  console.log('Current chat state:', currentChat);
 
   return (
     <div className="flex h-screen bg-gray-50">
