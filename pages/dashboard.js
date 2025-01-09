@@ -85,13 +85,13 @@ const Dashboard = () => {
     const q = query(
       collection(db, 'conversations'), 
       where('agentId', '==', agentId),
-      where('from', '==', currentUser.uid)
+      where('from', '==', currentUser.uid),
+      where('conversationName', '!=', null) // Only get named chats, not default ones
     );
     const snapshot = await getDocs(q);
     const chats = snapshot.docs.map((doc) => ({ 
       id: doc.id, 
-      ...doc.data(),
-      conversationName: doc.data().conversationName || `Chat with ${agents.find(a => a.id === agentId)?.name || 'Agent'}`
+      ...doc.data()
     }));
     
     setNestedChats((prev) => ({ 
@@ -127,38 +127,68 @@ const Dashboard = () => {
 
   const handleAgentClick = async (agent) => {
     await fetchNestedChats(agent.id);
+    
+    // Try to find or create a default chat for this agent
+    const conversationsRef = collection(db, 'conversations');
+    const defaultChatQuery = query(
+      conversationsRef,
+      where('agentId', '==', agent.id),
+      where('from', '==', currentUser.uid),
+      where('isDefault', '==', true)
+    );
+    
+    const snapshot = await getDocs(defaultChatQuery);
+    let chatId;
+    
+    if (snapshot.empty) {
+      // Create a new default chat
+      const docRef = await addDoc(conversationsRef, {
+        agentId: agent.id,
+        from: currentUser.uid,
+        isDefault: true,
+        timestamp: serverTimestamp(),
+      });
+      chatId = docRef.id;
+    } else {
+      chatId = snapshot.docs[0].id;
+    }
+  
     setCurrentChat({
-      id: null,
+      id: chatId,
       title: `Chat with ${agent.name}`,
       agentId: agent.id,
       participants: [currentUser.uid],
+      isDefault: true
     });
   };
 
+
   const handleNewConversation = async (agent) => {
-    const name = prompt('Enter a name for the new chat:');
-    if (!name) return;
+  const name = prompt('Enter a name for the new chat:');
+  if (!name) return;
 
-    try {
-      const docRef = await addDoc(collection(db, 'conversations'), {
-        agentId: agent.id,
-        conversationName: name,
-        from: currentUser.uid,
-        timestamp: serverTimestamp(),
-      });
+  try {
+    const docRef = await addDoc(collection(db, 'conversations'), {
+      agentId: agent.id,
+      conversationName: name,
+      from: currentUser.uid,
+      timestamp: serverTimestamp(),
+      isDefault: false
+    });
 
-      setCurrentChat({
-        id: docRef.id,
-        title: name,
-        agentId: agent.id,
-        participants: [currentUser.uid],
-      });
+    setCurrentChat({
+      id: docRef.id,
+      title: name,
+      agentId: agent.id,
+      participants: [currentUser.uid],
+      isDefault: false
+    });
 
-      await fetchNestedChats(agent.id);
-    } catch (error) {
-      console.error('Error creating new conversation:', error);
-    }
-  };
+    await fetchNestedChats(agent.id);
+  } catch (error) {
+    console.error('Error creating new conversation:', error);
+  }
+};
 
   const handleSidebarResize = (e) => {
     const newWidth = Math.min(Math.max(e.clientX, 200), window.innerWidth / 3);
