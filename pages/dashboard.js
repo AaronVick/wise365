@@ -228,7 +228,54 @@ const Dashboard = () => {
   };
 
   
-  
+  // Add this next to your other handlers
+const handleProjectClick = async (project) => {
+  try {
+    // Step 1: Get or create the conversationName for this project
+    const namesRef = collection(db, 'conversationNames');
+    const projectChatQuery = query(
+      namesRef,
+      where('projectId', '==', project.id),
+      where('userId', '==', currentUser.uid),
+      where('isDefault', '==', true)
+    );
+
+    let conversationNameId;
+    const namesSnapshot = await getDocs(projectChatQuery);
+
+    if (namesSnapshot.empty) {
+      // Create new conversation name for project
+      const nameDoc = await addDoc(namesRef, {
+        projectId: project.id,
+        conversationName: 'Project Chat',
+        userId: currentUser.uid,
+        isDefault: true,
+      });
+      conversationNameId = nameDoc.id;
+    } else {
+      conversationNameId = namesSnapshot.docs[0].id;
+    }
+
+    // Step 2: Set the current chat
+    const newChat = {
+      id: conversationNameId,
+      title: "Project Chat",
+      projectId: project.id,
+      projectName: project.ProjectName,
+      participants: project.participants || {},
+      isDefault: true,
+      conversationName: conversationNameId
+    };
+
+    console.log('Setting project chat:', newChat);
+    setCurrentChat(newChat);
+  } catch (error) {
+    console.error('Error in handleProjectClick:', error);
+  }
+};
+
+
+
 
   const handleAgentClick = async (agent) => {
     try {
@@ -382,5 +429,133 @@ const Dashboard = () => {
     </div>
   );
 };
+
+
+
+return (
+  <div className="flex h-screen bg-gray-50">
+    {/* Sidebar */}
+    <div
+      className="bg-gray-900 text-white flex flex-col"
+      style={{ width: `${sidebarWidth}px`, resize: 'horizontal', overflow: 'hidden' }}
+    >
+      {/* Home and Title Bar */}
+      <div className="p-4 border-b border-gray-700 flex items-center space-x-4">
+        <Button variant="ghost" onClick={() => setCurrentChat(null)}>
+          <Home className="h-4 w-4" />
+        </Button>
+        <h1 className="text-lg font-bold">Dashboard</h1>
+      </div>
+
+      {/* Scrollable Content */}
+      <ScrollArea className="flex-1">
+        {/* Agents Section */}
+        <div className="p-4 border-b border-gray-700">
+          <h2 className="text-sm font-semibold mb-2">AGENTS</h2>
+          <div className="space-y-1">
+            {agents.map((agent) => (
+              <div key={agent.id} className="mb-1">
+                <div
+                  className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700 rounded"
+                  onContextMenu={(e) => handleContextMenu(e, agent)}
+                >
+                  <div className="flex items-center space-x-2">
+                    <ChevronRight 
+                      className={`h-4 w-4 transform transition-transform ${expandedAgents[agent.id] ? 'rotate-90' : ''}`}
+                      onClick={() => toggleAgentExpanded(agent.id)}
+                    />
+                    <span 
+                      className="text-sm"
+                      onClick={() => handleAgentClick(agent)}
+                    >
+                      {agent.name}
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-400">{agent.role}</span>
+                </div>
+                {expandedAgents[agent.id] && nestedChats[agent.id] && renderNestedChats(agent.id)}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Projects Section */}
+        <div className="p-4">
+          <div 
+            className="flex items-center justify-between mb-2"
+            onContextMenu={handleProjectContextMenu}
+          >
+            <h2 className="text-sm font-semibold">PROJECTS</h2>
+          </div>
+          <div className="space-y-1">
+            {projects.map((project) => (
+              <div key={project.id} className="mb-1">
+                <div
+                  className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700 rounded"
+                >
+                  <div className="flex items-center space-x-2">
+                    <ChevronRight 
+                      className={`h-4 w-4 transform transition-transform ${expandedProjects[project.id] ? 'rotate-90' : ''}`}
+                      onClick={() => toggleProjectExpanded(project.id)}
+                    />
+                    <span 
+                      className="text-sm cursor-pointer"
+                      onClick={() => handleProjectClick(project)}
+                    >
+                      {project.ProjectName}
+                    </span>
+                  </div>
+                </div>
+                {expandedProjects[project.id] && (
+                  <div className="ml-4 space-y-1">
+                    {/* Project chats rendered here */}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </ScrollArea>
+
+      {/* Settings Button */}
+      <div className="p-4 border-t border-gray-700">
+        <Button variant="ghost" className="w-full">
+          <Settings className="h-4 w-4 mr-2" /> Settings
+        </Button>
+      </div>
+    </div>
+
+    {/* Resize Handle */}
+    <div
+      className="w-1 cursor-ew-resize bg-gray-700"
+      onMouseDown={(e) => {
+        e.preventDefault();
+        document.addEventListener('mousemove', handleSidebarResize);
+        document.addEventListener('mouseup', () => {
+          document.removeEventListener('mousemove', handleSidebarResize);
+        });
+      }}
+    />
+
+    {/* Main Content */}
+    <div className="flex-1">
+      {currentChat ? (
+        <ChatInterface
+          chatId={currentChat.id}
+          agentId={currentChat.agentId}
+          userId={currentUser.uid}
+          isDefault={currentChat.isDefault}
+          title={currentChat.title}
+          conversationName={currentChat.conversationName}
+          projectId={currentChat.projectId}
+          projectName={currentChat.projectName}
+        />
+      ) : (
+        <DashboardContent currentUser={currentUser} />
+      )}
+    </div>
+  </div>
+);
+
 
 export default Dashboard;

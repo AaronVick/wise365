@@ -10,7 +10,16 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
-const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversationName }) => {
+const ChatInterface = ({ 
+  chatId, 
+  agentId, 
+  userId, 
+  isDefault, 
+  title, 
+  conversationName,
+  projectId,
+  projectName 
+}) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,7 +27,6 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversation
   const [userName, setUserName] = useState('');
   const scrollRef = useRef(null);
 
-  // Use the conversationName from props
   const conversationNameRef = conversationName;
 
   // Function to get chat summary
@@ -26,7 +34,6 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversation
     if (previousMessages.length === 0) return '';
 
     try {
-      // Format previous messages for summarization
       const chatHistory = previousMessages
         .map(msg => `${msg.type === 'user' ? 'User' : 'Agent'}: ${msg.content}`)
         .join('\n');
@@ -60,17 +67,12 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversation
   useEffect(() => {
     const fetchAgentPromptAndUser = async () => {
       try {
-        if (!agentId || !userId) {
-          console.error('Agent ID or User ID is missing');
+        if (!userId) {
+          console.error('User ID is missing');
           return;
         }
         
-        // Get agent prompt
-        const agentsDefinedRef = collection(db, 'agentsDefined');
-        const q = query(agentsDefinedRef, where('agentId', '==', agentId));
-        const querySnapshot = await getDocs(q);
-
-        // Get user info
+        // Get user info first
         const usersRef = collection(db, 'users');
         const userQuery = query(usersRef, where('uid', '==', userId));
         const userSnapshot = await getDocs(userQuery);
@@ -81,13 +83,20 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversation
           setUserName(firstName);
         }
 
-        if (!querySnapshot.empty) {
-          const agentDoc = querySnapshot.docs[0];
-          const agentData = agentDoc.data();
-          const openAIPrompt = agentData.prompt?.openAI?.description;
-          if (openAIPrompt) {
-            const promptWithUser = `You are speaking with ${userName || 'the user'}. ${openAIPrompt}`;
-            setAgentPrompt(promptWithUser);
+        // Only fetch agent prompt if this is an agent chat
+        if (agentId) {
+          const agentsDefinedRef = collection(db, 'agentsDefined');
+          const q = query(agentsDefinedRef, where('agentId', '==', agentId));
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+            const agentDoc = querySnapshot.docs[0];
+            const agentData = agentDoc.data();
+            const openAIPrompt = agentData.prompt?.openAI?.description;
+            if (openAIPrompt) {
+              const promptWithUser = `You are speaking with ${userName || 'the user'}. ${openAIPrompt}`;
+              setAgentPrompt(promptWithUser);
+            }
           }
         }
       } catch (error) {
@@ -97,7 +106,6 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversation
 
     fetchAgentPromptAndUser();
   }, [agentId, userId, userName]);
-
   // Fetch Messages
   useEffect(() => {
     if (!conversationNameRef) {
@@ -137,15 +145,21 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversation
     setLoading(true);
 
     try {
-      // Save user message to Firebase
-      const userMessage = {
-        agentId,
+      // Base message structure
+      const baseMessage = {
         content: newMessage,
         conversationName: conversationNameRef,
         from: userId,
         isDefault,
         timestamp: serverTimestamp(),
+      };
+
+      // Add project or agent specific fields
+      const userMessage = {
+        ...baseMessage,
         type: 'user',
+        ...(projectId && { projectId }), // Add project ID if it exists
+        ...(agentId && { agentId }), // Add agent ID if it exists
       };
 
       const messagesRef = collection(db, 'conversations');
@@ -158,32 +172,32 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversation
       const chatSummary = await getChatSummary(messages);
       const contextPrefix = chatSummary ? `Previous conversation summary: ${chatSummary}\n\nCurrent conversation:` : '';
 
-      // Call LLM API for response
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: agentPrompt },
-            { role: 'user', content: `${contextPrefix}\n\n${newMessage}` },
-          ],
-        }),
-      });
+      // Only call LLM if there's an agent to respond
+      if (agentId) {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              { role: 'system', content: agentPrompt },
+              { role: 'user', content: `${contextPrefix}\n\n${newMessage}` },
+            ],
+          }),
+        });
 
-      if (response.ok) {
-        const result = await response.json();
-        const agentMessage = {
-          agentId,
-          content: result.reply,
-          conversationName: conversationNameRef,
-          from: agentId,
-          isDefault,
-          timestamp: serverTimestamp(),
-          type: 'agent',
-        };
+        if (response.ok) {
+          const result = await response.json();
+          const agentMessage = {
+            ...baseMessage,
+            content: result.reply,
+            from: agentId,
+            type: 'agent',
+            ...(projectId && { projectId }), // Add project ID if it exists
+            ...(agentId && { agentId }), // Add agent ID if it exists
+          };
 
-        // Save agent response to Firebase
-        await addDoc(messagesRef, agentMessage);
+          await addDoc(messagesRef, agentMessage);
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -195,7 +209,9 @@ const ChatInterface = ({ chatId, agentId, userId, isDefault, title, conversation
   return (
     <div className="flex flex-col h-full">
       <div className="border-b p-4 bg-white">
-        <h2 className="text-lg font-semibold">{title}</h2>
+        <h2 className="text-lg font-semibold">
+          {projectName ? `${projectName} - ${title}` : title}
+        </h2>
       </div>
 
       <ScrollArea className="flex-1 p-4">
