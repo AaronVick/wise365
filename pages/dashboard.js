@@ -264,6 +264,13 @@ const Dashboard = () => {
     }));
   };
 
+  const toggleAgentExpanded = (agentId) => {
+    setExpandedAgents(prev => ({
+      ...prev,
+      [agentId]: !prev[agentId]
+    }));
+  };
+
   const handleContextMenu = async (e, agent) => {
     e.preventDefault();
     const name = prompt('Enter a name for the new chat:');
@@ -409,24 +416,25 @@ const Dashboard = () => {
           <div className="p-4 border-b border-gray-700">
             <h2 className="text-sm font-semibold mb-2">AGENTS</h2>
             <div className="space-y-1">
-            {agents.map((agent) => (
+           {agents.map((agent) => (
   <div key={agent.id} className="mb-1">
     <div
       className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700 rounded"
       onContextMenu={(e) => handleContextMenu(e, agent)}
     >
       <div className="flex items-center space-x-2">
-        <div 
-          className="cursor-pointer"
-          onClick={() => toggleAgentExpanded(agent.id)}
-        >
-          <ChevronRight 
-            className={`h-4 w-4 transform transition-transform ${expandedAgents[agent.id] ? 'rotate-90' : ''}`}
-          />
-        </div>
+        <ChevronRight 
+          className={`h-4 w-4 transform transition-transform ${expandedAgents[agent.id] ? 'rotate-90' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleAgentExpanded(agent.id);
+          }}
+        />
         <span 
-          className="text-sm cursor-pointer"
-          onClick={() => handleAgentClick(agent)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleAgentClick(agent);
+          }}
         >
           {agent.name}
         </span>
