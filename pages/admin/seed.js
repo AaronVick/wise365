@@ -1,3 +1,5 @@
+// pages/admin/seed.js
+
 import { useState } from 'react';
 import AdminLayout from '@/components/AdminLayout';
 

@@ -1,3 +1,5 @@
+// pages/api/seed.js
+
 import { initializeApp, getApps, cert, getApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
@@ -344,7 +346,6 @@ const dataToSeed = [
   }
 ];
 
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -353,48 +354,42 @@ export default async function handler(req, res) {
   try {
     console.log('Starting seed process...');
     const results = [];
+    const collectionRef = db.collection('agents');
 
     for (const item of dataToSeed) {
-      const { agentId, dataType } = item;
-      const collectionRef = db.collection('agentData');
-
-      // Add timestamp to the item
-      const itemWithTimestamp = {
-        ...item,
-        lastUpdated: new Date()
-      };
+      const { agentId } = item;
 
       try {
-        // Check for existing record
+        // Check if the agent already exists
         const querySnapshot = await collectionRef
           .where('agentId', '==', agentId)
-          .where('dataType', '==', dataType)
           .get();
 
         if (querySnapshot.empty) {
-          const docRef = await collectionRef.add(itemWithTimestamp);
+          // Add new agent
+          const docRef = await collectionRef.add({
+            ...item,
+            lastUpdated: new Date() // Optional field for tracking updates
+          });
           results.push({
             status: 'added',
             agentId,
-            dataType,
             docId: docRef.id
           });
-          console.log(`Added: ${agentId} - ${dataType}`);
+          console.log(`Added agent: ${agentId}`);
         } else {
           results.push({
             status: 'skipped',
             agentId,
-            dataType,
             reason: 'already exists'
           });
-          console.log(`Skipped: ${agentId} - ${dataType} (already exists)`);
+          console.log(`Skipped agent: ${agentId} (already exists)`);
         }
       } catch (itemError) {
-        console.error(`Error processing item:`, itemError);
+        console.error(`Error processing agent ${agentId}:`, itemError);
         results.push({
           status: 'error',
           agentId,
-          dataType,
           error: itemError.message
         });
       }

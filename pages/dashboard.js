@@ -158,9 +158,15 @@ const Dashboard = () => {
 const renderNestedChats = (agentId) => {
   const chats = nestedChats[agentId] || [];
   console.log('Rendering nested chats for agent:', agentId, chats);
+
+  // Explicitly filter out any default chats
+  const nonDefaultChats = chats.filter(chat => chat.isDefault === false);
+  
+  console.log('Non-default chats:', nonDefaultChats);
+  
   return (
     <div className="ml-4 space-y-1">
-      {chats.map((chat) => {  // Removed filter since we're already getting non-default chats
+      {nonDefaultChats.map((chat) => {
         console.log('Rendering chat:', chat);
         return (
           <Button
@@ -175,7 +181,7 @@ const renderNestedChats = (agentId) => {
                 agentId: chat.agentId,
                 participants: [currentUser.uid],
                 isDefault: false,
-                conversationName: chat.id
+                conversationName: chat.conversationName
               });
             }}
           >
