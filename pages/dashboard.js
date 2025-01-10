@@ -125,12 +125,12 @@ const Dashboard = () => {
     try {
       console.log('Fetching nested chats for agent:', agentId);
       
-      // Get only non-default chats from conversationNames
+      // Get ONLY non-default chats from conversationNames
       const namesQuery = query(
         collection(db, 'conversationNames'),
-        where('agentId', '==', agentId),
+        where('agentId', '==', agent.id),
         where('userId', '==', currentUser.uid),
-        where('isDefault', '!=', true) // This will exclude the default "Chat with Agent" conversations
+        where('isDefault', '==', false) // Changed from '!=' to '==' false to be explicit
       );
       
       const namesSnapshot = await getDocs(namesQuery);
@@ -140,7 +140,7 @@ const Dashboard = () => {
         agentId: doc.data().agentId,
         conversationName: doc.id,
         ...doc.data()
-      }));
+      })).filter(chat => !chat.isDefault); // Double check to filter out any default chats
       
       console.log('Found nested chats:', chats);
 
@@ -325,9 +325,10 @@ const renderNestedChats = (agentId) => {
     try {
         console.log('Starting handleAgentClick for:', agent.name);
         
+        // Clear current chat immediately
         setCurrentChat(null);
 
-        // 1. Check/Create Default ConversationName
+        // 1. Get or create default conversation name
         const namesRef = collection(db, 'conversationNames');
         const defaultNameQuery = query(
             namesRef,
@@ -336,12 +337,13 @@ const renderNestedChats = (agentId) => {
             where('isDefault', '==', true)
         );
 
+        const namesSnapshot = await getDocs(defaultNameQuery);
         let conversationNameId;
         let isNewConversation = false;
-        const namesSnapshot = await getDocs(defaultNameQuery);
 
+        // Create or get the default conversation name
         if (namesSnapshot.empty) {
-            console.log('No default conversation found, creating new one');
+            console.log('Creating new default conversation');
             isNewConversation = true;
             const defaultName = `Chat with ${agent.name}`;
             const nameDoc = await addDoc(namesRef, {
@@ -350,47 +352,47 @@ const renderNestedChats = (agentId) => {
                 userId: currentUser.uid,
                 isDefault: true,
                 projectName: '',
+                timestamp: serverTimestamp()
             });
             conversationNameId = nameDoc.id;
-            console.log('Created new conversationName with ID:', conversationNameId);
         } else {
             conversationNameId = namesSnapshot.docs[0].id;
-            console.log('Found existing conversationName:', conversationNameId);
         }
 
-        // 2. Create Initial Message if New Conversation
+        // 2. Get or create default conversation message
         if (isNewConversation) {
-            console.log('Creating initial message for new conversation');
+            console.log('Creating initial message');
             const messagesRef = collection(db, 'conversations');
             await addDoc(messagesRef, {
                 agentId: agent.id,
-                content: `Started chat with ${agent.name}`,
+                content: `Started conversation with ${agent.name}`,
                 conversationName: conversationNameId,
-                from: currentUser.uid,
+                from: userId,
                 isDefault: true,
                 timestamp: serverTimestamp(),
                 type: 'system'
             });
         }
 
-        // 3. Set up the current chat
+        // 3. Set the current chat state
         const newChat = {
-            id: conversationNameId,
+            id: conversationNameId,  // Using the conversationName ID
             title: `Chat with ${agent.name}`,
             agentId: agent.id,
             participants: [currentUser.uid],
             isDefault: true,
-            conversationName: conversationNameId,
+            conversationName: conversationNameId
         };
 
-        console.log('Setting up new chat:', newChat);
+        console.log('Setting currentChat:', newChat);
         setCurrentChat(newChat);
-        
-        // 4. Refresh nested chats to ensure UI is up to date
+
+        // 4. Refresh nested chats (which should exclude the default chat)
         await fetchNestedChats(agent.id);
         
     } catch (error) {
         console.error('Error in handleAgentClick:', error);
+        console.error(error);  // Log the full error
     }
 };
 
