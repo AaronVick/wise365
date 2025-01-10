@@ -116,36 +116,40 @@ const Dashboard = () => {
       if (!currentUser?.uid) return;
       
       try {
-        // Get all non-default chats for all agents
         const namesQuery = query(
           collection(db, 'conversationNames'),
           where('userId', '==', currentUser.uid),
-          where('isDefault', '==', false)  // Only get non-default chats
+          where('isDefault', '==', false)  // Here we're filtering for non-default
         );
         
         const namesSnapshot = await getDocs(namesQuery);
-        console.log('Found total non-default chats:', namesSnapshot.docs.length);
+        console.log('[Debug] Initial query found chats:', namesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })));
         
         const conversationsByAgent = {};
         
         namesSnapshot.docs.forEach(doc => {
           const data = doc.data();
-          const agentId = data.agentId;
-          
-          if (!conversationsByAgent[agentId]) {
-            conversationsByAgent[agentId] = [];
+          if (!data.isDefault) {  // Double check we're only getting non-default
+            const agentId = data.agentId;
+            
+            if (!conversationsByAgent[agentId]) {
+              conversationsByAgent[agentId] = [];
+            }
+    
+            conversationsByAgent[agentId].push({
+              id: doc.id,
+              displayName: data.conversationName,
+              agentId: data.agentId,
+              conversationName: doc.id,
+              ...data
+            });
           }
-  
-          conversationsByAgent[agentId].push({
-            id: doc.id,
-            displayName: data.conversationName,
-            agentId: data.agentId,
-            conversationName: doc.id,
-            ...data
-          });
         });
   
-        console.log('Organized chats by agent:', conversationsByAgent);
+        console.log('[Debug] Organized by agent:', conversationsByAgent);
         setNestedChats(conversationsByAgent);
       } catch (error) {
         console.error('Error loading nested chats:', error);
@@ -153,7 +157,8 @@ const Dashboard = () => {
     };
   
     loadAllNestedChats();
-  }, [currentUser?.uid]);
+}, [currentUser?.uid]);
+
 
 
 
@@ -655,9 +660,9 @@ const fetchSuggestedGoals = async () => {
       </div>
       <span className="text-xs text-gray-400">{agent.role}</span>
     </div>
-    {expandedAgents[agent.id] && (
+    {expandedAgents[agent.id] && nestedChats[agent.id]?.length > 0 && (
       <div className="ml-4 space-y-1">
-        {(nestedChats[agent.id] || []).map((chat) => (
+        {nestedChats[agent.id].map((chat) => (
           <Button
             key={chat.id}
             variant="ghost"
@@ -665,7 +670,7 @@ const fetchSuggestedGoals = async () => {
             onClick={() => {
               setCurrentChat({
                 id: chat.id,
-                title: chat.displayName,
+                title: chat.conversationName,
                 agentId: agent.id,
                 participants: [currentUser.uid],
                 isDefault: false,
@@ -673,7 +678,7 @@ const fetchSuggestedGoals = async () => {
               });
             }}
           >
-            {chat.displayName}
+            {chat.conversationName}
           </Button>
         ))}
       </div>
