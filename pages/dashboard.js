@@ -230,83 +230,72 @@ const analyzeUserContext = async () => {
   // Handler Functions
   const fetchNestedChats = async (agentId) => {
     try {
-      console.log('Fetching nested chats for agent:', agentId);
+      console.log(`Fetching nested chats for agent: ${agentId}`);
       
-      // Get ONLY non-default chats from conversationNames
+      // Query non-default conversations for the agent
       const namesQuery = query(
         collection(db, 'conversationNames'),
-        where('agentId', '==', agentId), // Changed from agent.id to agentId
+        where('agentId', '==', agentId), // Ensure this matches the agent ID
         where('userId', '==', currentUser.uid),
-        where('isDefault', '==', false)
+        where('isDefault', '==', false) // Only fetch non-default conversations
       );
       
       const namesSnapshot = await getDocs(namesQuery);
-      console.log('Found namesSnapshot:', namesSnapshot.docs.length, 'documents');
-      
-      const chats = namesSnapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          displayName: doc.data().conversationName,
-          agentId: doc.data().agentId,
-          conversationName: doc.id,
-          ...doc.data()
-        }))
-        .filter(chat => !chat.isDefault); // Filter out any default chats
-      
-      console.log('Processed chats for agent', agentId, ':', chats);
-
-      setNestedChats((prev) => {
-        const updated = {
-          ...prev,
-          [agentId]: chats
-        };
-        console.log('Updated nestedChats state:', updated);
-        return updated;
-      });
+  
+      // Map the results into an array
+      const chats = namesSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+  
+      console.log(`Fetched nested chats for agent ${agentId}:`, chats);
+  
+      // Update the state for nested chats
+      setNestedChats((prev) => ({
+        ...prev,
+        [agentId]: chats,
+      }));
     } catch (error) {
       console.error('Error fetching nested chats:', error);
     }
-};
-
-
-
-const renderNestedChats = (agentId) => {
-  const chats = nestedChats[agentId] || [];
-  console.log('Rendering nested chats for agent:', agentId, chats);
-
-  // Explicitly filter out any default chats
-  const nonDefaultChats = chats.filter(chat => chat.isDefault === false);
+  };
   
-  console.log('Non-default chats:', nonDefaultChats);
+
+
+
+  const renderNestedChats = (agentId) => {
+    const chats = nestedChats[agentId] || []; // Get nested chats for the agent
+    console.log(`Rendering nested chats for agent ${agentId}:`, chats);
   
-  return (
-    <div className="ml-4 space-y-1">
-      {nonDefaultChats.map((chat) => {
-        console.log('Rendering chat:', chat);
-        return (
+    if (chats.length === 0) {
+      return <div className="ml-4 text-xs text-gray-400">No sub-chats found.</div>;
+    }
+  
+    return (
+      <div className="ml-4 space-y-1">
+        {chats.map((chat) => (
           <Button
             key={chat.id}
             variant="ghost"
             className="text-left text-xs w-full truncate py-1 h-auto"
             onClick={() => {
-              console.log('Clicking subchat:', chat);
               setCurrentChat({
                 id: chat.id,
-                title: chat.displayName,
+                title: chat.conversationName,
                 agentId: chat.agentId,
                 participants: [currentUser.uid],
                 isDefault: false,
-                conversationName: chat.conversationName
+                conversationName: chat.id,
               });
             }}
           >
-            {chat.displayName}
+            {chat.conversationName}
           </Button>
-        );
-      })}
-    </div>
-  );
-};
+        ))}
+      </div>
+    );
+  };
+  
 
 
 // goal handler
@@ -473,11 +462,17 @@ const fetchSuggestedGoals = async () => {
   };
 
   const toggleAgentExpanded = (agentId) => {
-    setExpandedAgents(prev => ({
+    setExpandedAgents((prev) => ({
       ...prev,
-      [agentId]: !prev[agentId]
+      [agentId]: !prev[agentId],
     }));
+  
+    // Fetch nested chats if not already loaded
+    if (!nestedChats[agentId]) {
+      fetchNestedChats(agentId);
+    }
   };
+  
 
   const handleContextMenu = async (e, agent) => {
     e.preventDefault();
@@ -623,105 +618,106 @@ const fetchSuggestedGoals = async () => {
           </Button>
           <h1 className="text-lg font-bold">Dashboard</h1>
         </div>
-
+  
         {/* Scrollable Content */}
         <ScrollArea className="flex-1">
           {/* Agents Section */}
           <div className="p-4 border-b border-gray-700">
             <h2 className="text-sm font-semibold mb-2">AGENTS</h2>
             <div className="space-y-1">
-            {agents.map((agent) => (
-  <div key={agent.id} className="mb-1">
-    <div
-      className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700 rounded"
-      onContextMenu={(e) => handleContextMenu(e, agent)}
-    >
-      <div className="flex items-center space-x-2">
-        <div 
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleAgentExpanded(agent.id);
-          }}
-        >
-          <ChevronRight 
-            className={`h-4 w-4 transform transition-transform ${expandedAgents[agent.id] ? 'rotate-90' : ''}`}
-          />
-        </div>
-        <span 
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleAgentClick(agent);
-          }}
-        >
-          {agent.name}
-        </span>
-      </div>
-      <span className="text-xs text-gray-400">{agent.role}</span>
-    </div>
-    {expandedAgents[agent.id] && nestedChats[agent.id]?.length > 0 && (
-      <div className="ml-4 space-y-1">
-        {nestedChats[agent.id].map((chat) => (
-          <Button
-            key={chat.id}
-            variant="ghost"
-            className="text-left text-xs w-full truncate py-1 h-auto"
-            onClick={() => {
-              setCurrentChat({
-                id: chat.id,
-                title: chat.conversationName,
-                agentId: agent.id,
-                participants: [currentUser.uid],
-                isDefault: false,
-                conversationName: chat.id
-              });
-            }}
-          >
-            {chat.conversationName}
-          </Button>
-        ))}
-      </div>
-    )}
-  </div>
-))}
+              {agents.map((agent) => (
+                <div key={agent.id} className="mb-1">
+                  <div
+                    className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700 rounded"
+                    onContextMenu={(e) => handleContextMenu(e, agent)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <div
+                        className="cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleAgentExpanded(agent.id);
+                        }}
+                      >
+                        <ChevronRight
+                          className={`h-4 w-4 transform transition-transform ${
+                            expandedAgents[agent.id] ? 'rotate-90' : ''
+                          }`}
+                        />
+                      </div>
+                      <span
+                        className="cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAgentClick(agent);
+                        }}
+                      >
+                        {agent.name}
+                      </span>
+                    </div>
+                    <span className="text-xs text-gray-400">{agent.role}</span>
+                  </div>
+                  {/* Render Nested Chats */}
+                  {expandedAgents[agent.id] && (
+                    <div className="ml-4 space-y-1">
+                      {nestedChats[agent.id]?.length > 0 ? (
+                        nestedChats[agent.id].map((chat) => (
+                          <Button
+                            key={chat.id}
+                            variant="ghost"
+                            className="text-left text-xs w-full truncate py-1 h-auto"
+                            onClick={() => {
+                              setCurrentChat({
+                                id: chat.id,
+                                title: chat.conversationName,
+                                agentId: agent.id,
+                                participants: [currentUser.uid],
+                                isDefault: false,
+                                conversationName: chat.id,
+                              });
+                            }}
+                          >
+                            {chat.conversationName}
+                          </Button>
+                        ))
+                      ) : (
+                        <div className="text-xs text-gray-400">No sub-chats found.</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
-
-
-
-{/* Goals Section */}
-<div className="p-4 border-b border-gray-700">
-  {/* Current Goals */}
-  <div className="mb-4">
-    <h2 className="text-sm font-semibold">ONGOING GOALS</h2>
-    <p className="text-xs text-gray-400 mb-2">
-      These are your active goals that you're currently working on.
-    </p>
-    <div className="space-y-1 mt-2">
-      {currentGoals.length > 0 ? (
-        currentGoals.map((goal) => (
-          <div key={goal.id} className="p-2 bg-gray-800 rounded">
-            <div className="text-sm font-medium">{goal.description}</div>
-            <div className="text-xs text-gray-400 mt-1">
-              Assigned to: {agents.find((a) => a.id === goal.agentId)?.name || goal.agentId}
+  
+          {/* Goals Section */}
+          <div className="p-4 border-b border-gray-700">
+            {/* Current Goals */}
+            <div className="mb-4">
+              <h2 className="text-sm font-semibold">ONGOING GOALS</h2>
+              <p className="text-xs text-gray-400 mb-2">
+                These are your active goals that you're currently working on.
+              </p>
+              <div className="space-y-1 mt-2">
+                {currentGoals.length > 0 ? (
+                  currentGoals.map((goal) => (
+                    <div key={goal.id} className="p-2 bg-gray-800 rounded">
+                      <div className="text-sm font-medium">{goal.description}</div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        Assigned to: {agents.find((a) => a.id === goal.agentId)?.name || goal.agentId}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-sm text-gray-400">No ongoing goals found.</div>
+                )}
+              </div>
             </div>
           </div>
-        ))
-      ) : (
-        <div className="text-sm text-gray-400">No ongoing goals found.</div>
-      )}
-    </div>
-  </div>
-</div>
-
-
-
-
-
+  
           {/* Projects Section */}
           <div className="p-4">
-            <div 
+            <div
               className="flex items-center justify-between mb-2"
               onContextMenu={handleProjectContextMenu}
             >
@@ -734,11 +730,13 @@ const fetchSuggestedGoals = async () => {
                     className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700 rounded"
                   >
                     <div className="flex items-center space-x-2">
-                      <ChevronRight 
-                        className={`h-4 w-4 transform transition-transform ${expandedProjects[project.id] ? 'rotate-90' : ''}`}
+                      <ChevronRight
+                        className={`h-4 w-4 transform transition-transform ${
+                          expandedProjects[project.id] ? 'rotate-90' : ''
+                        }`}
                         onClick={() => toggleProjectExpanded(project.id)}
                       />
-                      <span 
+                      <span
                         className="text-sm cursor-pointer"
                         onClick={() => handleProjectClick(project)}
                       >
@@ -756,7 +754,7 @@ const fetchSuggestedGoals = async () => {
             </div>
           </div>
         </ScrollArea>
-
+  
         {/* Settings Button */}
         <div className="p-4 border-t border-gray-700">
           <Button variant="ghost" className="w-full">
@@ -764,7 +762,7 @@ const fetchSuggestedGoals = async () => {
           </Button>
         </div>
       </div>
-
+  
       {/* Resize Handle */}
       <div
         className="w-1 cursor-ew-resize bg-gray-700"
@@ -776,7 +774,7 @@ const fetchSuggestedGoals = async () => {
           });
         }}
       />
-
+  
       {/* Main Content */}
       <div className="flex-1">
         {currentChat ? (
@@ -795,7 +793,7 @@ const fetchSuggestedGoals = async () => {
         )}
       </div>
     </div>
-  );
+  );  
 };
 
 export default Dashboard;
