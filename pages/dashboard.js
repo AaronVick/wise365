@@ -23,8 +23,6 @@ import { ChevronRight, Home, Settings } from 'lucide-react'; // Icons
 import ErrorBoundary from '../components/ErrorBoundary'; // Add ErrorBoundary for robust error handling
 import dynamic from 'next/dynamic';
 
-const [suggestedGoals, setSuggestedGoals] = useState([]);
-const [currentGoals, setCurrentGoals] = useState([]);
 
 
 // Agents data
@@ -65,6 +63,8 @@ const Dashboard = () => {
   const [expandedAgents, setExpandedAgents] = useState({});
   const [projects, setProjects] = useState([]);
   const [expandedProjects, setExpandedProjects] = useState({});
+  const [suggestedGoals, setSuggestedGoals] = useState([]);
+  const [currentGoals, setCurrentGoals] = useState([]);
 
   // Auth Effect
   useEffect(() => {
