@@ -125,32 +125,24 @@ const Dashboard = () => {
     try {
       console.log('Fetching nested chats for agent:', agentId);
       
+      // Get only the chat threads from conversationNames
       const namesQuery = query(
         collection(db, 'conversationNames'),
         where('agentId', '==', agentId),
-        where('userId', '==', currentUser.uid)
-      );
-      const namesSnapshot = await getDocs(namesQuery);
-      const namesMap = new Map(
-        namesSnapshot.docs.map(doc => [doc.id, doc.data().conversationName])
+        where('userId', '==', currentUser.uid),
+        where('isDefault', '==', false) // Only get non-default chats for nesting
       );
       
-      console.log('Found conversation names:', namesMap);
-
-      const q = query(
-        collection(db, 'conversations'),
-        where('agentId', '==', agentId),
-        where('from', '==', currentUser.uid),
-        where('conversationName', 'in', [...namesMap.keys()])
-      );
-      const snapshot = await getDocs(q);
-      const chats = snapshot.docs.map((doc) => ({
+      const namesSnapshot = await getDocs(namesQuery);
+      const chats = namesSnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data(),
-        displayName: namesMap.get(doc.data().conversationName)
+        displayName: doc.data().conversationName,
+        agentId: doc.data().agentId,
+        conversationName: doc.id, // The ID of the conversationName document
+        ...doc.data()
       }));
       
-      console.log('Mapped chats:', chats);
+      console.log('Found nested chats:', chats);
 
       setNestedChats((prev) => ({
         ...prev,
@@ -168,7 +160,7 @@ const renderNestedChats = (agentId) => {
   console.log('Rendering nested chats for agent:', agentId, chats);
   return (
     <div className="ml-4 space-y-1">
-      {chats.filter(chat => !chat.isDefault).map((chat) => {
+      {chats.map((chat) => {  // Removed filter since we're already getting non-default chats
         console.log('Rendering chat:', chat);
         return (
           <Button
@@ -183,7 +175,7 @@ const renderNestedChats = (agentId) => {
                 agentId: chat.agentId,
                 participants: [currentUser.uid],
                 isDefault: false,
-                conversationName: chat.conversationName
+                conversationName: chat.id
               });
             }}
           >
@@ -194,6 +186,7 @@ const renderNestedChats = (agentId) => {
     </div>
   );
 };
+
 
 
   const handleProjectClick = async (project) => {
