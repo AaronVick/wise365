@@ -82,30 +82,16 @@ const ChatInterface = ({
           const firstName = userData.name?.split(' ')[0] || 'User';
           setUserName(firstName);
         }
-
-        // Only fetch agent prompt if this is an agent chat
-        if (agentId) {
-          const agentsDefinedRef = collection(db, 'agentsDefined');
-          const q = query(agentsDefinedRef, where('agentId', '==', agentId));
-          const querySnapshot = await getDocs(q);
-
-          if (!querySnapshot.empty) {
-            const agentDoc = querySnapshot.docs[0];
-            const agentData = agentDoc.data();
-            const openAIPrompt = agentData.prompt?.openAI?.description;
-            if (openAIPrompt) {
-              const promptWithUser = `You are speaking with ${userName || 'the user'}. ${openAIPrompt}`;
-              setAgentPrompt(promptWithUser);
-            }
-          }
-        }
       } catch (error) {
-        console.error('Error fetching agent prompt or user info:', error);
+        console.error('Error fetching user info:', error);
       }
     };
-
+  
     fetchAgentPromptAndUser();
-  }, [agentId, userId, userName]);
+  }, [userId]);
+
+  
+  
   // Fetch Messages
   useEffect(() => {
     if (!conversationNameRef) {

@@ -377,12 +377,52 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
           </Card>
 
           {/* Resources Section */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Resources</h3>
-            <div className="text-sm text-gray-500">
-              {/* Add your resources content here */}
-            </div>
-          </Card>
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Resources</h3>
+              <div className="text-sm text-gray-500">
+                <div className="space-y-4">
+                  {resources.length === 0 ? (
+                    <div className="text-center text-gray-500 py-4">No resources available</div>
+                  ) : (
+                    resources
+                      .filter(resource =>
+                        (!resource.teamId || resource.teamId === currentUser.teamId) &&
+                        resource.shared
+                      )
+                      .map(resource => (
+                        <div 
+                          key={resource.id} 
+                          className="p-4 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors"
+                        >
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <h4 className="text-sm font-medium">{resource.title}</h4>
+                              <p className="text-xs text-gray-500">{resource.description}</p>
+                            </div>
+                            <Button
+                              variant="link"
+                              onClick={() => {
+                                if (resource.type === 'form' && resource.formPage) {
+                                  router.push(resource.formPage); // Navigate to form page
+                                } else if (resource.type === 'pdf' && resource.link) {
+                                  window.open(resource.link, '_blank'); // Open PDF in a new tab
+                                } else {
+                                  console.warn('Unsupported resource type or missing data.');
+                                }
+                              }}
+                              className="text-blue-600 hover:underline"
+                            >
+                              {resource.type === 'form' ? 'Fill Out' : 'View'}
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+            </Card>
+
+
         </div>
       </ScrollArea>
     </>
