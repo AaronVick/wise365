@@ -111,52 +111,57 @@ const Dashboard = () => {
   }, [currentUser?.uid]);
 
   // Load All Nested Chats Effect
-  useEffect(() => {
-    const loadAllNestedChats = async () => {
-      if (!currentUser?.uid) return;
-      
-      try {
-        const namesQuery = query(
-          collection(db, 'conversationNames'),
-          where('userId', '==', currentUser.uid),
-          where('isDefault', '==', false)  // Here we're filtering for non-default
-        );
-        
-        const namesSnapshot = await getDocs(namesQuery);
-        console.log('[Debug] Initial query found chats:', namesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })));
-        
-        const conversationsByAgent = {};
-        
-        namesSnapshot.docs.forEach(doc => {
-          const data = doc.data();
-          if (!data.isDefault) {  // Double check we're only getting non-default
-            const agentId = data.agentId;
-            
-            if (!conversationsByAgent[agentId]) {
-              conversationsByAgent[agentId] = [];
-            }
+  // Load All Nested Chats Effect
+useEffect(() => {
+  const loadAllNestedChats = async () => {
+    if (!currentUser?.uid) return;
     
-            conversationsByAgent[agentId].push({
-              id: doc.id,
-              displayName: data.conversationName,
-              agentId: data.agentId,
-              conversationName: doc.id,
-              ...data
-            });
-          }
+    try {
+      // Get all non-default chats for all agents
+      const namesQuery = query(
+        collection(db, 'conversationNames'),
+        where('userId', '==', currentUser.uid)
+      );
+      
+      const namesSnapshot = await getDocs(namesQuery);
+      console.log('[Debug] All conversations found:', namesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })));
+      
+      const conversationsByAgent = {};
+      
+      namesSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const agentId = data.agentId;
+
+        // Skip if it's a default chat
+        if (data.isDefault === true) {
+          console.log('[Debug] Skipping default chat:', data);
+          return;
+        }
+        
+        if (!conversationsByAgent[agentId]) {
+          conversationsByAgent[agentId] = [];
+        }
+
+        conversationsByAgent[agentId].push({
+          id: doc.id,
+          displayName: data.conversationName,
+          agentId: data.agentId,
+          conversationName: doc.id,
+          ...data
         });
-  
-        console.log('[Debug] Organized by agent:', conversationsByAgent);
-        setNestedChats(conversationsByAgent);
-      } catch (error) {
-        console.error('Error loading nested chats:', error);
-      }
-    };
-  
-    loadAllNestedChats();
+      });
+
+      console.log('[Debug] Conversations by agent:', conversationsByAgent);
+      setNestedChats(conversationsByAgent);
+    } catch (error) {
+      console.error('Error loading nested chats:', error);
+    }
+  };
+
+  loadAllNestedChats();
 }, [currentUser?.uid]);
 
 
