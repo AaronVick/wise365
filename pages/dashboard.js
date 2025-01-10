@@ -219,26 +219,34 @@ const analyzeUserContext = async () => {
       // Get ONLY non-default chats from conversationNames
       const namesQuery = query(
         collection(db, 'conversationNames'),
-        where('agentId', '==', agent.id),
+        where('agentId', '==', agentId), // Changed from agent.id to agentId
         where('userId', '==', currentUser.uid),
-        where('isDefault', '==', false) // Changed from '!=' to '==' false to be explicit
+        where('isDefault', '==', false)
       );
       
       const namesSnapshot = await getDocs(namesQuery);
-      const chats = namesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        displayName: doc.data().conversationName,
-        agentId: doc.data().agentId,
-        conversationName: doc.id,
-        ...doc.data()
-      })).filter(chat => !chat.isDefault); // Double check to filter out any default chats
+      console.log('Found namesSnapshot:', namesSnapshot.docs.length, 'documents');
       
-      console.log('Found nested chats:', chats);
+      const chats = namesSnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          displayName: doc.data().conversationName,
+          agentId: doc.data().agentId,
+          conversationName: doc.id,
+          ...doc.data()
+        }))
+        .filter(chat => !chat.isDefault); // Filter out any default chats
+      
+      console.log('Processed chats for agent', agentId, ':', chats);
 
-      setNestedChats((prev) => ({
-        ...prev,
-        [agentId]: chats
-      }));
+      setNestedChats((prev) => {
+        const updated = {
+          ...prev,
+          [agentId]: chats
+        };
+        console.log('Updated nestedChats state:', updated);
+        return updated;
+      });
     } catch (error) {
       console.error('Error fetching nested chats:', error);
     }
