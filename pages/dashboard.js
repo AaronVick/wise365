@@ -409,29 +409,33 @@ const Dashboard = () => {
           <div className="p-4 border-b border-gray-700">
             <h2 className="text-sm font-semibold mb-2">AGENTS</h2>
             <div className="space-y-1">
-              {agents.map((agent) => (
-                <div key={agent.id} className="mb-1">
-                  <div
-                    className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700 rounded"
-                    onContextMenu={(e) => handleContextMenu(e, agent)}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <ChevronRight 
-                        className={`h-4 w-4 transform transition-transform ${expandedAgents[agent.id] ? 'rotate-90' : ''}`}
-                        onClick={() => toggleAgentExpanded(agent.id)}
-                      />
-                      <span 
-                        className="text-sm"
-                        onClick={() => handleAgentClick(agent)}
-                      >
-                        {agent.name}
-                      </span>
-                    </div>
-                    <span className="text-xs text-gray-400">{agent.role}</span>
-                  </div>
-                  {expandedAgents[agent.id] && nestedChats[agent.id] && renderNestedChats(agent.id)}
-                </div>
-              ))}
+            {agents.map((agent) => (
+  <div key={agent.id} className="mb-1">
+    <div
+      className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700 rounded"
+      onContextMenu={(e) => handleContextMenu(e, agent)}
+    >
+      <div className="flex items-center space-x-2">
+        <div 
+          className="cursor-pointer"
+          onClick={() => toggleAgentExpanded(agent.id)}
+        >
+          <ChevronRight 
+            className={`h-4 w-4 transform transition-transform ${expandedAgents[agent.id] ? 'rotate-90' : ''}`}
+          />
+        </div>
+        <span 
+          className="text-sm cursor-pointer"
+          onClick={() => handleAgentClick(agent)}
+        >
+          {agent.name}
+        </span>
+      </div>
+      <span className="text-xs text-gray-400">{agent.role}</span>
+    </div>
+    {expandedAgents[agent.id] && nestedChats[agent.id] && renderNestedChats(agent.id)}
+  </div>
+))}
             </div>
           </div>
 
