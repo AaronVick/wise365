@@ -639,9 +639,9 @@ const fetchSuggestedGoals = async () => {
 
 
 
-{/* Goals Sections */}
+{/* Goals Section */}
 <div className="p-4 border-b border-gray-700">
-  {/* Current Goals Section */}
+  {/* Current Goals */}
   <div className="mb-4">
     <h2 className="text-sm font-semibold">CURRENT GOALS</h2>
     <div className="space-y-1 mt-2">
@@ -649,54 +649,59 @@ const fetchSuggestedGoals = async () => {
         <div key={goal.id} className="p-2 bg-gray-800 rounded">
           <div className="text-sm">{goal.description}</div>
           <div className="text-xs text-gray-400 mt-1">
-            Assigned to: {agents.find(a => a.id === goal.agentId)?.name || goal.agentId}
+            Assigned to: {agents.find((a) => a.id === goal.agentId)?.name || goal.agentId}
           </div>
         </div>
       ))}
     </div>
   </div>
 
-  {/* Suggested Goals Section */}
+  {/* Suggested Goals (Under Current Goals) */}
   <div className="mt-4">
-    <h2 className="text-sm font-semibold">SUGGESTED GOALS</h2>
-    <div className="space-y-1 mt-2">
-      {suggestedGoals.map((suggestion) => (
-        <div key={suggestion.id} className="p-2 bg-gray-800 rounded">
-          {/* Goal Description */}
-          <div className="text-sm">{suggestion.goalDescription}</div>
-          
-          {/* Assigned Agent */}
-          <div className="text-xs text-gray-400 mt-1">
-            Assigned to: {agents.find(a => a.id === suggestion.agentAssigned)?.name || suggestion.agentAssigned}
-          </div>
+    {suggestedGoals.length > 0 && (
+      <>
+        <h2 className="text-sm font-semibold">SUGGESTED GOALS</h2>
+        <div className="space-y-1 mt-2">
+          {suggestedGoals.map((suggestion) => (
+            <div key={suggestion.id} className="p-2 bg-gray-800 rounded">
+              {/* Goal Description */}
+              <div className="text-sm">{suggestion.goalDescription}</div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-between mt-2">
-            <div className="flex space-x-2">
-              {/* Start Chat Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAcceptSuggestion(suggestion)}
-                className="px-2 py-1 hover:bg-green-700"
-              >
-                Start Chat
-              </Button>
+              {/* Assigned Agent */}
+              <div className="text-xs text-gray-400 mt-1">
+                Assigned to: {agents.find((a) => a.id === suggestion.agentAssigned)?.name || suggestion.agentAssigned}
+              </div>
 
-              {/* Ignore Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleIgnoreSuggestion(suggestion)}
-                className="px-2 py-1 hover:bg-red-700"
-              >
-                Ignore
-              </Button>
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex space-x-2">
+                  {/* Start Chat Button */}
+                  <Button
+                    variant="green"
+                    size="sm"
+                    onClick={() => handleAcceptSuggestion(suggestion)}
+                    className="px-2 py-1"
+                  >
+                    Start Chat
+                  </Button>
+
+                  {/* Ignore Button */}
+                  <Button
+                    variant="red"
+                    size="sm"
+                    onClick={() => handleIgnoreSuggestion(suggestion)}
+                    className="px-2 py-1"
+                  >
+                    Ignore
+                  </Button>
+
+                </div>
+              </div>
             </div>
-          </div>
+          ))}
         </div>
-      ))}
-    </div>
+      </>
+    )}
   </div>
 </div>
 
