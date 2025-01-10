@@ -1,3 +1,5 @@
+
+
 // /pages/dashboard.js
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -14,16 +16,39 @@ import {
 } from 'firebase/firestore';
 import { Button } from '../components/ui/button'; 
 import { ScrollArea } from '../components/ui/scroll-area';
-import DashboardContent from '../components/DashboardContent';
-import ChatInterface from '../components/ChatInterface';
-import { ChevronRight, Home, Settings } from 'lucide-react';
-import ErrorBoundary from '../components/ErrorBoundary';
+import DashboardContent from '../components/DashboardContent'; // Dashboard content
+import ChatInterface from '../components/ChatInterface'; // Chat interface component
+import { ChevronRight, Home, Settings } from 'lucide-react'; // Icons
+import ErrorBoundary from '../components/ErrorBoundary'; // Add ErrorBoundary for robust error handling
 import dynamic from 'next/dynamic';
 
 // Agents data
 const agents = [
-  // ... your existing agents array
+  { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist', category: 'Marketing' },
+  { id: 'shawn', name: 'Shawn', role: 'Tool Guidance Assistant', category: 'Administrative' },
+  { id: 'alex', name: 'Alex', role: 'Persona Pilot Pro', category: 'Sales' },
+  { id: 'sylvester', name: 'Sylvester', role: 'Marketing Success Wheel Optimizer', category: 'Marketing' },
+  { id: 'ally', name: 'Ally', role: 'Positioning Factors Accelerator', category: 'Marketing' },
+  { id: 'aaron', name: 'Aaron', role: 'T.I.N.B. Builder', category: 'Sales' },
+  { id: 'deborah', name: "De'Borah", role: 'Facebook Marketing Maestro', category: 'Social Media' },
+  { id: 'claire', name: 'Claire', role: 'LinkedIn Messaging Maestro', category: 'Social Media' },
+  { id: 'ej', name: 'EJ', role: 'TikTok Marketing Maestro', category: 'Social Media' },
+  { id: 'lisa', name: 'Lisa', role: 'Instagram Marketing Maestro', category: 'Social Media' },
+  { id: 'troy', name: 'Troy', role: 'CrossSell Catalyst', category: 'Sales' },
+  { id: 'rom', name: 'Rom', role: 'PitchPerfect AI', category: 'Administrative' },
+  { id: 'larry', name: 'Larry', role: 'Market Edge AI', category: 'Administrative' },
+  { id: 'jen', name: 'Jen', role: 'CloseMaster AI', category: 'Administrative' },
+  { id: 'daniela', name: 'Daniela', role: 'Reputation Builder AI', category: 'Administrative' },
+  { id: 'antonio', name: 'Antonio', role: 'Video Story Architect', category: 'Copy Editing' },
+  { id: 'mason', name: 'Mason', role: 'StoryAlign AI', category: 'Copy Editing' },
+  { id: 'gabriel', name: 'Gabriel', role: 'Blog Blueprint', category: 'Copy Editing' },
+  { id: 'orion', name: 'Orion', role: 'PersonaLead Magnet Maker', category: 'Marketing' },
+  { id: 'sadie', name: 'Sadie', role: 'Ad Copy Maestro', category: 'Copy Editing' },
+  { id: 'jesse', name: 'Jesse', role: 'Email Marketing Maestro', category: 'Marketing' },
+  { id: 'caner', name: 'Caner', role: 'InsightPulse AI', category: 'Administrative' },
+  { id: 'jr', name: 'JR', role: 'Audience Gap Genius', category: 'Sales' },
 ];
+
 
 const Dashboard = () => {
   const router = useRouter();
