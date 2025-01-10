@@ -625,21 +625,26 @@ const fetchSuggestedGoals = async () => {
           <div className="p-4 border-b border-gray-700">
             <h2 className="text-sm font-semibold mb-2">AGENTS</h2>
             <div className="space-y-1">
-           {agents.map((agent) => (
+            {agents.map((agent) => (
   <div key={agent.id} className="mb-1">
     <div
       className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700 rounded"
       onContextMenu={(e) => handleContextMenu(e, agent)}
     >
       <div className="flex items-center space-x-2">
-        <ChevronRight 
-          className={`h-4 w-4 transform transition-transform ${expandedAgents[agent.id] ? 'rotate-90' : ''}`}
+        <div 
+          className="cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
             toggleAgentExpanded(agent.id);
           }}
-        />
+        >
+          <ChevronRight 
+            className={`h-4 w-4 transform transition-transform ${expandedAgents[agent.id] ? 'rotate-90' : ''}`}
+          />
+        </div>
         <span 
+          className="cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
             handleAgentClick(agent);
@@ -650,7 +655,29 @@ const fetchSuggestedGoals = async () => {
       </div>
       <span className="text-xs text-gray-400">{agent.role}</span>
     </div>
-    {expandedAgents[agent.id] && nestedChats[agent.id] && renderNestedChats(agent.id)}
+    {expandedAgents[agent.id] && (
+      <div className="ml-4 space-y-1">
+        {(nestedChats[agent.id] || []).map((chat) => (
+          <Button
+            key={chat.id}
+            variant="ghost"
+            className="text-left text-xs w-full truncate py-1 h-auto"
+            onClick={() => {
+              setCurrentChat({
+                id: chat.id,
+                title: chat.displayName,
+                agentId: agent.id,
+                participants: [currentUser.uid],
+                isDefault: false,
+                conversationName: chat.id
+              });
+            }}
+          >
+            {chat.displayName}
+          </Button>
+        ))}
+      </div>
+    )}
   </div>
 ))}
             </div>
@@ -664,7 +691,7 @@ const fetchSuggestedGoals = async () => {
   <div className="mb-4">
     <h2 className="text-sm font-semibold">ONGOING GOALS</h2>
     <p className="text-xs text-gray-400 mb-2">
-      These are your active goals that you’re currently working on.
+      These are your active goals that you're currently working on.
     </p>
     <div className="space-y-1 mt-2">
       {currentGoals.length > 0 ? (
@@ -681,55 +708,7 @@ const fetchSuggestedGoals = async () => {
       )}
     </div>
   </div>
-
-  {/* Suggested Goals */}
-  <div className="mt-4">
-    <h2 className="text-sm font-semibold">SUGGESTED GOALS</h2>
-    <p className="text-xs text-gray-400 mb-2">
-      These are recommendations tailored for you. Accept or ignore as needed.
-    </p>
-    <div className="space-y-1 mt-2">
-      {suggestedGoals.length > 0 ? (
-        suggestedGoals.map((suggestion) => (
-          <div key={suggestion.id} className="p-2 bg-gray-800 rounded">
-            {/* Goal Description */}
-            <div className="text-sm font-medium">{suggestion.goalDescription}</div>
-            {/* Assigned Agent */}
-            <div className="text-xs text-gray-400 mt-1">
-              Assigned to: {agents.find((a) => a.id === suggestion.agentAssigned)?.name || suggestion.agentAssigned}
-            </div>
-            {/* Action Buttons */}
-            <div className="flex items-center justify-between mt-2">
-              <div className="flex space-x-2">
-                {/* Start Chat Button */}
-                <Button
-                  variant="green"
-                  size="sm"
-                  onClick={() => handleAcceptSuggestion(suggestion)}
-                  className="px-2 py-1"
-                >
-                  Accept
-                </Button>
-                {/* Ignore Button */}
-                <Button
-                  variant="red"
-                  size="sm"
-                  onClick={() => handleIgnoreSuggestion(suggestion)}
-                  className="px-2 py-1"
-                >
-                  Ignore
-                </Button>
-              </div>
-            </div>
-          </div>
-        ))
-      ) : (
-        <div className="text-sm text-gray-400">No suggested goals available.</div>
-      )}
-    </div>
-  </div>
 </div>
-
 
 
 
