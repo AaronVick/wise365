@@ -314,6 +314,9 @@ const Dashboard = () => {
   const handleAgentClick = async (agent) => {
     try {
       console.log('Starting handleAgentClick:', agent.name);
+      
+      // First clear current chat
+      setCurrentChat(null);
 
       const namesRef = collection(db, 'conversationNames');
       const defaultNameQuery = query(
@@ -369,21 +372,27 @@ const Dashboard = () => {
 
       console.log('ChatId:', chatId);
 
-      const newChat = {
-        id: chatId,
-        title: `Chat with ${agent.name}`,
-        agentId: agent.id,
-        participants: [currentUser.uid],
-        isDefault: true,
-        conversationName: conversationNameId,
-      };
+      // Small delay to ensure clean unmount/remount
+      setTimeout(() => {
+        const newChat = {
+          id: chatId,
+          title: `Chat with ${agent.name}`,
+          agentId: agent.id,
+          participants: [currentUser.uid],
+          isDefault: true,
+          conversationName: conversationNameId,
+        };
+  
+        console.log('Setting currentChat:', newChat);
+        setCurrentChat(newChat);
+      }, 100);
 
-      console.log('Setting currentChat:', newChat);
-      setCurrentChat(newChat);
     } catch (error) {
       console.error('Error in handleAgentClick:', error);
     }
   };
+
+  
 
   const handleSidebarResize = (e) => {
     const newWidth = Math.min(Math.max(e.clientX, 200), window.innerWidth / 3);
