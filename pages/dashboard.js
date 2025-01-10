@@ -201,6 +201,44 @@ const Dashboard = () => {
     );
   };
 
+  const handleProjectContextMenu = async (e) => {
+    e.preventDefault();
+    const name = prompt('Enter a name for the new project:');
+    if (name) {
+      try {
+        const projectDoc = await addDoc(collection(db, 'projectNames'), {
+          ProjectName: name,
+          userId: currentUser.uid,
+          teamId: "",
+          participants: {
+            userId: currentUser.uid
+          }
+        });
+
+        const newProject = {
+          id: projectDoc.id,
+          ProjectName: name,
+          userId: currentUser.uid,
+          teamId: "",
+          participants: {
+            userId: currentUser.uid
+          }
+        };
+
+        setProjects(prev => [...prev, newProject]);
+      } catch (error) {
+        console.error('Error creating project:', error);
+      }
+    }
+  };
+
+  const toggleProjectExpanded = (projectId) => {
+    setExpandedProjects(prev => ({
+      ...prev,
+      [projectId]: !prev[projectId]
+    }));
+  };
+
   const handleContextMenu = async (e, agent) => {
     e.preventDefault();
     const name = prompt('Enter a name for the new chat:');
