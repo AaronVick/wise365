@@ -161,38 +161,39 @@ const Dashboard = () => {
     }
 };
 
-const renderNestedChats = (agentId) => {
-    const chats = nestedChats[agentId] || [];
-    console.log('Rendering nested chats for agent:', agentId, chats);
-    return (
-      <div className="ml-4 space-y-1">
-        {chats.filter(chat => !chat.isDefault).map((chat) => {
-          console.log('Rendering chat:', chat);
-          return (
-            <Button
-              key={chat.id}
-              variant="ghost"
-              className="text-left text-xs w-full truncate py-1 h-auto"
-              onClick={() => {
-                console.log('Clicking subchat:', chat);
-                setCurrentChat({
-                  id: chat.id,
-                  title: chat.displayName,
-                  agentId: chat.agentId,
-                  participants: [currentUser.uid],
-                  isDefault: false,
-                  conversationName: chat.conversationName
-                });
-              }}
-            >
-              {chat.displayName}
-            </Button>
-          );
-        })}
-      </div>
-    );
-};
 
+
+const renderNestedChats = (agentId) => {
+  const chats = nestedChats[agentId] || [];
+  console.log('Rendering nested chats for agent:', agentId, chats);
+  return (
+    <div className="ml-4 space-y-1">
+      {chats.filter(chat => !chat.isDefault).map((chat) => {
+        console.log('Rendering chat:', chat);
+        return (
+          <Button
+            key={chat.id}
+            variant="ghost"
+            className="text-left text-xs w-full truncate py-1 h-auto"
+            onClick={() => {
+              console.log('Clicking subchat:', chat);
+              setCurrentChat({
+                id: chat.id,
+                title: chat.displayName,
+                agentId: chat.agentId,
+                participants: [currentUser.uid],
+                isDefault: false,
+                conversationName: chat.conversationName
+              });
+            }}
+          >
+            {chat.displayName}
+          </Button>
+        );
+      })}
+    </div>
+  );
+};
 
 
   const handleProjectClick = async (project) => {
@@ -239,33 +240,7 @@ const renderNestedChats = (agentId) => {
     }
   };
 
-  const renderNestedChats = (agentId) => {
-    const chats = nestedChats[agentId] || [];
-    return (
-      <div className="ml-4 space-y-1">
-        {chats.filter(chat => !chat.isDefault).map((chat) => (
-          <Button
-            key={chat.id}
-            variant="ghost"
-            className="text-left text-xs w-full truncate py-1 h-auto"
-            onClick={() =>
-              setCurrentChat({
-                id: chat.id,
-                title: chat.displayName,
-                agentId: chat.agentId,
-                participants: [currentUser.uid],
-                isDefault: false,
-                conversationName: chat.conversationName // Changed from chat.id to chat.conversationName
-              })
-            }
-          >
-            {chat.displayName}
-          </Button>
-        ))}
-      </div>
-    );
-  };
-
+ 
 
   const handleProjectContextMenu = async (e) => {
     e.preventDefault();
