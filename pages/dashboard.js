@@ -230,35 +230,39 @@ const analyzeUserContext = async () => {
   // Handler Functions
   const fetchNestedChats = async (agentId) => {
     try {
-      console.log(`Fetching nested chats for agent: ${agentId}`);
-      
-      // Query non-default conversations for the agent
+      console.log(`[Debug] Fetching nested chats for agent: ${agentId}`);
+  
+      // Query for non-default chats under the given agentId
       const namesQuery = query(
         collection(db, 'conversationNames'),
-        where('agentId', '==', agentId), // Ensure this matches the agent ID
+        where('agentId', '==', agentId),
         where('userId', '==', currentUser.uid),
-        where('isDefault', '==', false) // Only fetch non-default conversations
+        where('isDefault', '==', false) // Ensure we fetch only non-default chats
       );
-      
+  
       const namesSnapshot = await getDocs(namesQuery);
   
-      // Map the results into an array
+      console.log(`[Debug] Fetched nested chats for agent ${agentId}:`, namesSnapshot.docs);
+  
+      // Map results to extract chat data
       const chats = namesSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
   
-      console.log(`Fetched nested chats for agent ${agentId}:`, chats);
+      // Debugging output
+      console.log(`[Debug] Processed nested chats for agent ${agentId}:`, chats);
   
-      // Update the state for nested chats
+      // Update the state with the fetched nested chats
       setNestedChats((prev) => ({
         ...prev,
         [agentId]: chats,
       }));
     } catch (error) {
-      console.error('Error fetching nested chats:', error);
+      console.error(`[Error] Failed to fetch nested chats for agent ${agentId}:`, error);
     }
   };
+  
   
 
 
@@ -659,32 +663,32 @@ const fetchSuggestedGoals = async () => {
                   </div>
                   {/* Render Nested Chats */}
                   {expandedAgents[agent.id] && (
-                    <div className="ml-4 space-y-1">
-                      {nestedChats[agent.id]?.length > 0 ? (
-                        nestedChats[agent.id].map((chat) => (
-                          <Button
-                            key={chat.id}
-                            variant="ghost"
-                            className="text-left text-xs w-full truncate py-1 h-auto"
-                            onClick={() => {
-                              setCurrentChat({
-                                id: chat.id,
-                                title: chat.conversationName,
-                                agentId: agent.id,
-                                participants: [currentUser.uid],
-                                isDefault: false,
-                                conversationName: chat.id,
-                              });
-                            }}
-                          >
-                            {chat.conversationName}
-                          </Button>
-                        ))
-                      ) : (
-                        <div className="text-xs text-gray-400">No sub-chats found.</div>
-                      )}
-                    </div>
-                  )}
+                  <div className="ml-4 space-y-1">
+                    {nestedChats[agent.id]?.length > 0 ? (
+                      nestedChats[agent.id].map((chat) => (
+                        <Button
+                          key={chat.id}
+                          variant="ghost"
+                          className="text-left text-xs w-full truncate py-1 h-auto"
+                          onClick={() => {
+                            setCurrentChat({
+                              id: chat.id,
+                              title: chat.conversationName,
+                              agentId: agent.id,
+                              participants: [currentUser.uid],
+                              isDefault: false,
+                              conversationName: chat.id,
+                            });
+                          }}
+                        >
+                          {chat.conversationName}
+                        </Button>
+                      ))
+                    ) : (
+                      <div className="text-xs text-gray-400">No sub-chats found.</div>
+                    )}
+                  </div>
+                )}
                 </div>
               ))}
             </div>
