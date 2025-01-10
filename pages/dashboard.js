@@ -116,25 +116,36 @@ const Dashboard = () => {
       if (!currentUser?.uid) return;
       
       try {
+        // Get all non-default chats for all agents
         const namesQuery = query(
           collection(db, 'conversationNames'),
-          where('userId', '==', currentUser.uid)
+          where('userId', '==', currentUser.uid),
+          where('isDefault', '==', false)  // Only get non-default chats
         );
+        
         const namesSnapshot = await getDocs(namesQuery);
+        console.log('Found total non-default chats:', namesSnapshot.docs.length);
+        
         const conversationsByAgent = {};
         
         namesSnapshot.docs.forEach(doc => {
           const data = doc.data();
-          if (!conversationsByAgent[data.agentId]) {
-            conversationsByAgent[data.agentId] = [];
+          const agentId = data.agentId;
+          
+          if (!conversationsByAgent[agentId]) {
+            conversationsByAgent[agentId] = [];
           }
-          conversationsByAgent[data.agentId].push({
+  
+          conversationsByAgent[agentId].push({
             id: doc.id,
             displayName: data.conversationName,
+            agentId: data.agentId,
+            conversationName: doc.id,
             ...data
           });
         });
   
+        console.log('Organized chats by agent:', conversationsByAgent);
         setNestedChats(conversationsByAgent);
       } catch (error) {
         console.error('Error loading nested chats:', error);
