@@ -22,6 +22,10 @@ import { ChevronRight, Home, Settings } from 'lucide-react'; // Icons
 import ErrorBoundary from '../components/ErrorBoundary'; // Add ErrorBoundary for robust error handling
 import dynamic from 'next/dynamic';
 
+const [suggestedGoals, setSuggestedGoals] = useState([]);
+const [currentGoals, setCurrentGoals] = useState([]);
+
+
 // Agents data
 const agents = [
   { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist', category: 'Marketing' },
@@ -86,6 +90,25 @@ const Dashboard = () => {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (currentUser?.uid) {
+      fetchSuggestedGoals();
+      // Only analyze if there are no suggested goals
+      const analyzeSuggestions = async () => {
+        const snapshot = await getDocs(query(
+          collection(db, 'suggestedGoals'),
+          where('userId', '==', currentUser.uid),
+          where('isCurrent', '==', false),
+          where('isIgnored', '==', false)
+        ));
+        if (snapshot.empty) {
+          await analyzeUserContext();
+        }
+      };
+      analyzeSuggestions();
+    }
+  }, [currentUser?.uid]);
+
   // Load All Nested Chats Effect
   useEffect(() => {
     const loadAllNestedChats = async () => {
@@ -119,6 +142,73 @@ const Dashboard = () => {
   
     loadAllNestedChats();
   }, [currentUser?.uid]);
+
+
+
+
+//review goals by the user
+const analyzeUserContext = async () => {
+  try {
+    // Fetch agents
+    const agentsSnapshot = await getDocs(collection(db, 'agents'));
+    const agents = agentsSnapshot.docs.map(doc => doc.data());
+
+    // Fetch recent conversations
+    const conversationsQuery = query(
+      collection(db, 'conversations'),
+      where('from', '==', currentUser.uid),
+      orderBy('timestamp', 'desc'),
+      limit(10)
+    );
+    const conversationsSnapshot = await getDocs(conversationsQuery);
+    const conversations = conversationsSnapshot.docs.map(doc => doc.data());
+
+    // Fetch current goals
+    const currentGoalsQuery = query(
+      collection(db, 'goals'),
+      where('userId', '==', currentUser.uid),
+      where('status', 'in', ['not_started', 'in_progress'])
+    );
+    const currentGoalsSnapshot = await getDocs(currentGoalsQuery);
+    const currentGoals = currentGoalsSnapshot.docs.map(doc => doc.data());
+
+    // Get suggestions from LLM
+    const response = await fetch('/api/analyze-user-context', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: currentUser.uid,
+        conversations,
+        agents,
+        currentGoals
+      }),
+    });
+
+    if (response.ok) {
+      const suggestions = await response.json();
+      // Save suggestions to Firebase
+      for (const suggestion of suggestions) {
+        await addDoc(collection(db, 'suggestedGoals'), {
+          ...suggestion,
+          userId: currentUser.uid,
+          isCurrent: false,
+          isIgnored: false,
+          teamId: currentUser.teamId || '',
+          createdAt: serverTimestamp()
+        });
+      }
+      await fetchSuggestedGoals();
+    }
+  } catch (error) {
+    console.error('Error analyzing user context:', error);
+  }
+};
+
+
+
+
+
+
 
   // Handler Functions
   const fetchNestedChats = async (agentId) => {
@@ -191,6 +281,84 @@ const renderNestedChats = (agentId) => {
       })}
     </div>
   );
+};
+
+
+// goal handler
+const handleAcceptSuggestion = async (suggestion) => {
+  try {
+    // Create a new subchat for this goal
+    const conversationNameRef = await addDoc(collection(db, 'conversationNames'), {
+      agentId: suggestion.agentAssigned,
+      conversationName: suggestion.goalDescription,
+      projectName: "",
+      userId: currentUser.uid,
+      isDefault: false
+    });
+
+    // Update the suggestion status
+    await updateDoc(doc(db, 'suggestedGoals', suggestion.id), {
+      isCurrent: true
+    });
+
+    // Create goal in goals collection
+    await addDoc(collection(db, 'goals'), {
+      agentId: suggestion.agentAssigned,
+      autoCreated: true,
+      description: suggestion.goalDescription,
+      status: 'not_started',
+      createdAt: serverTimestamp(),
+      userId: currentUser.uid,
+      teamId: currentUser.teamId || '',
+      title: suggestion.goalDescription,
+      type: 'suggested_goal',
+      sourceConversationId: conversationNameRef.id
+    });
+
+    // Set current chat to the new conversation
+    setCurrentChat({
+      id: conversationNameRef.id,
+      title: suggestion.goalDescription,
+      agentId: suggestion.agentAssigned,
+      participants: [currentUser.uid],
+      isDefault: false,
+      conversationName: conversationNameRef.id
+    });
+
+    // Refresh goals
+    fetchSuggestedGoals();
+  } catch (error) {
+    console.error('Error accepting suggestion:', error);
+  }
+};
+
+const handleIgnoreSuggestion = async (suggestion) => {
+  try {
+    await updateDoc(doc(db, 'suggestedGoals', suggestion.id), {
+      isIgnored: true
+    });
+    fetchSuggestedGoals();
+  } catch (error) {
+    console.error('Error ignoring suggestion:', error);
+  }
+};
+
+const fetchSuggestedGoals = async () => {
+  try {
+    const suggestedGoalsQuery = query(
+      collection(db, 'suggestedGoals'),
+      where('userId', '==', currentUser.uid),
+      where('isCurrent', '==', false),
+      where('isIgnored', '==', false)
+    );
+    const snapshot = await getDocs(suggestedGoalsQuery);
+    setSuggestedGoals(snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })));
+  } catch (error) {
+    console.error('Error fetching suggested goals:', error);
+  }
 };
 
 
@@ -465,6 +633,61 @@ const renderNestedChats = (agentId) => {
 ))}
             </div>
           </div>
+
+
+          {/* Goals Sections */}
+<div className="p-4 border-b border-gray-700">
+  <div className="mb-4">
+    <h2 className="text-sm font-semibold">CURRENT GOALS</h2>
+    <div className="space-y-1 mt-2">
+      {currentGoals.map((goal) => (
+        <div key={goal.id} className="p-2 bg-gray-800 rounded">
+          <div className="text-sm">{goal.description}</div>
+          <div className="text-xs text-gray-400 mt-1">
+            Assigned to: {agents.find(a => a.id === goal.agentId)?.name || goal.agentId}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <div className="mt-4">
+    <h2 className="text-sm font-semibold">SUGGESTED GOALS</h2>
+    <div className="space-y-1 mt-2">
+      {suggestedGoals.map((suggestion) => (
+        <div key={suggestion.id} className="p-2 bg-gray-800 rounded">
+          <div className="text-sm">{suggestion.goalDescription}</div>
+          <div className="flex items-center justify-between mt-2">
+            <div className="text-xs text-gray-400">
+              {agents.find(a => a.id === suggestion.agentAssigned)?.name || suggestion.agentAssigned}
+            </div>
+            <div className="flex space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleAcceptSuggestion(suggestion)}
+                className="px-2 py-1 hover:bg-green-700"
+              >
+                Accept
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleIgnoreSuggestion(suggestion)}
+                className="px-2 py-1 hover:bg-red-700"
+              >
+                Ignore
+              </Button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
+
+
+
 
           {/* Projects Section */}
           <div className="p-4">
