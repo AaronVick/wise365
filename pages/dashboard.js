@@ -653,37 +653,44 @@ const fetchSuggestedGoals = async () => {
   </div>
 
   <div className="mt-4">
-    <h2 className="text-sm font-semibold">SUGGESTED GOALS</h2>
-    <div className="space-y-1 mt-2">
-      {suggestedGoals.map((suggestion) => (
-        <div key={suggestion.id} className="p-2 bg-gray-800 rounded">
-          <div className="text-sm">{suggestion.goalDescription}</div>
-          <div className="flex items-center justify-between mt-2">
-            <div className="text-xs text-gray-400">
-              {agents.find(a => a.id === suggestion.agentAssigned)?.name || suggestion.agentAssigned}
-            </div>
-            <div className="flex space-x-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAcceptSuggestion(suggestion)}
-                className="px-2 py-1 hover:bg-green-700"
-              >
-                Accept
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleIgnoreSuggestion(suggestion)}
-                className="px-2 py-1 hover:bg-red-700"
-              >
-                Ignore
-              </Button>
-            </div>
+  <h2 className="text-sm font-semibold">SUGGESTED GOALS</h2>
+  <div className="space-y-1 mt-2">
+    {suggestedGoals.map((suggestion) => (
+      <div key={suggestion.id} className="p-2 bg-gray-800 rounded">
+        {/* Goal Description */}
+        <div className="text-sm">{suggestion.goalDescription}</div>
+        
+        {/* Assigned Agent */}
+        <div className="text-xs text-gray-400 mt-1">
+          Assigned to: {agents.find(a => a.id === suggestion.agentAssigned)?.name || suggestion.agentAssigned}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex space-x-2">
+            {/* Start Chat Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleAcceptSuggestion(suggestion)}
+              className="px-2 py-1 hover:bg-green-700"
+            >
+              Start Chat
+            </Button>
+
+            {/* Ignore Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleIgnoreSuggestion(suggestion)}
+              className="px-2 py-1 hover:bg-red-700"
+            >
+              Ignore
+            </Button>
           </div>
         </div>
-      ))}
-    </div>
+      </div>
+    ))}
   </div>
 </div>
 
