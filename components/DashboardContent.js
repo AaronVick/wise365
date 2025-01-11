@@ -382,25 +382,91 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
               <div className="text-sm text-gray-500">
                 {isLoading ? (
                   <div className="text-center py-4">Loading resources...</div>
-                ) : resources.length > 0 ? (
-                  <div className="space-y-4">
-                    {resources.map((resource) => (
-                      <Button
-                        key={resource.id}
-                        variant="ghost"
-                        onClick={() => router.push(`/resources/${resource.templateName}`)}
-                        className="w-full justify-between text-left"
-                      >
-                        <div>
-                          <h4 className="text-sm font-medium">{resource.templateName}</h4>
-                          <p className="text-xs text-gray-500">{resource.description}</p>
-                        </div>
-                        <span className="text-blue-600">Fill Out</span>
-                      </Button>
-                    ))}
-                  </div>
                 ) : (
-                  <div className="text-center py-4">No resources available.</div>
+                  <div className="space-y-4">
+                    {/* Static resource buttons while data is being loaded from Firebase */}
+                    <Button
+                      variant="ghost"
+                      onClick={async () => {
+                        try {
+                          const resourcesRef = collection(db, 'resources');
+                          const q = query(
+                            resourcesRef,
+                            where('templateName', '==', "World's Best Buyer Persona")
+                          );
+                          const querySnapshot = await getDocs(q);
+                          if (querySnapshot.empty) {
+                            alert('Template is being set up. Please try again in a moment.');
+                            return;
+                          }
+                          router.push('/buyer-persona');
+                        } catch (error) {
+                          console.error('Error checking template:', error);
+                        }
+                      }}
+                      className="w-full justify-between text-left"
+                    >
+                      <div>
+                        <h4 className="text-sm font-medium">Best Buyer Persona</h4>
+                        <p className="text-xs text-gray-500">Create detailed buyer personas</p>
+                      </div>
+                      <span className="text-blue-600">Fill Out</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={async () => {
+                        try {
+                          const resourcesRef = collection(db, 'resources');
+                          const q = query(
+                            resourcesRef,
+                            where('templateName', '==', "Marketing Success Wheel")
+                          );
+                          const querySnapshot = await getDocs(q);
+                          if (querySnapshot.empty) {
+                            alert('Template is being set up. Please try again in a moment.');
+                            return;
+                          }
+                          router.push('/success-wheel');
+                        } catch (error) {
+                          console.error('Error checking template:', error);
+                        }
+                      }}
+                      className="w-full justify-between text-left"
+                    >
+                      <div>
+                        <h4 className="text-sm font-medium">Marketing Success Wheel</h4>
+                        <p className="text-xs text-gray-500">Evaluate your marketing performance</p>
+                      </div>
+                      <span className="text-blue-600">Fill Out</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={async () => {
+                        try {
+                          const resourcesRef = collection(db, 'resources');
+                          const q = query(
+                            resourcesRef,
+                            where('templateName', '==', "Positioning Factor Worksheet")
+                          );
+                          const querySnapshot = await getDocs(q);
+                          if (querySnapshot.empty) {
+                            alert('Template is being set up. Please try again in a moment.');
+                            return;
+                          }
+                          router.push('/positioning-factors');
+                        } catch (error) {
+                          console.error('Error checking template:', error);
+                        }
+                      }}
+                      className="w-full justify-between text-left"
+                    >
+                      <div>
+                        <h4 className="text-sm font-medium">Positioning Factors</h4>
+                        <p className="text-xs text-gray-500">Define your market positioning</p>
+                      </div>
+                      <span className="text-blue-600">Fill Out</span>
+                    </Button>
+                  </div>
                 )}
               </div>
             </Card>
