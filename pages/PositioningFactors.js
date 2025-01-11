@@ -1,6 +1,5 @@
 //pages/PositiongFactors.js
 
-
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import {
@@ -29,7 +28,10 @@ const PositioningFactors = () => {
 
   useEffect(() => {
     const fetchPreviousAnswers = async () => {
-      if (!currentUser) return; // Exit if no user is logged in
+      if (!currentUser) {
+        setLoading(false); // Stop loading if no user is logged in
+        return;
+      }
 
       try {
         const q = query(
@@ -62,7 +64,9 @@ const PositioningFactors = () => {
   };
 
   const handleSubmit = async () => {
-    const allQuestionsAnswered = Object.values(formData).every((val) => val && val.trim() !== "");
+    const allQuestionsAnswered = Object.values(formData).every(
+      (val) => val && val.trim() !== ""
+    );
 
     if (!allQuestionsAnswered) {
       alert("Please answer all questions before submitting.");
@@ -88,7 +92,7 @@ const PositioningFactors = () => {
       router.push("/dashboard");
     } catch (error) {
       console.error("Error submitting form:", error);
-      alert("An error occurred while submitting the form.");
+      alert("An error occurred while submitting the form. Please try again.");
     }
   };
 
@@ -102,9 +106,13 @@ const PositioningFactors = () => {
         <h2 className="text-xl font-semibold mb-4">{templateName}</h2>
         <p className="text-gray-600 mb-6">
           {previousAnswers
-            ? `You last submitted this form on ${new Date(
-                previousAnswers.timestamp?.seconds * 1000
-              ).toLocaleDateString()}. You can update your answers below.`
+            ? `You last submitted this form on ${
+                previousAnswers?.timestamp?.seconds
+                  ? new Date(
+                      previousAnswers.timestamp.seconds * 1000
+                    ).toLocaleDateString()
+                  : "No prior submission date available."
+              }. You can update your answers below.`
             : "Please complete the form below to define your positioning factors."}
         </p>
 
@@ -149,11 +157,14 @@ const PositioningFactors = () => {
 
           <div>
             <label className="block font-medium mb-1">
-              Which of Maslow's Needs must be met for the persona to realize you are their T.I.N.B?
+              Which of Maslow's Needs must be met for the persona to realize
+              you are their T.I.N.B?
             </label>
             <select
               value={formData["Maslow's Needs"] || ""}
-              onChange={(e) => handleInputChange("Maslow's Needs", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("Maslow's Needs", e.target.value)
+              }
               className="w-full border rounded px-3 py-2"
             >
               <option value="">Select an option</option>
@@ -173,14 +184,17 @@ const PositioningFactors = () => {
 
           <div className="flex items-center mt-4">
             <Checkbox
+              id="shared"
               checked={shared}
-              onCheckedChange={setShared}
-              className="mr-2"
+              onCheckedChange={(checked) => setShared(checked)}
+              label="Share this form with my team"
             />
-            <span>Share this form with my team</span>
           </div>
 
-          <Button onClick={handleSubmit} className="mt-6 w-full bg-blue-600 text-white">
+          <Button
+            onClick={handleSubmit}
+            className="mt-6 w-full bg-blue-600 text-white"
+          >
             Submit
           </Button>
         </div>
