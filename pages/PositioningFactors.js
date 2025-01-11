@@ -28,7 +28,7 @@ const PositioningFactors = () => {
 
   useEffect(() => {
     const fetchPreviousAnswers = async () => {
-      if (!currentUser) {
+      if (!currentUser || !currentUser.uid) {
         setLoading(false); // Stop loading if no user is logged in
         return;
       }
@@ -59,13 +59,13 @@ const PositioningFactors = () => {
   const handleInputChange = (question, value) => {
     setFormData((prev) => ({
       ...prev,
-      [question]: value,
+      [question]: value || "",
     }));
   };
 
   const handleSubmit = async () => {
-    const allQuestionsAnswered = Object.values(formData).every(
-      (val) => val && val.trim() !== ""
+    const allQuestionsAnswered = Object.entries(formData).every(
+      ([key, value]) => value && value.trim() !== ""
     );
 
     if (!allQuestionsAnswered) {
@@ -73,7 +73,7 @@ const PositioningFactors = () => {
       return;
     }
 
-    if (!currentUser) {
+    if (!currentUser || !currentUser.uid) {
       alert("User must be logged in to submit the form.");
       return;
     }
@@ -97,7 +97,11 @@ const PositioningFactors = () => {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p>Loading form...</p>
+      </div>
+    );
   }
 
   return (
@@ -186,7 +190,7 @@ const PositioningFactors = () => {
             <Checkbox
               id="shared"
               checked={shared}
-              onCheckedChange={(checked) => setShared(checked)}
+              onChange={(e) => setShared(e.target.checked)}
               label="Share this form with my team"
             />
           </div>
