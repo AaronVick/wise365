@@ -13,11 +13,11 @@ import {
 import { db } from "../lib/firebase";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
-import { Checkbox } from "../components/ui/checkbox";
+import Checkbox from "../components/ui/checkbox"; // Adjusted import
 import { useAuth } from "../contexts/AuthContext";
 
 const PositioningFactors = () => {
-  const { currentUser } = useAuth();
+  const { currentUser } = useAuth() || {}; // Fallback to prevent undefined errors
   const router = useRouter();
   const [formData, setFormData] = useState({});
   const [shared, setShared] = useState(false);
