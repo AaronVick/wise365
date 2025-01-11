@@ -108,12 +108,22 @@ const SuccessWheel = () => {
   };
 
   if (!currentUser) {
-    return <div>Please log in to access this page.</div>;
+    // Instead of returning a static message, redirect to login or show a more actionable response
+    useEffect(() => {
+      router.push('/login'); // Redirect to login if not authenticated
+    }, []);
+    return <div>Redirecting to login...</div>;
   }
-
+  
   if (!template) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <p className="ml-4 text-gray-600">Loading template...</p>
+      </div>
+    );
   }
+  
 
   return (
     <div className="max-w-4xl mx-auto p-6">

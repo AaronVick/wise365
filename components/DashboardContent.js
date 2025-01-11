@@ -417,7 +417,7 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                           const resourcesRef = collection(db, 'resources');
                           const q = query(
                             resourcesRef,
-                            where('templateName', '==', "World's Best Buyer Persona")
+                            where('templateName', '==', "Worlds Best Buyer Persona")
                           );
                           const querySnapshot = await getDocs(q);
                           console.log('Template check result:', { 
