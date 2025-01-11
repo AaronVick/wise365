@@ -378,13 +378,35 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
 
            {/* Resources Section */}
             <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Resources</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Resources</h3>
+                {process.env.NODE_ENV === 'development' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/seed', { 
+                          method: 'POST' 
+                        });
+                        const data = await response.json();
+                        alert('Templates seeded successfully!');
+                        console.log('Seed results:', data);
+                      } catch (error) {
+                        console.error('Error seeding templates:', error);
+                        alert('Error seeding templates');
+                      }
+                    }}
+                  >
+                    Seed Templates
+                  </Button>
+                )}
+              </div>
               <div className="text-sm text-gray-500">
                 {isLoading ? (
                   <div className="text-center py-4">Loading resources...</div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Static resource buttons while data is being loaded from Firebase */}
                     <Button
                       variant="ghost"
                       onClick={async () => {
@@ -395,6 +417,11 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                             where('templateName', '==', "World's Best Buyer Persona")
                           );
                           const querySnapshot = await getDocs(q);
+                          console.log('Template check result:', { 
+                            empty: querySnapshot.empty,
+                            size: querySnapshot.size,
+                            docs: querySnapshot.docs.map(doc => doc.data())
+                          });
                           if (querySnapshot.empty) {
                             alert('Template is being set up. Please try again in a moment.');
                             return;
@@ -404,14 +431,15 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                           console.error('Error checking template:', error);
                         }
                       }}
-                      className="w-full justify-between text-left"
+                      className="w-full justify-between text-left hover:bg-gray-100"
                     >
-                      <div>
-                        <h4 className="text-sm font-medium">Best Buyer Persona</h4>
-                        <p className="text-xs text-gray-500">Create detailed buyer personas</p>
+                      <div className="text-left">
+                        <h4 className="text-sm font-medium text-gray-900">Best Buyer Persona</h4>
+                        <p className="text-xs text-gray-600">Create detailed buyer personas</p>
                       </div>
                       <span className="text-blue-600">Fill Out</span>
                     </Button>
+
                     <Button
                       variant="ghost"
                       onClick={async () => {
@@ -422,6 +450,11 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                             where('templateName', '==', "Marketing Success Wheel")
                           );
                           const querySnapshot = await getDocs(q);
+                          console.log('Template check result:', { 
+                            empty: querySnapshot.empty,
+                            size: querySnapshot.size,
+                            docs: querySnapshot.docs.map(doc => doc.data())
+                          });
                           if (querySnapshot.empty) {
                             alert('Template is being set up. Please try again in a moment.');
                             return;
@@ -431,14 +464,15 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                           console.error('Error checking template:', error);
                         }
                       }}
-                      className="w-full justify-between text-left"
+                      className="w-full justify-between text-left hover:bg-gray-100"
                     >
-                      <div>
-                        <h4 className="text-sm font-medium">Marketing Success Wheel</h4>
-                        <p className="text-xs text-gray-500">Evaluate your marketing performance</p>
+                      <div className="text-left">
+                        <h4 className="text-sm font-medium text-gray-900">Marketing Success Wheel</h4>
+                        <p className="text-xs text-gray-600">Evaluate your marketing performance</p>
                       </div>
                       <span className="text-blue-600">Fill Out</span>
                     </Button>
+
                     <Button
                       variant="ghost"
                       onClick={async () => {
@@ -449,6 +483,11 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                             where('templateName', '==', "Positioning Factor Worksheet")
                           );
                           const querySnapshot = await getDocs(q);
+                          console.log('Template check result:', { 
+                            empty: querySnapshot.empty,
+                            size: querySnapshot.size,
+                            docs: querySnapshot.docs.map(doc => doc.data())
+                          });
                           if (querySnapshot.empty) {
                             alert('Template is being set up. Please try again in a moment.');
                             return;
@@ -458,11 +497,11 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                           console.error('Error checking template:', error);
                         }
                       }}
-                      className="w-full justify-between text-left"
+                      className="w-full justify-between text-left hover:bg-gray-100"
                     >
-                      <div>
-                        <h4 className="text-sm font-medium">Positioning Factors</h4>
-                        <p className="text-xs text-gray-500">Define your market positioning</p>
+                      <div className="text-left">
+                        <h4 className="text-sm font-medium text-gray-900">Positioning Factors</h4>
+                        <p className="text-xs text-gray-600">Define your market positioning</p>
                       </div>
                       <span className="text-blue-600">Fill Out</span>
                     </Button>
