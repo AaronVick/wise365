@@ -1,3 +1,5 @@
+// contexts/DashboardContext.js
+
 import { createContext, useContext, useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase'; // Ensure your Firebase configuration is correctly imported

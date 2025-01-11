@@ -696,6 +696,8 @@ const fetchSuggestedGoals = async () => {
             </Accordion>
 
             {/* Goals Section */}
+            const { goals } = useDashboard();
+
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="goals">
                 <AccordionTrigger>Goals</AccordionTrigger>
@@ -713,7 +715,8 @@ const fetchSuggestedGoals = async () => {
                   ))}
                 </AccordionContent>
               </AccordionItem>
-            </Accordion>
+            </Accordion>;
+
 
             {/* Resources Section */}
             <Accordion type="single" collapsible className="w-full">
