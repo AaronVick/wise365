@@ -11,13 +11,13 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { useAuth } from "../contexts/AuthContext";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
-import Checkbox from "../components/ui/checkbox"; // Adjusted import
-import { useAuth } from "../contexts/AuthContext";
+import { Checkbox } from "../components/ui/checkbox";
 
 const PositioningFactors = () => {
-  const { currentUser } = useAuth() || {}; // Fallback to prevent undefined errors
+  const { currentUser } = useAuth() || {};
   const router = useRouter();
   const [formData, setFormData] = useState({});
   const [shared, setShared] = useState(false);
@@ -207,4 +207,4 @@ const PositioningFactors = () => {
   );
 };
 
-export default PositioningFactors;
+export default PositioningFactors; 

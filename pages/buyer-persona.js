@@ -11,14 +11,17 @@ import {
   where,
   getDocs,
   serverTimestamp,
+  orderBy,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Select, SelectItem } from '../components/ui/select';
 
-const BestBuyerPersona = ({ currentUser }) => {
+const BuyerPersona = () => {
+  const { currentUser } = useAuth() || {};
   const [template, setTemplate] = useState(null);
   const [formData, setFormData] = useState({});
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -171,4 +174,4 @@ const BestBuyerPersona = ({ currentUser }) => {
   );
 };
 
-export default BestBuyerPersona;
+export default BuyerPersona;

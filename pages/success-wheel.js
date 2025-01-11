@@ -11,9 +11,19 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Select } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
+
+const SuccessWheel = () => {
+  const { currentUser } = useAuth() || {};
+  const [template, setTemplate] = useState(null);
+  const [responses, setResponses] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastSubmissionDate, setLastSubmissionDate] = useState(null);
+  const [shared, setShared] = useState(false);
+  const router = useRouter();
 
 const SuccessWheel = ({ currentUser }) => {
   const [template, setTemplate] = useState(null);
@@ -164,4 +174,4 @@ const SuccessWheel = ({ currentUser }) => {
   );
 };
 
-export default SuccessWheel;
+export default SuccessWheel; 

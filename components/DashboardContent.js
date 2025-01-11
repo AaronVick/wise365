@@ -377,7 +377,7 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
           </Card>
 
            {/* Resources Section */}
-           <Card className="p-6">
+            <Card className="p-6">
               <h3 className="text-lg font-semibold mb-4">Resources</h3>
               <div className="text-sm text-gray-500">
                 {isLoading ? (
@@ -386,7 +386,7 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                   <div className="space-y-4">
                     <Button
                       variant="ghost"
-                      onClick={() => router.push('/bestBuyerPersona')}
+                      onClick={() => router.push('/buyer-persona')}
                       className="w-full justify-between text-left"
                     >
                       <div>
@@ -397,7 +397,7 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                     </Button>
                     <Button
                       variant="ghost"
-                      onClick={() => router.push('/successWheel')}
+                      onClick={() => router.push('/success-wheel')}
                       className="w-full justify-between text-left"
                     >
                       <div>
@@ -408,7 +408,7 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                     </Button>
                     <Button
                       variant="ghost"
-                      onClick={() => router.push('/positioningFactors')}
+                      onClick={() => router.push('/positioning-factors')}
                       className="w-full justify-between text-left"
                     >
                       <div>
