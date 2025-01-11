@@ -376,49 +376,49 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
             </div>
           </Card>
 
-          {/* Resources Section */}
+          /* Resources Section */
             <Card className="p-6">
               <h3 className="text-lg font-semibold mb-4">Resources</h3>
               <div className="text-sm text-gray-500">
-                <div className="space-y-4">
-                  {resources.length === 0 ? (
-                    <div className="text-center text-gray-500 py-4">No resources available</div>
-                  ) : (
-                    resources
-                      .filter(resource =>
-                        (!resource.teamId || resource.teamId === currentUser.teamId) &&
-                        resource.shared
-                      )
-                      .map(resource => (
-                        <div 
-                          key={resource.id} 
-                          className="p-4 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors"
-                        >
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <h4 className="text-sm font-medium">{resource.title}</h4>
-                              <p className="text-xs text-gray-500">{resource.description}</p>
-                            </div>
-                            <Button
-                              variant="link"
-                              onClick={() => {
-                                if (resource.type === 'form' && resource.formPage) {
-                                  router.push(resource.formPage); // Navigate to form page
-                                } else if (resource.type === 'pdf' && resource.link) {
-                                  window.open(resource.link, '_blank'); // Open PDF in a new tab
-                                } else {
-                                  console.warn('Unsupported resource type or missing data.');
-                                }
-                              }}
-                              className="text-blue-600 hover:underline"
-                            >
-                              {resource.type === 'form' ? 'Fill Out' : 'View'}
-                            </Button>
-                          </div>
-                        </div>
-                      ))
-                  )}
-                </div>
+                {isLoading ? (
+                  <div className="text-center py-4">Loading resources...</div>
+                ) : (
+                  <div className="space-y-4">
+                    <Button
+                      variant="ghost"
+                      onClick={() => router.push('/bestBuyerPersona')}
+                      className="w-full justify-between text-left"
+                    >
+                      <div>
+                        <h4 className="text-sm font-medium">Best Buyer Persona</h4>
+                        <p className="text-xs text-gray-500">Create detailed buyer personas</p>
+                      </div>
+                      <span className="text-blue-600">Fill Out</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => router.push('/successWheel')}
+                      className="w-full justify-between text-left"
+                    >
+                      <div>
+                        <h4 className="text-sm font-medium">Marketing Success Wheel</h4>
+                        <p className="text-xs text-gray-500">Evaluate your marketing performance</p>
+                      </div>
+                      <span className="text-blue-600">Fill Out</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => router.push('/positioningFactors')}
+                      className="w-full justify-between text-left"
+                    >
+                      <div>
+                        <h4 className="text-sm font-medium">Positioning Factors</h4>
+                        <p className="text-xs text-gray-500">Define your market positioning</p>
+                      </div>
+                      <span className="text-blue-600">Fill Out</span>
+                    </Button>
+                  </div>
+                )}
               </div>
             </Card>
 
