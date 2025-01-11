@@ -655,50 +655,53 @@ const fetchSuggestedGoals = async () => {
           <ScrollArea className="flex-1">
             
             {/* Agents Section */}
-              <Accordion type="multiple" collapsible className="w-full">
-                <AccordionItem value="agents">
-                  <AccordionTrigger>Agents</AccordionTrigger>
-                  <AccordionContent>
-                    {Object.entries(agents).map(([category, categoryAgents]) => (
-                      <div key={category} className="mb-2">
-                        <h4 className="font-bold text-lg mb-2">{category}</h4>
-                        {categoryAgents.map((agent) => (
-                          <Accordion key={agent.id} type="single" collapsible className="w-full">
-                            <AccordionItem value={agent.id}>
-                              <AccordionTrigger className="flex justify-between items-center py-2">
-                                <div>
-                                  <p className="font-medium">{agent.name}</p>
-                                  <p className="text-sm text-gray-500">{agent.role}</p>
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent>
-                                {/* Default Chat */}
-                                <div
-                                  className="py-1 border-b cursor-pointer hover:bg-gray-100"
-                                  onClick={() => router.push(`/chat/${agent.id}-default`)}
-                                >
-                                  <p className="text-sm text-gray-800">Chat with {agent.name}</p>
-                                </div>
+            <Accordion type="multiple" collapsible className="w-full">
+              <AccordionItem value="agents">
+                <AccordionTrigger>Agents</AccordionTrigger>
+                <AccordionContent>
+                  {Object.entries(agents).map(([category, categoryAgents]) => (
+                    <div key={category} className="mb-2">
+                      <h4 className="font-bold text-lg mb-2">{category}</h4>
+                      {categoryAgents.map((agent) => (
+                        <Accordion key={agent.id} type="single" collapsible className="w-full">
+                          <AccordionItem value={agent.id}>
+                            <AccordionTrigger className="flex justify-between items-center py-2">
+                              <div className="flex items-center justify-between w-full">
+                                <p className="font-medium">{agent.name}</p>
+                                <span className="text-sm text-gray-500 ml-2">{agent.role}</span>
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              {/* Default Chat */}
+                              <div
+                                className="py-1 border-b cursor-pointer hover:bg-gray-200"
+                                onClick={() => router.push(`/chat/${agent.id}-default`)}
+                              >
+                                <p className="text-sm text-white">Chat with {agent.name}</p>
+                              </div>
 
-                                {/* Sub-Chats */}
-                                {nestedChats[agent.id]?.map((subChat) => (
+                              {/* Sub-Chats */}
+                              {nestedChats[agent.id]
+                                ?.filter((subChat) => !subChat.isDefault) // Exclude default chat from sub-chats
+                                .map((subChat) => (
                                   <div
                                     key={subChat.id}
-                                    className="py-1 border-b cursor-pointer hover:bg-gray-100"
+                                    className="py-1 border-b cursor-pointer hover:bg-gray-200"
                                     onClick={() => router.push(`/chat/${subChat.id}`)}
                                   >
-                                    <p className="text-sm text-gray-800">{subChat.displayName}</p>
+                                    <p className="text-sm text-white">{subChat.displayName}</p>
                                   </div>
                                 ))}
-                              </AccordionContent>
-                            </AccordionItem>
-                          </Accordion>
-                        ))}
-                      </div>
-                    ))}
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      ))}
+                    </div>
+                  ))}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
 
 
 
