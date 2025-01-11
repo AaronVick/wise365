@@ -25,14 +25,6 @@ const SuccessWheel = () => {
   const [shared, setShared] = useState(false);
   const router = useRouter();
 
-const SuccessWheel = ({ currentUser }) => {
-  const [template, setTemplate] = useState(null);
-  const [responses, setResponses] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastSubmissionDate, setLastSubmissionDate] = useState(null);
-  const [shared, setShared] = useState(false);
-  const router = useRouter();
-
   useEffect(() => {
     const fetchTemplate = async () => {
       if (!currentUser) return;
@@ -174,4 +166,4 @@ const SuccessWheel = ({ currentUser }) => {
   );
 };
 
-export default SuccessWheel; 
+export default SuccessWheel;
