@@ -1,6 +1,5 @@
 // pages/successWheel.js
 
-
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import {
@@ -13,7 +12,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
+import { Select } from '../components/ui/select';
+import { Checkbox } from '../components/ui/checkbox';
 
 const SuccessWheel = ({ currentUser }) => {
   const [template, setTemplate] = useState(null);
@@ -25,6 +25,8 @@ const SuccessWheel = ({ currentUser }) => {
 
   useEffect(() => {
     const fetchTemplate = async () => {
+      if (!currentUser) return;
+
       try {
         const resourcesRef = collection(db, 'resources');
         const q = query(resourcesRef, where('templateName', '==', 'Marketing Success Wheel'));
@@ -60,13 +62,15 @@ const SuccessWheel = ({ currentUser }) => {
     };
 
     fetchTemplate();
-  }, [currentUser.uid]);
+  }, [currentUser]);
 
   const handleChange = (question, answer) => {
     setResponses({ ...responses, [question]: answer });
   };
 
   const handleSubmit = async () => {
+    if (!template) return;
+
     if (Object.keys(responses).length !== template.sections.length) {
       alert('Please answer all questions before submitting.');
       return;
@@ -101,6 +105,10 @@ const SuccessWheel = ({ currentUser }) => {
     }
   };
 
+  if (!currentUser) {
+    return <div>Please log in to access this page.</div>;
+  }
+
   if (!template) {
     return <div>Loading...</div>;
   }
@@ -110,11 +118,13 @@ const SuccessWheel = ({ currentUser }) => {
       <h1 className="text-2xl font-bold mb-4">{template.templateName}</h1>
       <p className="text-gray-600 mb-6">{template.description}</p>
 
-      {lastSubmissionDate && (
+      {lastSubmissionDate ? (
         <div className="mb-6 text-sm text-gray-500">
           Last submitted on: {lastSubmissionDate.toLocaleDateString()}{' '}
           {lastSubmissionDate.toLocaleTimeString()}
         </div>
+      ) : (
+        <div className="mb-6 text-sm text-gray-500">This is your first time completing this form.</div>
       )}
 
       {template.sections.map((section, index) => (
@@ -123,34 +133,24 @@ const SuccessWheel = ({ currentUser }) => {
           <p className="text-sm text-gray-500 mb-2">{section.definition}</p>
           <p className="text-sm text-gray-500 mb-4">{section.evaluationCriteria}</p>
 
-          <select
-            className="w-full p-2 border rounded"
+          <Select
+            options={section.gradingScale.map((grade) => ({
+              value: grade,
+              label: grade,
+            }))}
             value={responses[section.question] || ''}
             onChange={(e) => handleChange(section.question, e.target.value)}
-          >
-            <option value="" disabled>
-              Select your grade
-            </option>
-            {section.gradingScale.map((grade, i) => (
-              <option key={i} value={grade}>
-                {grade}
-              </option>
-            ))}
-          </select>
+          />
         </div>
       ))}
 
       <div className="flex items-center mb-6">
-        <input
-          type="checkbox"
+        <Checkbox
           id="shared"
-          className="mr-2"
+          label="Share responses with my team"
           checked={shared}
           onChange={(e) => setShared(e.target.checked)}
         />
-        <label htmlFor="shared" className="text-sm text-gray-600">
-          Share responses with my team
-        </label>
       </div>
 
       <Button

@@ -1,3 +1,5 @@
+//components/ui/checkbox.js
+
 import React from 'react';
 
 const Checkbox = ({ id, label, checked, onChange }) => (

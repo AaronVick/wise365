@@ -1,3 +1,6 @@
+//pages/PositiongFactors.js
+
+
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import {
@@ -26,7 +29,7 @@ const PositioningFactors = () => {
 
   useEffect(() => {
     const fetchPreviousAnswers = async () => {
-      if (!currentUser) return;
+      if (!currentUser) return; // Exit if no user is logged in
 
       try {
         const q = query(
@@ -35,6 +38,7 @@ const PositioningFactors = () => {
           where("templateName", "==", templateName)
         );
         const querySnapshot = await getDocs(q);
+
         if (!querySnapshot.empty) {
           const latestDoc = querySnapshot.docs[0].data();
           setPreviousAnswers(latestDoc);
@@ -62,6 +66,11 @@ const PositioningFactors = () => {
 
     if (!allQuestionsAnswered) {
       alert("Please answer all questions before submitting.");
+      return;
+    }
+
+    if (!currentUser) {
+      alert("User must be logged in to submit the form.");
       return;
     }
 
@@ -94,7 +103,7 @@ const PositioningFactors = () => {
         <p className="text-gray-600 mb-6">
           {previousAnswers
             ? `You last submitted this form on ${new Date(
-                previousAnswers.timestamp.seconds * 1000
+                previousAnswers.timestamp?.seconds * 1000
               ).toLocaleDateString()}. You can update your answers below.`
             : "Please complete the form below to define your positioning factors."}
         </p>
@@ -110,7 +119,14 @@ const PositioningFactors = () => {
             />
           </div>
 
-          {["Step 1: Reflect on Your Strengths", "Step 2: Identify Unique Attributes", "Step 3: Highlight Recognitions and Achievements", "Step 4: Focus on Guarantees and Warranties", "Step 5: Define Your Market and Industry Focus", "Step 6: Highlight Customer Success Stories"].map((section, index) => (
+          {[
+            "Step 1: Reflect on Your Strengths",
+            "Step 2: Identify Unique Attributes",
+            "Step 3: Highlight Recognitions and Achievements",
+            "Step 4: Focus on Guarantees and Warranties",
+            "Step 5: Define Your Market and Industry Focus",
+            "Step 6: Highlight Customer Success Stories",
+          ].map((section, index) => (
             <div key={index}>
               <h3 className="font-medium mb-2">{section}</h3>
               {[1, 2, 3].map((i) => (
