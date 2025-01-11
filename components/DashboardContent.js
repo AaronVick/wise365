@@ -59,6 +59,8 @@ const badgeVariants = cva(
   }
 );
 
+const { goals } = useDashboard();
+
 const Badge = ({
   className,
   variant,
@@ -209,6 +211,8 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
       </div>
       <ScrollArea className="flex-1 p-6">
         <div className="space-y-6 max-w-5xl mx-auto">
+
+
           {/* Welcome Card */}
           {!hasShawnChat && (
             <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
