@@ -12,8 +12,8 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 
 const SuccessWheel = ({ currentUser }) => {
   const [template, setTemplate] = useState(null);
