@@ -1,6 +1,8 @@
 // pages/api/seed.js
 
-import { initializeApp, getApps, cert, getApp } from 'firebase-admin/app';
+// pages/api/seed.js
+
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin if not already initialized
@@ -9,7 +11,7 @@ if (!getApps().length) {
     type: process.env.FIREBASE_TYPE,
     project_id: process.env.FIREBASE_PROJECT_ID,
     private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-    private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\n/g, '\n'),
+    private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
     client_email: process.env.FIREBASE_CLIENT_EMAIL,
     client_id: process.env.FIREBASE_CLIENT_ID,
     auth_uri: process.env.FIREBASE_AUTH_URI,
@@ -25,7 +27,7 @@ if (!getApps().length) {
 
 const db = getFirestore();
 
-// Data to seed
+// Full JSON data for seeding
 const dataToSeed = [
   {
     templateName: "Marketing Success Wheel",
@@ -136,109 +138,108 @@ const dataToSeed = [
       {
         question: "What is your website URL?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "What name are you giving your persona?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "How old is your persona?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "What is the annual income of your persona?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "What is the job title or role of your persona?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "What situation is your persona in that needs to be resolved?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "What does your persona want to achieve to resolve this situation?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "What problem(s) has this situation caused for your persona?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "These problems lead to what emotions for your persona?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "Which of Maslow's Hierarchy of Needs is most relevant to these emotions for this persona?",
         definition: "Maslow's Hierarchy of Needs categorizes human motivations into levels, including physiological needs, safety, love & belonging, esteem, and self-actualization.",
         evaluationCriteria: "Identify the primary need driving the persona's emotional responses and motivations.",
-        options: ["Physiological", "Safety", "Love & Belonging", "Esteem", "Self-Actualization"],
+        options: ["Physiological", "Safety", "Love & Belonging", "Esteem", "Self-Actualization"]
       },
       {
         question: "What are the persona's Action Beliefs (Gains they expect from acting)?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "What are the persona's Inaction Beliefs (Pains they fear from not acting)?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "What are possible triggering events that resulted in the persona taking action now?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "What is this persona seeing in the marketplace as it pertains to this situation?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "What is this persona being told or hearing from their peers and trusted advisors?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "What is this persona doing or considering to resolve this situation?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "What are your positioning factors that differentiate you in the market?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "Which of Maslow's Needs do your Positioning Factors satisfy?",
         definition: "Maslow's Hierarchy of Needs categorizes human motivations into levels, including physiological needs, safety, love & belonging, esteem, and self-actualization.",
         evaluationCriteria: "Explain how your positioning factors address specific levels of need in Maslow's framework.",
-        options: ["Physiological", "Safety", "Love & Belonging", "Esteem", "Self-Actualization"],
+        options: ["Physiological", "Safety", "Love & Belonging", "Esteem", "Self-Actualization"]
       },
       {
         question: "What is your T.I.N.B (There Is No B option, as you are the best solution for this persona)?",
         definition: "",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "Which of Maslow's Needs must be met for the persona to realize you are their T.I.N.B?",
         definition: "Maslow's Hierarchy of Needs categorizes human motivations into levels, including physiological needs, safety, love & belonging, esteem, and self-actualization.",
         evaluationCriteria: "Describe the needs that must be fulfilled for the persona to recognize your solution as their best option.",
-        options: ["Physiological", "Safety", "Love & Belonging", "Esteem", "Self-Actualization"],
+        options: ["Physiological", "Safety", "Love & Belonging", "Esteem", "Self-Actualization"]
       }
     ]
   },
-
   {
     templateName: "Positioning Factor Worksheet",
     description: "A structured worksheet to identify and articulate the elements that set your business apart from competitors.",
@@ -246,107 +247,70 @@ const dataToSeed = [
       {
         question: "Website URL",
         definition: "Provide the URL for your business website.",
-        evaluationCriteria: "",
+        evaluationCriteria: ""
       },
       {
         question: "Step 1: Reflect on Your Strengths",
         definition: "What are the top three strengths that your business has that set it apart from your competitors?",
         evaluationCriteria: "Identify key areas of differentiation that competitors cannot easily replicate.",
         subQuestions: [
-          {
-            question: "Strength 1",
-          },
-          {
-            question: "Strength 2",
-          },
-          {
-            question: "Strength 3",
-          },
-        ],
+          { question: "Strength 1" },
+          { question: "Strength 2" },
+          { question: "Strength 3" }
+        ]
       },
       {
         question: "Step 2: Identify Unique Attributes",
         definition: "What specific attributes or qualities of your products or services make them different from others in the market?",
         evaluationCriteria: "Focus on unique product qualities like eco-friendliness, customization, or patents.",
         subQuestions: [
-          {
-            question: "Unique Attribute 1",
-          },
-          {
-            question: "Unique Attribute 2",
-          },
-          {
-            question: "Unique Attribute 3",
-          },
-        ],
+          { question: "Unique Attribute 1" },
+          { question: "Unique Attribute 2" },
+          { question: "Unique Attribute 3" }
+        ]
       },
       {
         question: "Step 3: Highlight Recognitions and Achievements",
         definition: "List any awards, certifications, or industry recognitions your business has received.",
         evaluationCriteria: "Highlight aspects that boost credibility and instill trust.",
         subQuestions: [
-          {
-            question: "Award/Recognition 1",
-          },
-          {
-            question: "Award/Recognition 2",
-          },
-          {
-            question: "Award/Recognition 3",
-          },
-        ],
+          { question: "Award/Recognition 1" },
+          { question: "Award/Recognition 2" },
+          { question: "Award/Recognition 3" }
+        ]
       },
       {
         question: "Step 4: Focus on Guarantees and Warranties",
         definition: "Do you offer any guarantees or warranties that demonstrate your confidence in your products or services?",
         evaluationCriteria: "Highlight how these reduce risk for customers.",
         subQuestions: [
-          {
-            question: "Guarantee/Warranty 1",
-          },
-          {
-            question: "Guarantee/Warranty 2",
-          },
-          {
-            question: "Guarantee/Warranty 3",
-          },
-        ],
+          { question: "Guarantee/Warranty 1" },
+          { question: "Guarantee/Warranty 2" },
+          { question: "Guarantee/Warranty 3" }
+        ]
       },
       {
         question: "Step 5: Define Your Market and Industry Focus",
         definition: "Which specific markets or industries does your business specialize in?",
         evaluationCriteria: "Identify areas of expertise or niche focus that give you an edge.",
         subQuestions: [
-          {
-            question: "Industry/Market Focus 1",
-          },
-          {
-            question: "Industry/Market Focus 2",
-          },
-          {
-            question: "Industry/Market Focus 3",
-          },
-        ],
+          { question: "Industry/Market Focus 1" },
+          { question: "Industry/Market Focus 2" },
+          { question: "Industry/Market Focus 3" }
+        ]
       },
       {
         question: "Step 6: Highlight Customer Success Stories",
         definition: "Do you have any customer testimonials or case studies that illustrate the unique value you provide?",
         evaluationCriteria: "Highlight real-world examples demonstrating your impact.",
         subQuestions: [
-          {
-            question: "Testimonial/Case Study 1",
-          },
-          {
-            question: "Testimonial/Case Study 2",
-          },
-          {
-            question: "Testimonial/Case Study 3",
-          },
-        ],
-      },
-    ],
-  }  
-  
+          { question: "Testimonial/Case Study 1" },
+          { question: "Testimonial/Case Study 2" },
+          { question: "Testimonial/Case Study 3" }
+        ]
+      }
+    ]
+  }
 ];
 
 export default async function handler(req, res) {
