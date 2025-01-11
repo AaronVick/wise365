@@ -26,31 +26,45 @@ import dynamic from 'next/dynamic';
 
 
 // Agents data
-const agents = [
-  { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist', category: 'Marketing' },
-  { id: 'shawn', name: 'Shawn', role: 'Tool Guidance Assistant', category: 'Administrative' },
-  { id: 'alex', name: 'Alex', role: 'Persona Pilot Pro', category: 'Sales' },
-  { id: 'sylvester', name: 'Sylvester', role: 'Marketing Success Wheel Optimizer', category: 'Marketing' },
-  { id: 'ally', name: 'Ally', role: 'Positioning Factors Accelerator', category: 'Marketing' },
-  { id: 'aaron', name: 'Aaron', role: 'T.I.N.B. Builder', category: 'Sales' },
-  { id: 'deborah', name: "De'Borah", role: 'Facebook Marketing Maestro', category: 'Social Media' },
-  { id: 'claire', name: 'Claire', role: 'LinkedIn Messaging Maestro', category: 'Social Media' },
-  { id: 'ej', name: 'EJ', role: 'TikTok Marketing Maestro', category: 'Social Media' },
-  { id: 'lisa', name: 'Lisa', role: 'Instagram Marketing Maestro', category: 'Social Media' },
-  { id: 'troy', name: 'Troy', role: 'CrossSell Catalyst', category: 'Sales' },
-  { id: 'rom', name: 'Rom', role: 'PitchPerfect AI', category: 'Administrative' },
-  { id: 'larry', name: 'Larry', role: 'Market Edge AI', category: 'Administrative' },
-  { id: 'jen', name: 'Jen', role: 'CloseMaster AI', category: 'Administrative' },
-  { id: 'daniela', name: 'Daniela', role: 'Reputation Builder AI', category: 'Administrative' },
-  { id: 'antonio', name: 'Antonio', role: 'Video Story Architect', category: 'Copy Editing' },
-  { id: 'mason', name: 'Mason', role: 'StoryAlign AI', category: 'Copy Editing' },
-  { id: 'gabriel', name: 'Gabriel', role: 'Blog Blueprint', category: 'Copy Editing' },
-  { id: 'orion', name: 'Orion', role: 'PersonaLead Magnet Maker', category: 'Marketing' },
-  { id: 'sadie', name: 'Sadie', role: 'Ad Copy Maestro', category: 'Copy Editing' },
-  { id: 'jesse', name: 'Jesse', role: 'Email Marketing Maestro', category: 'Marketing' },
-  { id: 'caner', name: 'Caner', role: 'InsightPulse AI', category: 'Administrative' },
-  { id: 'jr', name: 'JR', role: 'Audience Gap Genius', category: 'Sales' },
-];
+const agents = {
+  Administrative: [
+    { id: 'shawn', name: 'Shawn', role: 'Tool Guidance Assistant', category: 'Administrative' },
+    ...[
+      { id: 'rom', name: 'Rom', role: 'PitchPerfect AI', category: 'Administrative' },
+      { id: 'larry', name: 'Larry', role: 'Market Edge AI', category: 'Administrative' },
+      { id: 'jen', name: 'Jen', role: 'CloseMaster AI', category: 'Administrative' },
+      { id: 'daniela', name: 'Daniela', role: 'Reputation Builder AI', category: 'Administrative' },
+      { id: 'caner', name: 'Caner', role: 'InsightPulse AI', category: 'Administrative' },
+    ].sort((a, b) => a.name.localeCompare(b.name)),
+  ],
+  Marketing: [
+    { id: 'mike', name: 'Mike', role: 'Trusted Marketing Strategist', category: 'Marketing' },
+    { id: 'sylvester', name: 'Sylvester', role: 'Marketing Success Wheel Optimizer', category: 'Marketing' },
+    { id: 'ally', name: 'Ally', role: 'Positioning Factors Accelerator', category: 'Marketing' },
+    { id: 'orion', name: 'Orion', role: 'PersonaLead Magnet Maker', category: 'Marketing' },
+    { id: 'jesse', name: 'Jesse', role: 'Email Marketing Maestro', category: 'Marketing' },
+  ].sort((a, b) => a.name.localeCompare(b.name)),
+  Sales: [
+    { id: 'alex', name: 'Alex', role: 'Persona Pilot Pro', category: 'Sales' },
+    { id: 'aaron', name: 'Aaron', role: 'T.I.N.B. Builder', category: 'Sales' },
+    { id: 'troy', name: 'Troy', role: 'CrossSell Catalyst', category: 'Sales' },
+    { id: 'jr', name: 'JR', role: 'Audience Gap Genius', category: 'Sales' },
+  ].sort((a, b) => a.name.localeCompare(b.name)),
+  SocialMedia: [
+    { id: 'deborah', name: "De'Borah", role: 'Facebook Marketing Maestro', category: 'Social Media' },
+    { id: 'claire', name: 'Claire', role: 'LinkedIn Messaging Maestro', category: 'Social Media' },
+    { id: 'ej', name: 'EJ', role: 'TikTok Marketing Maestro', category: 'Social Media' },
+    { id: 'lisa', name: 'Lisa', role: 'Instagram Marketing Maestro', category: 'Social Media' },
+  ].sort((a, b) => a.name.localeCompare(b.name)),
+  CopyEditing: [
+    { id: 'antonio', name: 'Antonio', role: 'Video Story Architect', category: 'Copy Editing' },
+    { id: 'mason', name: 'Mason', role: 'StoryAlign AI', category: 'Copy Editing' },
+    { id: 'gabriel', name: 'Gabriel', role: 'Blog Blueprint', category: 'Copy Editing' },
+    { id: 'sadie', name: 'Sadie', role: 'Ad Copy Maestro', category: 'Copy Editing' },
+  ].sort((a, b) => a.name.localeCompare(b.name)),
+};
+
+
 
 
 const Dashboard = () => {
@@ -630,42 +644,62 @@ const fetchSuggestedGoals = async () => {
   
         {/* Scrollable Content */}
         <ScrollArea className="flex-1">
+
+
           {/* Agents Section */}
-          <div className="p-4 border-b border-gray-700">
-            <h2 className="text-sm font-semibold mb-2">AGENTS</h2>
-            <div className="space-y-1">
-              {agents.map((agent) => (
-                <div key={agent.id} className="mb-1">
-                  <div
-                    className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700 rounded"
-                    onContextMenu={(e) => handleContextMenu(e, agent)}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div
-                        className="cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleAgentExpanded(agent.id);
-                        }}
-                      >
-                        <ChevronRight
-                          className={`h-4 w-4 transform transition-transform ${
-                            expandedAgents[agent.id] ? 'rotate-90' : ''
-                          }`}
-                        />
-                      </div>
-                      <span
-                        className="cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAgentClick(agent);
-                        }}
-                      >
-                        {agent.name}
-                      </span>
+            <div className="p-4 border-b border-gray-700">
+              <h2 className="text-sm font-semibold mb-2">AGENTS</h2>
+              <div className="space-y-4">
+                {Object.entries(agents).map(([category, agentList]) => (
+                  <div key={category}>
+                    <h3 className="text-xs font-medium uppercase text-gray-400 mb-2">
+                      {category}
+                    </h3>
+                    <div className="space-y-1">
+                      {agentList
+                        .sort((a, b) => (a.name === 'Shawn' ? -1 : a.name.localeCompare(b.name)))
+                        .map((agent) => (
+                          <div key={agent.id} className="mb-1">
+                            <div
+                              className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700 rounded"
+                              onContextMenu={(e) => handleContextMenu(e, agent)}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <div
+                                  className="cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleAgentExpanded(agent.id);
+                                  }}
+                                >
+                                  <ChevronRight
+                                    className={`h-4 w-4 transform transition-transform ${
+                                      expandedAgents[agent.id] ? 'rotate-90' : ''
+                                    }`}
+                                  />
+                                </div>
+                                <span
+                                  className="cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAgentClick(agent);
+                                  }}
+                                >
+                                  {agent.name}
+                                </span>
+                              </div>
+                              <span className="text-xs text-gray-400">{agent.role}</span>
+                            </div>
+                            {/* Render Nested Chats */}
+                            {expandedAgents[agent.id] && renderNestedChats(agent.id)}
+                          </div>
+                        ))}
                     </div>
-                    <span className="text-xs text-gray-400">{agent.role}</span>
                   </div>
+                ))}
+              </div>
+            </div>
+
                   {/* Render Nested Chats */}
                   {expandedAgents[agent.id] && (
                   <div className="ml-4 space-y-1">
