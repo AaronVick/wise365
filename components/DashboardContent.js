@@ -223,11 +223,11 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                     platform and connect you with the right experts for your business needs.
                   </p>
                   <Button 
-                    onClick={() => startConversation({ id: 'shawn', name: 'Shawn' })}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    Chat with Shawn
-                  </Button>
+                  onClick={() => router.push('/chat/shawn')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Chat with Shawn
+                </Button>
                 </div>
               </div>
             </Card>
@@ -376,8 +376,8 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
             </div>
           </Card>
 
-          /* Resources Section */
-            <Card className="p-6">
+           {/* Resources Section */}
+           <Card className="p-6">
               <h3 className="text-lg font-semibold mb-4">Resources</h3>
               <div className="text-sm text-gray-500">
                 {isLoading ? (
