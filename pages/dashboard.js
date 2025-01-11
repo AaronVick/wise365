@@ -643,160 +643,94 @@ const fetchSuggestedGoals = async () => {
         </div>
   
         {/* Scrollable Content */}
-        <ScrollArea className="flex-1">
-
-
-          {/* Agents Section */}
-            <div className="p-4 border-b border-gray-700">
-              <h2 className="text-sm font-semibold mb-2">AGENTS</h2>
-              <div className="space-y-4">
-                {Object.entries(agents).map(([category, agentList]) => (
-                  <div key={category}>
-                    <h3 className="text-xs font-medium uppercase text-gray-400 mb-2">
-                      {category}
-                    </h3>
-                    <div className="space-y-1">
-                      {agentList
-                        .sort((a, b) => (a.name === 'Shawn' ? -1 : a.name.localeCompare(b.name)))
-                        .map((agent) => (
-                          <div key={agent.id} className="mb-1">
-                            <div
-                              className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700 rounded"
-                              onContextMenu={(e) => handleContextMenu(e, agent)}
-                            >
-                              <div className="flex items-center space-x-2">
-                                <div
-                                  className="cursor-pointer"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleAgentExpanded(agent.id);
-                                  }}
-                                >
-                                  <ChevronRight
-                                    className={`h-4 w-4 transform transition-transform ${
-                                      expandedAgents[agent.id] ? 'rotate-90' : ''
-                                    }`}
-                                  />
-                                </div>
-                                <span
-                                  className="cursor-pointer"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAgentClick(agent);
-                                  }}
-                                >
-                                  {agent.name}
-                                </span>
-                              </div>
-                              <span className="text-xs text-gray-400">{agent.role}</span>
-                            </div>
-                            {/* Render Nested Chats */}
-                            {expandedAgents[agent.id] && renderNestedChats(agent.id)}
+          <ScrollArea className="flex-1">
+            {/* Agents Section */}
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="agents">
+                <AccordionTrigger>Agents</AccordionTrigger>
+                <AccordionContent>
+                  {Object.entries(agents).map(([category, categoryAgents]) => (
+                    <div key={category} className="mb-4">
+                      <h4 className="font-bold text-lg mb-2">{category}</h4>
+                      {categoryAgents.map((agent) => (
+                        <div key={agent.id} className="flex items-center justify-between py-2 border-b">
+                          <div>
+                            <p className="font-medium">{agent.name}</p>
+                            <p className="text-sm text-gray-500">{agent.role}</p>
                           </div>
-                        ))}
+                          <Button variant="link" className="text-blue-500">
+                            Chat
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
-                  {/* Render Nested Chats */}
-                  {expandedAgents[agent.id] && (
-                  <div className="ml-4 space-y-1">
-                    {nestedChats[agent.id]?.length > 0 ? (
-                      nestedChats[agent.id].map((chat) => (
-                        <Button
-                          key={chat.id}
-                          variant="ghost"
-                          className="text-left text-xs w-full truncate py-1 h-auto"
-                          onClick={() => {
-                            setCurrentChat({
-                              id: chat.id,
-                              title: chat.conversationName,
-                              agentId: agent.id,
-                              participants: [currentUser.uid],
-                              isDefault: false,
-                              conversationName: chat.id,
-                            });
-                          }}
-                        >
-                          {chat.conversationName}
-                        </Button>
-                      ))
-                    ) : (
-                      <div className="text-xs text-gray-400">No sub-chats found.</div>
-                    )}
-                  </div>
-                )}
-                </div>
-              ))}
-            </div>
-          </div>
-  
-          {/* Goals Section */}
-          <div className="p-4 border-b border-gray-700">
-            {/* Current Goals */}
-            <div className="mb-4">
-              <h2 className="text-sm font-semibold">ONGOING GOALS</h2>
-              <p className="text-xs text-gray-400 mb-2">
-                These are your active goals that you're currently working on.
-              </p>
-              <div className="space-y-1 mt-2">
-                {currentGoals.length > 0 ? (
-                  currentGoals.map((goal) => (
-                    <div key={goal.id} className="p-2 bg-gray-800 rounded">
-                      <div className="text-sm font-medium">{goal.description}</div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        Assigned to: {agents.find((a) => a.id === goal.agentId)?.name || goal.agentId}
+            {/* Projects Section */}
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="projects">
+                <AccordionTrigger>Projects</AccordionTrigger>
+                <AccordionContent>
+                  {projects.map((project) => (
+                    <div key={project.id} className="flex items-center justify-between py-2 border-b">
+                      <div>
+                        <p className="font-medium">{project.name}</p>
+                        <p className="text-sm text-gray-500">{project.description}</p>
                       </div>
+                      <Button variant="link" className="text-blue-500">
+                        View Details
+                      </Button>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-gray-400">No ongoing goals found.</div>
-                )}
-              </div>
-            </div>
-          </div>
-  
-          {/* Projects Section */}
-          <div className="p-4">
-            <div
-              className="flex items-center justify-between mb-2"
-              onContextMenu={handleProjectContextMenu}
-            >
-              <h2 className="text-sm font-semibold">PROJECTS</h2>
-            </div>
-            <div className="space-y-1">
-              {projects.map((project) => (
-                <div key={project.id} className="mb-1">
-                  <div
-                    className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700 rounded"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <ChevronRight
-                        className={`h-4 w-4 transform transition-transform ${
-                          expandedProjects[project.id] ? 'rotate-90' : ''
-                        }`}
-                        onClick={() => toggleProjectExpanded(project.id)}
-                      />
-                      <span
-                        className="text-sm cursor-pointer"
-                        onClick={() => handleProjectClick(project)}
-                      >
-                        {project.ProjectName}
-                      </span>
+                  ))}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+            {/* Goals Section */}
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="goals">
+                <AccordionTrigger>Goals</AccordionTrigger>
+                <AccordionContent>
+                  {goals.map((goal) => (
+                    <div key={goal.id} className="flex items-center justify-between py-2 border-b">
+                      <div>
+                        <p className="font-medium">{goal.name}</p>
+                        <p className="text-sm text-gray-500">{goal.status}</p>
+                      </div>
+                      <Button variant="link" className="text-blue-500">
+                        Update Goal
+                      </Button>
                     </div>
-                  </div>
-                  {expandedProjects[project.id] && (
-                    <div className="ml-4 space-y-1">
-                      {/* Project chats would be rendered here */}
+                  ))}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+            {/* Resources Section */}
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="resources">
+                <AccordionTrigger>Resources</AccordionTrigger>
+                <AccordionContent>
+                  {resources.map((resource) => (
+                    <div key={resource.id} className="flex items-center justify-between py-2 border-b">
+                      <div>
+                        <p className="font-medium">{resource.templateName}</p>
+                        <p className="text-sm text-gray-500">{resource.description}</p>
+                      </div>
+                      <Button variant="link" className="text-blue-500">
+                        Access
+                      </Button>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </ScrollArea>
+                  ))}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </ScrollArea>;
+
+
   
         {/* Settings Button */}
         <div className="p-4 border-t border-gray-700">
