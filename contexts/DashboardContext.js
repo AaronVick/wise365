@@ -1,6 +1,6 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firebase'; // Ensure your Firebase configuration is correctly imported
 
 const defaultContextValue = {
   isLoading: false,
@@ -11,9 +11,10 @@ const defaultContextValue = {
   setGoals: () => {},
   recentActivity: [],
   setRecentActivity: () => {},
+  resources: [],
+  setResources: () => {},
   showGoalModal: false,
-  setShowGoalModal: () => {},
-  fetchResources: () => Promise.resolve([]), // Default fetchResources to return an empty array
+  setShowGoalModal: () => {}
 };
 
 export const DashboardContext = createContext(defaultContextValue);
@@ -23,27 +24,32 @@ export function DashboardProvider({ children }) {
   const [error, setError] = useState(null);
   const [goals, setGoals] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [resources, setResources] = useState([]);
   const [showGoalModal, setShowGoalModal] = useState(false);
 
-  // Fetch resources from the 'resources' collection in Firestore
+  // Function to fetch resources
   const fetchResources = async () => {
-    setIsLoading(true);
     try {
+      setIsLoading(true);
       const resourcesRef = collection(db, 'resources');
       const querySnapshot = await getDocs(resourcesRef);
-      const resources = querySnapshot.docs.map((doc) => ({
+      const fetchedResources = querySnapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data(),
+        ...doc.data()
       }));
+      setResources(fetchedResources);
+    } catch (err) {
+      console.error('Error fetching resources:', err);
+      setError(err.message);
+    } finally {
       setIsLoading(false);
-      return resources;
-    } catch (error) {
-      console.error('Error fetching resources:', error);
-      setError(error.message);
-      setIsLoading(false);
-      return [];
     }
   };
+
+  // Automatically load resources when the context is mounted
+  useEffect(() => {
+    fetchResources();
+  }, []);
 
   const value = {
     isLoading,
@@ -54,9 +60,10 @@ export function DashboardProvider({ children }) {
     setGoals,
     recentActivity,
     setRecentActivity,
+    resources,
+    setResources,
     showGoalModal,
-    setShowGoalModal,
-    fetchResources, // Add fetchResources to the context
+    setShowGoalModal
   };
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;

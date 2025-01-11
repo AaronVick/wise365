@@ -382,44 +382,25 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
               <div className="text-sm text-gray-500">
                 {isLoading ? (
                   <div className="text-center py-4">Loading resources...</div>
-                ) : (
+                ) : resources.length > 0 ? (
                   <div className="space-y-4">
-                    {resources.length === 0 ? (
-                      <div className="text-center py-4">No resources available.</div>
-                    ) : (
-                      resources.map((resource) => (
-                        <Button
-                          key={resource.id}
-                          variant="ghost"
-                          onClick={() => {
-                            const handleNavigation = async () => {
-                              try {
-                                const resourcesRef = collection(db, 'resources');
-                                const q = query(resourcesRef, where('templateName', '==', resource.templateName));
-                                const querySnapshot = await getDocs(q);
-                                if (querySnapshot.empty) {
-                                  alert(`${resource.templateName} template not yet available. Please run seed script first.`);
-                                  return;
-                                }
-                                router.push(`/${resource.route}`);
-                              } catch (error) {
-                                console.error('Error checking template:', error);
-                                alert('Error checking template availability');
-                              }
-                            };
-                            handleNavigation();
-                          }}
-                          className="w-full justify-between text-left"
-                        >
-                          <div>
-                            <h4 className="text-sm font-medium">{resource.templateName}</h4>
-                            <p className="text-xs text-gray-500">{resource.description}</p>
-                          </div>
-                          <span className="text-blue-600">Fill Out</span>
-                        </Button>
-                      ))
-                    )}
+                    {resources.map((resource) => (
+                      <Button
+                        key={resource.id}
+                        variant="ghost"
+                        onClick={() => router.push(`/resources/${resource.templateName}`)}
+                        className="w-full justify-between text-left"
+                      >
+                        <div>
+                          <h4 className="text-sm font-medium">{resource.templateName}</h4>
+                          <p className="text-xs text-gray-500">{resource.description}</p>
+                        </div>
+                        <span className="text-blue-600">Fill Out</span>
+                      </Button>
+                    ))}
                   </div>
+                ) : (
+                  <div className="text-center py-4">No resources available.</div>
                 )}
               </div>
             </Card>
