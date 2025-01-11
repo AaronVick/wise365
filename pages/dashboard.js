@@ -653,6 +653,7 @@ const fetchSuggestedGoals = async () => {
   
         {/* Scrollable Content */}
           <ScrollArea className="flex-1">
+            
             {/* Agents Section */}
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="agents">
@@ -669,9 +670,7 @@ const fetchSuggestedGoals = async () => {
                               {/* Default Chat */}
                               <div
                                 className="py-2 border-b cursor-pointer"
-                                onClick={() =>
-                                  router.push(`/chat/${agent.id}-default`)
-                                }
+                                onClick={() => router.push(`/chat/${agent.id}-default`)}
                               >
                                 <p className="text-sm text-gray-800">
                                   Chat with {agent.name}
@@ -679,21 +678,17 @@ const fetchSuggestedGoals = async () => {
                               </div>
 
                               {/* Sub-Chats */}
-                              {conversationNames
-                                .filter((chat) => chat.agentId === agent.id && !chat.isDefault)
-                                .map((subChat) => (
-                                  <div
-                                    key={subChat.id}
-                                    className="py-2 border-b cursor-pointer"
-                                    onClick={() =>
-                                      router.push(`/chat/${subChat.id}`)
-                                    }
-                                  >
-                                    <p className="text-sm text-gray-800">
-                                      {subChat.conversationName}
-                                    </p>
-                                  </div>
-                                ))}
+                              {nestedChats[agent.id]?.map((subChat) => (
+                                <div
+                                  key={subChat.id}
+                                  className="py-2 border-b cursor-pointer"
+                                  onClick={() => router.push(`/chat/${subChat.id}`)}
+                                >
+                                  <p className="text-sm text-gray-800">
+                                    {subChat.displayName}
+                                  </p>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         ))}
@@ -702,6 +697,7 @@ const fetchSuggestedGoals = async () => {
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
+
 
             {/* Projects Section */}
             <Accordion type="single" collapsible className="w-full">
