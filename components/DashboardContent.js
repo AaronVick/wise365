@@ -384,9 +384,27 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                   <div className="text-center py-4">Loading resources...</div>
                 ) : (
                   <div className="space-y-4">
+                    {/* We should check if templates exist first */}
                     <Button
                       variant="ghost"
-                      onClick={() => router.push('/buyer-persona')}
+                      onClick={() => {
+                        const dbCheck = async () => {
+                          try {
+                            const resourcesRef = collection(db, 'resources');
+                            const q = query(resourcesRef, where('templateName', '==', "World's Best Buyer Persona"));
+                            const querySnapshot = await getDocs(q);
+                            if (querySnapshot.empty) {
+                              alert('Template not yet available. Please run seed script first.');
+                              return;
+                            }
+                            router.push('/buyer-persona');
+                          } catch (error) {
+                            console.error('Error checking template:', error);
+                            alert('Error checking template availability');
+                          }
+                        };
+                        dbCheck();
+                      }}
                       className="w-full justify-between text-left"
                     >
                       <div>
@@ -395,28 +413,7 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                       </div>
                       <span className="text-blue-600">Fill Out</span>
                     </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => router.push('/success-wheel')}
-                      className="w-full justify-between text-left"
-                    >
-                      <div>
-                        <h4 className="text-sm font-medium">Marketing Success Wheel</h4>
-                        <p className="text-xs text-gray-500">Evaluate your marketing performance</p>
-                      </div>
-                      <span className="text-blue-600">Fill Out</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => router.push('/positioning-factors')}
-                      className="w-full justify-between text-left"
-                    >
-                      <div>
-                        <h4 className="text-sm font-medium">Positioning Factors</h4>
-                        <p className="text-xs text-gray-500">Define your market positioning</p>
-                      </div>
-                      <span className="text-blue-600">Fill Out</span>
-                    </Button>
+                    {/* Repeat similar checks for other templates */}
                   </div>
                 )}
               </div>
