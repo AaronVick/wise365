@@ -132,7 +132,6 @@ const Dashboard = () => {
   }, [currentUser?.uid]);
 
   // Load All Nested Chats Effect
-  // Load All Nested Chats Effect
 useEffect(() => {
   const loadAllNestedChats = async () => {
     if (!currentUser?.uid) return;
@@ -408,6 +407,28 @@ const fetchSuggestedGoals = async () => {
 };
 
 
+useEffect(() => {
+  const fetchGoals = async () => {
+    try {
+      const goalsQuery = query(
+        collection(db, 'goals'),
+        where('userId', '==', currentUser?.uid) // Filter by current user's ID
+      );
+      const snapshot = await getDocs(goalsQuery);
+      setGoals(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    } catch (error) {
+      console.error('Error fetching goals:', error);
+    }
+  };
+
+  if (currentUser?.uid) {
+    fetchGoals();
+  }
+}, [currentUser?.uid]);
+
+
+
+
 
   const handleProjectClick = async (project) => {
     try {
@@ -654,55 +675,51 @@ const fetchSuggestedGoals = async () => {
         {/* Scrollable Content */}
           <ScrollArea className="flex-1">
             
-           {/* Agents Section */}
-<Accordion type="multiple" collapsible className="w-full">
-  <AccordionItem value="agents">
-    <AccordionTrigger>Agents</AccordionTrigger>
-    <AccordionContent>
-      {Object.entries(agents).map(([category, categoryAgents]) => (
-        <div key={category} className="mb-4">
-          <h4 className="font-bold text-lg mb-2">{category}</h4>
-          {categoryAgents.map((agent) => (
-            <Accordion key={agent.id} type="single" collapsible className="w-full">
-              <AccordionItem value={agent.id}>
-                {/* Agent Name and Role */}
-                <AccordionTrigger className="flex justify-between items-center py-2 hover:bg-gray-100">
-                  <div className="flex items-center justify-between w-full">
-                    <span className="font-medium">{agent.name}</span>
-                    <span className="text-sm text-gray-500 ml-4">{agent.role}</span>
-                  </div>
-                </AccordionTrigger>
+          {/* Agents Section */}
+            <Accordion type="multiple" collapsible className="w-full">
+              <AccordionItem value="agents">
+                <AccordionTrigger>Agents</AccordionTrigger>
                 <AccordionContent>
-                  {/* Default Chat */}
-                  <div
-                    className="py-2 cursor-pointer hover:bg-gray-200"
-                    onClick={() => router.push(`/chat/${agent.id}-default`)}
-                  >
-                    <p className="text-sm text-white">Chat with {agent.name}</p>
-                  </div>
-
-                  {/* Sub-Chats */}
-                  {nestedChats[agent.id]
-                    ?.filter((subChat) => !subChat.isDefault) // Exclude the default chat
-                    .map((subChat) => (
-                      <div
-                        key={subChat.id}
-                        className="py-2 cursor-pointer hover:bg-gray-200"
-                        onClick={() => router.push(`/chat/${subChat.id}`)}
-                      >
-                        <p className="text-sm text-white ml-4">{subChat.displayName}</p>
-                      </div>
-                    ))}
+                  {Object.entries(agents).map(([category, categoryAgents]) => (
+                    <div key={category} className="mb-4">
+                      <h4 className="font-bold text-lg mb-2">{category}</h4>
+                      {categoryAgents.map((agent) => (
+                        <Accordion key={agent.id} type="single" collapsible className="w-full">
+                          <AccordionItem value={agent.id}>
+                            {/* Agent Name and Role */}
+                            <AccordionTrigger
+                              className="flex justify-between items-center py-2 hover:bg-gray-100 cursor-pointer"
+                              onClick={() =>
+                                router.push(`/chat/${agent.id}-default`) // Navigate to default chat on click
+                              }
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <span className="font-medium">{agent.name}</span>
+                                <span className="text-sm text-gray-500 ml-4">{agent.role}</span>
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              {/* Sub-Chats */}
+                              {nestedChats[agent.id]
+                                ?.filter((subChat) => !subChat.isDefault) // Exclude default chat
+                                .map((subChat) => (
+                                  <div
+                                    key={subChat.id}
+                                    className="py-2 cursor-pointer hover:bg-gray-200 ml-4"
+                                    onClick={() => router.push(`/chat/${subChat.id}`)} // Navigate to subchat
+                                  >
+                                    <p className="text-sm text-white">{subChat.displayName}</p>
+                                  </div>
+                                ))}
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      ))}
+                    </div>
+                  ))}
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-          ))}
-        </div>
-      ))}
-    </AccordionContent>
-  </AccordionItem>
-</Accordion>
-
 
 
 
@@ -727,26 +744,76 @@ const fetchSuggestedGoals = async () => {
               </AccordionItem>
             </Accordion>
 
-            {/* Goals Section */}
-
+           {/* Goals Section */}
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="goals">
                 <AccordionTrigger>Goals</AccordionTrigger>
                 <AccordionContent>
-                  {goals.map((goal) => (
-                    <div key={goal.id} className="flex items-center justify-between py-2 border-b">
-                      <div>
-                        <p className="font-medium">{goal.name}</p>
-                        <p className="text-sm text-gray-500">{goal.status}</p>
-                      </div>
-                      <Button variant="link" className="text-blue-500">
-                        Update Goal
-                      </Button>
-                    </div>
-                  ))}
+                  <div
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setIsGoalModalOpen(true); // Open the modal on right-click
+                    }}
+                  >
+                    {goals.length === 0 ? (
+                      <p className="text-gray-500 text-sm text-center py-4">
+                        No goals available. Right-click to add a new goal.
+                      </p>
+                    ) : (
+                      goals.map((goal) => (
+                        <div
+                          key={goal.id}
+                          className="flex items-center justify-between py-2 border-b cursor-pointer hover:bg-gray-50"
+                        >
+                          <div>
+                            <p className="font-medium">{goal.title}</p>
+                            <p className="text-sm text-gray-500">{goal.status}</p>
+                          </div>
+                          <Button
+                            variant="link"
+                            className="text-blue-500"
+                            onClick={() => router.push(`/goal/${goal.id}`)} // Navigate to the goal's page if needed
+                          >
+                            View Goal
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
+
+            {/* Goal Creation Modal */}
+            <GoalCreationModal
+              isOpen={isGoalModalOpen}
+              onClose={() => setIsGoalModalOpen(false)}
+              onSubmit={async (formData) => {
+                try {
+                  // Save new goal to Firebase
+                  await addDoc(collection(db, 'goals'), {
+                    title: formData.title,
+                    description: formData.description,
+                    type: formData.type,
+                    priority: formData.priority,
+                    agentId: formData.agentId,
+                    dueDate: formData.dueDate,
+                    status: 'not_started',
+                    userId: currentUser.uid,
+                    teamId: currentUser.teamId || '',
+                    createdAt: serverTimestamp(),
+                  });
+
+                  // Refresh goals
+                  fetchGoals(); // Call your fetchGoals function to refresh the list
+                  setIsGoalModalOpen(false); // Close the modal
+                } catch (error) {
+                  console.error('Error creating goal:', error);
+                }
+              }}
+              agents={Object.values(agents).flat()} // Pass all agents
+            />
+
 
 
             {/* Resources Section */}
