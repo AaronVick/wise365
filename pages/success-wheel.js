@@ -14,7 +14,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Select } from '../components/ui/select';
-import { Checkbox } from '../components/ui/checkbox';
+import Checkbox from '../components/ui/checkbox';  // Changed from { Checkbox }
 
 const SuccessWheel = () => {
   const { currentUser } = useAuth() || {};

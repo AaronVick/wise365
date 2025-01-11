@@ -17,8 +17,8 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Textarea } from '../components/ui/textarea';
-import { Select, SelectItem } from '../components/ui/select';
+import Textarea from '../components/ui/textarea';  // Changed from { Textarea }
+import { Select } from '../components/ui/select';  // Removed SelectItem as it's not exported
 
 const BuyerPersona = () => {
   const { currentUser } = useAuth() || {};

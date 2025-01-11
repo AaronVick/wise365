@@ -186,6 +186,11 @@ useEffect(() => {
 
 
 
+const {
+  goals = [],
+  resources = [],
+  isLoading = false
+} = useDashboard() || {};
 
 
 //review goals by the user
@@ -287,9 +292,6 @@ const analyzeUserContext = async () => {
       console.error(`[Error] Failed to fetch nested chats for agent ${agentId}:`, error);
     }
   };
-  
-  
-
 
 
   const renderNestedChats = (agentId) => {
@@ -696,7 +698,6 @@ const fetchSuggestedGoals = async () => {
             </Accordion>
 
             {/* Goals Section */}
-            const { goals } = useDashboard();
 
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="goals">
@@ -715,7 +716,7 @@ const fetchSuggestedGoals = async () => {
                   ))}
                 </AccordionContent>
               </AccordionItem>
-            </Accordion>;
+            </Accordion>
 
 
             {/* Resources Section */}
@@ -737,7 +738,7 @@ const fetchSuggestedGoals = async () => {
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-          </ScrollArea>;
+          </ScrollArea>
 
 
   

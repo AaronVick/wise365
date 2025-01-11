@@ -59,7 +59,6 @@ const badgeVariants = cva(
   }
 );
 
-const { goals } = useDashboard();
 
 const Badge = ({
   className,
