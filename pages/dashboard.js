@@ -654,29 +654,54 @@ const fetchSuggestedGoals = async () => {
         {/* Scrollable Content */}
           <ScrollArea className="flex-1">
             {/* Agents Section */}
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="agents">
-                <AccordionTrigger>Agents</AccordionTrigger>
-                <AccordionContent>
-                  {Object.entries(agents).map(([category, categoryAgents]) => (
-                    <div key={category} className="mb-4">
-                      <h4 className="font-bold text-lg mb-2">{category}</h4>
-                      {categoryAgents.map((agent) => (
-                        <div key={agent.id} className="flex items-center justify-between py-2 border-b">
-                          <div>
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="agents">
+                  <AccordionTrigger>Agents</AccordionTrigger>
+                  <AccordionContent>
+                    {Object.entries(agents).map(([category, categoryAgents]) => (
+                      <div key={category} className="mb-4">
+                        <h4 className="font-bold text-lg mb-2">{category}</h4>
+                        {categoryAgents.map((agent) => (
+                          <div key={agent.id} className="mb-4">
+                            {/* Agent Name */}
                             <p className="font-medium">{agent.name}</p>
-                            <p className="text-sm text-gray-500">{agent.role}</p>
+                            <div className="ml-4">
+                              {/* Default Chat */}
+                              <div
+                                className="py-2 border-b cursor-pointer"
+                                onClick={() =>
+                                  router.push(`/chat/${agent.id}-default`)
+                                }
+                              >
+                                <p className="text-sm text-gray-800">
+                                  Chat with {agent.name}
+                                </p>
+                              </div>
+
+                              {/* Sub-Chats */}
+                              {conversationNames
+                                .filter((chat) => chat.agentId === agent.id && !chat.isDefault)
+                                .map((subChat) => (
+                                  <div
+                                    key={subChat.id}
+                                    className="py-2 border-b cursor-pointer"
+                                    onClick={() =>
+                                      router.push(`/chat/${subChat.id}`)
+                                    }
+                                  >
+                                    <p className="text-sm text-gray-800">
+                                      {subChat.conversationName}
+                                    </p>
+                                  </div>
+                                ))}
+                            </div>
                           </div>
-                          <Button variant="link" className="text-blue-500">
-                            Chat
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+                        ))}
+                      </div>
+                    ))}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
             {/* Projects Section */}
             <Accordion type="single" collapsible className="w-full">
