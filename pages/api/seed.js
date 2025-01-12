@@ -1124,7 +1124,7 @@ const agentData = [
     "recommendations": [
       "Focus on understanding the persona's key challenges, motivations, and goals.",
       "Keep the language concise, engaging, and tailored to the persona's communication preferences.",
-      "Use a clear structure": "introduction, body, and CTA, ensuring seamless flow.",
+      "Use a clear structure: introduction, body, and CTA, ensuring seamless flow.",
       "Incorporate visual suggestions to enhance engagement and convey the message effectively.",
       "Invite user feedback and refine the script collaboratively to ensure alignment with their goals."
     ]
