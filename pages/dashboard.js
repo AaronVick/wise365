@@ -1,6 +1,4 @@
 // /pages/dashboard.js
-
-import dynamic from 'next/dynamic';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
@@ -17,19 +15,20 @@ import {
 import { Button } from '../components/ui/button'; 
 import { Badge } from "../components/ui/badge";
 import { ScrollArea } from '../components/ui/scroll-area';
-import DashboardContent from '../components/DashboardContent'; // Dashboard content
+import DashboardContent from '../components/DashboardContent';
 import { useDashboard } from '../contexts/DashboardContext';
-import ChatInterface from '../components/ChatInterface'; // Chat interface component
-import { ChevronRight, Home, Settings } from 'lucide-react'; // Icons
-import ErrorBoundary from '../components/ErrorBoundary'; // Add ErrorBoundary for robust error handling
-
+import ChatInterface from '../components/ChatInterface';
+import { ChevronRight, Home, Settings } from 'lucide-react';
+import ErrorBoundary from '../components/ErrorBoundary';
 import Accordion, {
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
 } from '../components/Accordion';
+import GoalCreationModal from '../components/GoalCreationModal';
 import { agents } from '../data/agents';
 import SidebarContent from '../components/SidebarContent';
+import dynamic from 'next/dynamic';
 
 const DynamicGoalCreationModal = dynamic(() => import('../components/GoalCreationModal'), {
   ssr: false,
@@ -701,8 +700,7 @@ const handleSidebarResizeStart = (e) => {
 
 } 
 
-const DashboardClient = dynamic(() => Promise.resolve(Dashboard), { 
-  ssr: false 
-}); 
-
-export default DashboardClient;
+export default dynamic(() => Promise.resolve(Dashboard), { 
+  ssr: false,
+  loading: () => <div>Loading...</div>
+});

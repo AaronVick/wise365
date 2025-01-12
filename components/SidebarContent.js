@@ -11,6 +11,7 @@ import {
   AccordionContent,
 } from './Accordion';
 import { agents } from '../data/agents';
+import GoalCreationModal from './GoalCreationModal';
 
 const SidebarContent = ({ 
   currentUser, 
@@ -21,7 +22,6 @@ const SidebarContent = ({
   isGoalModalOpen,
   setIsGoalModalOpen,
   resources,
-  GoalCreationModal,
 }) => {
   const router = useRouter();
 

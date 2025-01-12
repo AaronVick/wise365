@@ -35,11 +35,9 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { useDashboard } from '../contexts/DashboardContext';
-const MilestonesSection = dynamic(() => import('./MilestonesSection'), {
-  ssr: false,
-});
 import { agents } from '../data/agents';
-
+import dynamic from 'next/dynamic';
+const MilestonesSection = dynamic(() => import('./MilestonesSection'));
 
 
 // Badge component definition
