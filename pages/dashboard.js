@@ -691,4 +691,8 @@ const handleSidebarResizeStart = (e) => {
 
 } 
 
-export default Dashboard;
+const DashboardClient = dynamic(() => Promise.resolve(Dashboard), { 
+  ssr: false 
+}); 
+
+export default DashboardClient;
