@@ -20,12 +20,12 @@ import {
   MoreVertical, 
   MessageCircle, 
 } from 'lucide-react';
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { ScrollArea } from "../components/ui/scroll-area";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 import { cva } from "class-variance-authority";
 import {
   DropdownMenu,
@@ -35,10 +35,9 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { useDashboard } from '../contexts/DashboardContext';
-import { agents } from '../pages/dashboard'; // Assume agents data is already available
 
 
-// Add Badge component definition
+// Badge component definition
 const badgeVariants = cva(
   "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
@@ -60,7 +59,6 @@ const badgeVariants = cva(
   }
 );
 
-
 const Badge = ({
   className,
   variant,
@@ -71,41 +69,30 @@ const Badge = ({
   );
 };
 
-const DashboardContent = ({ currentUser, currentTool, onToolComplete }) => {
+
+const DashboardContent = ({ currentUser, currentTool, onToolComplete, setCurrentTool }) => {
   const router = useRouter();
   const [hasShawnChat, setHasShawnChat] = useState(false);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false); // Add this line
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  
   const { 
     goals = [],
     setGoals,
     recentActivity = [],
     isLoading = false
   } = useDashboard() || {};
-  
 
-  useEffect(() => {
-    if (!currentUser?.uid) return;
+  // Safety check for currentUser
+  if (!currentUser?.uid) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-gray-600">Loading user data...</div>
+      </div>
+    );
+  }
 
-    const checkShawnChat = async () => {
-      try {
-        const conversationsRef = collection(db, 'conversations');
-        const q = query(
-          conversationsRef,
-          where('agentId', '==', 'shawn'),
-          where('participants', 'array-contains', currentUser.uid)
-        );
-        const querySnapshot = await getDocs(q);
-        setHasShawnChat(!querySnapshot.empty);
-      } catch (error) {
-        console.error('Error checking Shawn chat:', error);
-        setHasShawnChat(false);
-      }
-    };
-
-    checkShawnChat();
-  }, [currentUser?.uid]);
 
 
 

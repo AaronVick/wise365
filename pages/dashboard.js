@@ -187,6 +187,7 @@ useEffect(() => {
 }, [currentUser?.uid]);
 
 
+const [currentTool, setCurrentTool] = useState(null);
 
 const {
   goals = [],
@@ -878,7 +879,12 @@ useEffect(() => {
             projectName={currentChat.projectName}
           />
         ) : (
-          <DashboardContent currentUser={currentUser} />
+          <DashboardContent 
+            currentUser={currentUser}
+            currentTool={currentTool}
+            onToolComplete={() => setCurrentTool(null)}
+            setCurrentTool={setCurrentTool}
+/>
         )}
       </div>
     </div>
