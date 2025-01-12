@@ -20,9 +20,9 @@ import {
   MoreVertical, 
   MessageCircle, 
 } from 'lucide-react';
-import { Card } from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { ScrollArea } from "../components/ui/scroll-area";
+import { Card } from "./ui/card";
+import { Button } from "./ui/button";
+import { ScrollArea } from "./ui/scroll-area";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { cn } from "../lib/utils";
@@ -35,6 +35,11 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { useDashboard } from '../contexts/DashboardContext';
+const MilestonesSection = dynamic(() => import('./MilestonesSection'), {
+  ssr: false,
+});
+import { agents } from '../data/agents';
+
 
 
 // Badge component definition
@@ -262,6 +267,13 @@ const DashboardContent = ({ currentUser, currentTool, onToolComplete, setCurrent
               </div>
             </Card>
           </div>
+
+          {/* Milestones Section */}
+<Card className="p-6">
+  <h3 className="text-lg font-semibold mb-4">Milestones</h3>
+  <MilestonesSection currentUser={currentUser} />
+</Card>
+
 
           {/* Suggested Actions */}
           <Card className="p-6">
