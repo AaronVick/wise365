@@ -14,8 +14,8 @@ if (!getApps().length) {
     client_id: process.env.FIREBASE_CLIENT_ID,
     auth_uri: process.env.FIREBASE_AUTH_URI,
     token_uri: process.env.FIREBASE_TOKEN_URI,
-    auth_provider_x509_cert_"URL": process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
-    client_x509_cert_"URL": process.env.FIREBASE_CLIENT_CERT_URL,
+    auth_provider_x509_cert_URL: process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
+    client_x509_cert_URL: process.env.FIREBASE_CLIENT_CERT_URL,
   };
 
   initializeApp({
