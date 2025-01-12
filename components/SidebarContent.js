@@ -22,6 +22,7 @@ const SidebarContent = ({
   isGoalModalOpen,
   setIsGoalModalOpen,
   resources,
+  sidebarWidth,
 }) => {
   const router = useRouter();
 
