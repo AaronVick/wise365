@@ -31,10 +31,9 @@ import Accordion, {
 import GoalCreationModal from '../components/GoalCreationModal';
 import { agents } from '../data/agents';
 import SidebarContent from '../components/SidebarContent';
+import DynamicComponent from '../components/DynamicComponent';
 
 
-
-const DynamicComponent = dynamic(() => import('../components/DynamicComponent'), { ssr: false });
 
 
 const Dashboard = () => {
