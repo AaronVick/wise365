@@ -39,6 +39,8 @@ import SidebarContent from '../components/SidebarContent';
 
 
 
+const DynamicComponent = dynamic(() => import('../components/DynamicComponent'));
+
 
 const Dashboard = () => {
   const router = useRouter();

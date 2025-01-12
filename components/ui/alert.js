@@ -1,3 +1,5 @@
+// components/ui/alert.js
+
 export function Alert({ children, variant }) {
   const alertClasses = {
     destructive: "bg-red-50 text-red-700 border border-red-300",

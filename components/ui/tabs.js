@@ -1,3 +1,5 @@
+// components/ui/tabs.js
+
 import React, { useState } from 'react';
 
 // Tabs component to hold the logic for tabs

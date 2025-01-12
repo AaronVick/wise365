@@ -1,12 +1,15 @@
-const Select = ({ options, onChange, value }) => (
-  <select value={value} onChange={onChange} className="w-full p-2 border rounded">
-    {options.map((option, i) => (
-      <option key={i} value={option.value}>
-        {option.label}
-      </option>
-    ))}
-  </select>
-);
+// components/ui/select.js
 
-export { Select, Select as SelectItem };
-export default Select;
+export function SelectTrigger({ children, className }) {
+  return <button className={`select-trigger ${className}`}>{children}</button>;
+}
+
+export function SelectValue({ children, className }) {
+  return <span className={`select-value ${className}`}>{children}</span>;
+}
+
+export function SelectContent({ children, className }) {
+  return <div className={`select-content ${className}`}>{children}</div>;
+}
+
+export default SelectTrigger;

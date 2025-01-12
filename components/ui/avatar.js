@@ -1,4 +1,5 @@
 // /components/ui/avatar.js
+
 import React from 'react';
 
 const Avatar = ({ children, className }) => (

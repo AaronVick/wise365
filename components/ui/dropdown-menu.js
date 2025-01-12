@@ -1,4 +1,5 @@
-// /components/ui/dropdown-menu.js
+// components/ui/dropdown-menu.js
+
 import React from 'react';
 
 const DropdownMenu = ({ children }) => (

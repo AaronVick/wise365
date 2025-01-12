@@ -1,3 +1,5 @@
+// components/ui/input.js
+
 export function Input({ id, type, placeholder, value, onChange, className }) {
   return (
     <input

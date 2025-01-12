@@ -1,4 +1,4 @@
-//components/ui/checkbox.js
+// components/ui/checkbox.js
 
 import React from 'react';
 
