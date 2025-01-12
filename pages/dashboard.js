@@ -1,6 +1,5 @@
 // /pages/dashboard.js
 
-import dynamic from 'next/dynamic';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
@@ -42,7 +41,7 @@ const Dashboard = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentChat, setCurrentChat] = useState(null);
   const [nestedChats, setNestedChats] = useState({});
-  const [sidebarWidth, setSidebarWidth] = useState(250);
+  const [sidebarWidth, setSidebarWidth] = useState(window.innerWidth / 4);
   const [expandedAgents, setExpandedAgents] = useState({});
   const [projects, setProjects] = useState([]);
   const [expandedProjects, setExpandedProjects] = useState({});
@@ -607,7 +606,25 @@ useEffect(() => {
     }
 };
 
+const handleSidebarResizeStart = (e) => {
+  const startX = e.clientX;
+  const startWidth = sidebarWidth;
   
+  const handleMouseMove = (e) => {
+    const delta = e.clientX - startX;
+    const newWidth = Math.min(Math.max(startWidth + delta, 200), window.innerWidth / 3);
+    setSidebarWidth(newWidth);
+  };
+  
+  const handleMouseUp = () => {
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+  
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', handleMouseUp);
+}; 
+
 
   const handleSidebarResize = (e) => {
     const newWidth = Math.min(Math.max(e.clientX, 200), window.innerWidth / 3);
