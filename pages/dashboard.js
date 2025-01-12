@@ -31,6 +31,10 @@ import Accordion, {
 import { agents } from '../data/agents';
 import SidebarContent from '../components/SidebarContent';
 
+const GoalCreationModal = dynamic(() => import('../components/GoalCreationModal'), {
+  ssr: false,
+  loading: () => <div>Loading...</div>
+});
 
 
 const Dashboard = () => {
@@ -46,9 +50,7 @@ const Dashboard = () => {
   const [suggestedGoals, setSuggestedGoals] = useState([]);
   const [currentGoals, setCurrentGoals] = useState([]);
 
-  const GoalCreationModal = dynamic(() => import('../components/GoalCreationModal'), {
-    ssr: false
-  });
+ 
 
   // Auth Effect
   useEffect(() => {
