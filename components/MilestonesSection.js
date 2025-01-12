@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
-import { Card } from '../ui/card';
+import { db } from '@/lib/firebase';
+import { Card } from '@/components/ui/card';
 import MilestoneCard from './MilestoneCard';
 import MilestoneFilters from './MilestoneFilters';
 

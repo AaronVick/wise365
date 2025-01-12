@@ -1,8 +1,9 @@
 // components/MilestoneCard.js
+
 import React from 'react';
 import { useRouter } from 'next/router';
-import { Card } from '../ui/card';
-import { Button } from '../ui/button';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import MilestoneProgress from './MilestoneProgress';
 import { ChevronRight } from 'lucide-react';
 

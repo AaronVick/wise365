@@ -1,7 +1,7 @@
 // components/MilestoneFilters.js
 
 import React from 'react';
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 
 const MilestoneFilters = ({ activeFilter, onFilterChange }) => {
   // Define filter options
