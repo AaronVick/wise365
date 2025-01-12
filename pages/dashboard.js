@@ -26,7 +26,7 @@ import { useDashboard } from '../contexts/DashboardContext';
 import ChatInterface from '../components/ChatInterface'; // Chat interface component
 import { ChevronRight, Home, Settings } from 'lucide-react'; // Icons
 import ErrorBoundary from '../components/ErrorBoundary'; // Add ErrorBoundary for robust error handling
-import dynamic from 'next/dynamic';
+
 import Accordion, {
   AccordionItem,
   AccordionTrigger,
