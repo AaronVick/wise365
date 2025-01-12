@@ -1,5 +1,6 @@
 // /pages/dashboard.js
 
+import dynamic from 'next/dynamic';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
@@ -27,11 +28,8 @@ import Accordion, {
   AccordionTrigger,
   AccordionContent,
 } from '../components/Accordion';
-import GoalCreationModal from '../components/GoalCreationModal';
 import { agents } from '../data/agents';
 import SidebarContent from '../components/SidebarContent';
-import DynamicComponent from '../components/DynamicComponent';
-
 
 
 
@@ -41,12 +39,16 @@ const Dashboard = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentChat, setCurrentChat] = useState(null);
   const [nestedChats, setNestedChats] = useState({});
-  const [sidebarWidth, setSidebarWidth] = useState(window.innerWidth / 4);
+  const [sidebarWidth, setSidebarWidth] = useState(250);
   const [expandedAgents, setExpandedAgents] = useState({});
   const [projects, setProjects] = useState([]);
   const [expandedProjects, setExpandedProjects] = useState({});
   const [suggestedGoals, setSuggestedGoals] = useState([]);
   const [currentGoals, setCurrentGoals] = useState([]);
+
+  const GoalCreationModal = dynamic(() => import('../components/GoalCreationModal'), {
+    ssr: false
+  });
 
   // Auth Effect
   useEffect(() => {
@@ -72,6 +74,13 @@ const Dashboard = () => {
 
     return () => unsubscribe();
   }, []);
+
+
+  useEffect(() => {
+    setSidebarWidth(window.innerWidth / 4);
+  }, []);
+
+
 
   useEffect(() => {
     if (currentUser?.uid) {
