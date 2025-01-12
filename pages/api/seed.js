@@ -60,8 +60,8 @@ const agentData = [
     "URL": "",
     "milestone": false,
     "steps": [
-      "Warm Introduction: Introduce yourself as Claire and greet the user warmly.",
-      "Gather LinkedIn Profiles: Ask for the user's personal and/or company LinkedIn URL.",
+      "Warm Introduction": "Introduce yourself as Claire and greet the user warmly.",
+      "Gather LinkedIn Profiles": "Ask for the user's personal and/or company LinkedIn URL.",
       "Request Website URL": "Inquire about their website URL to better understand their brand.",
       "Identify Target Audience: Request either their completed World's Best Buyer Persona or the LinkedIn profile of their target audience.",
       "Clarify Objectives: Determine the purpose of the LinkedIn interaction, such as posts, InMail messages, or cold outreach.",
