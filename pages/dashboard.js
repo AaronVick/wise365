@@ -31,6 +31,15 @@ import Accordion, {
 import { agents } from '../data/agents';
 import SidebarContent from '../components/SidebarContent';
 
+const DynamicGoalCreationModal = dynamic(() => import('../components/GoalCreationModal'), {
+  ssr: false,
+  loading: () => <div>Loading...</div>
+});
+
+const DynamicMilestonesSection = dynamic(() => import('../components/MilestonesSection'), {
+  ssr: false
+});
+
 const GoalCreationModal = dynamic(() => import('../components/GoalCreationModal'), {
   ssr: false,
   loading: () => <div>Loading...</div>
@@ -664,6 +673,7 @@ const handleSidebarResizeStart = (e) => {
           isGoalModalOpen={isGoalModalOpen}
           setIsGoalModalOpen={setIsGoalModalOpen}
           resources={resources}
+          GoalCreationModal={DynamicGoalCreationModal} 
         />
       </div>
   

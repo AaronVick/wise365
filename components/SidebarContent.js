@@ -21,6 +21,7 @@ const SidebarContent = ({
   isGoalModalOpen,
   setIsGoalModalOpen,
   resources,
+  GoalCreationModal,
 }) => {
   const router = useRouter();
 
