@@ -30,6 +30,7 @@ import { agents } from '../data/agents';
 import SidebarContent from '../components/SidebarContent';
 import dynamic from 'next/dynamic';
 
+
 const DynamicGoalCreationModal = dynamic(() => import('../components/GoalCreationModal'), {
   ssr: false,
   loading: () => <div>Loading...</div>
@@ -396,6 +397,7 @@ useEffect(() => {
       setGoals(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
       console.error('Error fetching goals:', error);
+      setGoals([]);
     }
   };
 
@@ -660,17 +662,17 @@ const handleSidebarResizeStart = (e) => {
         style={{ width: `${sidebarWidth}px`, resize: 'horizontal', overflow: 'hidden' }}
       >
         <SidebarContent
-          currentUser={currentUser}
+          ccurrentUser={currentUser}
           setCurrentChat={setCurrentChat}
-          nestedChats={nestedChats}
-          projects={projects}
-          goals={goals}
+          nestedChats={nestedChats || {}}
+          projects={projects || []}
+          goals={goals || []}
           isGoalModalOpen={isGoalModalOpen}
           setIsGoalModalOpen={setIsGoalModalOpen}
-          resources={resources}
-          GoalCreationModal={DynamicGoalCreationModal} 
+          resources={resources || []}
+          GoalCreationModal={DynamicGoalCreationModal}
           sidebarWidth={sidebarWidth}
-          agents={agents} 
+          agents={agents || {}}
         />
       </div>
   

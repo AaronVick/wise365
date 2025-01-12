@@ -15,14 +15,14 @@ import GoalCreationModal from './GoalCreationModal';
 const SidebarContent = ({ 
   currentUser, 
   setCurrentChat, 
-  nestedChats, 
-  projects, 
-  goals,
+  nestedChats = {}, 
+  projects = [], 
+  goals = [],
   isGoalModalOpen,
   setIsGoalModalOpen,
-  resources,
+  resources = [],
   sidebarWidth,
-  agents,
+  agents = {},
 }) => {
   const router = useRouter();
 
