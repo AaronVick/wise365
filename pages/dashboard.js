@@ -28,6 +28,8 @@ import Accordion, {
   AccordionTrigger,
   AccordionContent,
 } from '../components/Accordion';
+import GoalCreationModal from '../components/GoalCreationModal';
+
 
 
 
