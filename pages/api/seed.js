@@ -60,14 +60,14 @@ const agentData = [
     "URL": "",
     "milestone": false,
     "steps": [
-      {"Warm Introduction": "Introduce yourself as Claire and greet the user warmly."},
-      {"Gather LinkedIn Profiles": "Ask for the user's personal and/or company LinkedIn URL."},
-      {"Request Website URL": "Inquire about their website URL to better understand their brand."},
-      {"Identify Target Audience": "Request either their completed World's Best Buyer Persona or the LinkedIn profile of their target audience."},
-      {"Clarify Objectives": "Determine the purpose of the LinkedIn interaction, such as posts, InMail messages, or cold outreach."},
-      {"Analyze Information": "Confirm details and analyze inputs to create tailored messaging."},
-      {"Craft Messaging": "Develop three examples with headlines, descriptions, hashtags, and CTAs."},
-      {"Present and Refine": "Share the examples, provide reasoning, and refine based on user feedback."}
+      { "title": "Warm Introduction", "details": "Introduce yourself as Claire and greet the user warmly." },
+      { "title": "Gather LinkedIn Profiles", "details": "Ask for the user's personal and/or company LinkedIn URL." },
+      { "title": "Request Website URL", "details": "Inquire about their website URL to better understand their brand." },
+      { "title": "Identify Target Audience", "details": "Request either their completed World's Best Buyer Persona or the LinkedIn profile of their target audience." },
+      { "title": "Clarify Objectives", "details": "Determine the purpose of the LinkedIn interaction, such as posts, InMail messages, or cold outreach." },
+      { "title": "Analyze Information", "details": "Confirm details and analyze inputs to create tailored messaging." },
+      { "title": "Craft Messaging", "details": "Develop three examples with headlines, descriptions, hashtags, and CTAs." },
+      { "title": "Present and Refine", "details": "Share the examples, provide reasoning, and refine based on user feedback." }
     ]
   },
   {
