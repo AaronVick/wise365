@@ -38,8 +38,7 @@ import SidebarContent from '../components/SidebarContent';
 
 
 
-
-const DynamicComponent = dynamic(() => import('../components/DynamicComponent'));
+const DynamicComponent = dynamic(() => import('../components/DynamicComponent'), { ssr: false });
 
 
 const Dashboard = () => {
