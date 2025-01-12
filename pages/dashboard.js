@@ -39,10 +39,6 @@ const DynamicMilestonesSection = dynamic(() => import('../components/MilestonesS
   ssr: false
 });
 
-const GoalCreationModal = dynamic(() => import('../components/GoalCreationModal'), {
-  ssr: false,
-  loading: () => <div>Loading...</div>
-});
 
 
 const Dashboard = () => {
