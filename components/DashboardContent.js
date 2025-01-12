@@ -37,6 +37,7 @@ import {
 import { useDashboard } from '../contexts/DashboardContext';
 import { agents } from '../pages/dashboard'; // Assume agents data is already available
 
+
 // Add Badge component definition
 const badgeVariants = cva(
   "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
@@ -70,29 +71,18 @@ const Badge = ({
   );
 };
 
-export const DashboardContent = ({ currentUser, userTeam }) => {
+const DashboardContent = ({ currentUser, currentTool, onToolComplete }) => {
   const router = useRouter();
-  const [hasShawnChat, setHasShawnChat] = useState(false); // Initialize the state for chat with Shawn
-  const [currentConversation, setCurrentConversation] = useState(null); // Track current conversation
-  const [messages, setMessages] = useState([]); // Track messages in the conversation
+  const [hasShawnChat, setHasShawnChat] = useState(false);
+  const [currentConversation, setCurrentConversation] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false); // Add this line
   const { 
     goals = [],
     setGoals,
     recentActivity = [],
-    showGoalModal = false,
-    setShowGoalModal,
     isLoading = false
   } = useDashboard() || {};
-
-  // Safety check for currentUser
-  if (!currentUser?.uid) {
-    console.warn('No user data available');
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-gray-600">Loading user data...</div>
-      </div>
-    );
-  }
   
 
   useEffect(() => {
@@ -379,7 +369,8 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
             </div>
           </Card>
 
-           {/* Resources Section */}
+          
+          {/* Resources Section */}
             <Card className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Resources</h3>
@@ -405,6 +396,7 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                   </Button>
                 )}
               </div>
+              
               <div className="text-sm text-gray-500">
                 {isLoading ? (
                   <div className="text-center py-4">Loading resources...</div>
@@ -417,19 +409,14 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                           const resourcesRef = collection(db, 'resources');
                           const q = query(
                             resourcesRef,
-                            where('templateName', '==', "Worlds Best Buyer Persona")
+                            where('templateName', '==', "World's Best Buyer Persona")
                           );
                           const querySnapshot = await getDocs(q);
-                          console.log('Template check result:', { 
-                            empty: querySnapshot.empty,
-                            size: querySnapshot.size,
-                            docs: querySnapshot.docs.map(doc => doc.data())
-                          });
                           if (querySnapshot.empty) {
                             alert('Template is being set up. Please try again in a moment.');
                             return;
                           }
-                          router.push('/buyer-persona');
+                          setCurrentTool('buyer-persona');
                         } catch (error) {
                           console.error('Error checking template:', error);
                         }
@@ -453,16 +440,11 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                             where('templateName', '==', "Marketing Success Wheel")
                           );
                           const querySnapshot = await getDocs(q);
-                          console.log('Template check result:', { 
-                            empty: querySnapshot.empty,
-                            size: querySnapshot.size,
-                            docs: querySnapshot.docs.map(doc => doc.data())
-                          });
                           if (querySnapshot.empty) {
                             alert('Template is being set up. Please try again in a moment.');
                             return;
                           }
-                          router.push('/success-wheel');
+                          setCurrentTool('success-wheel');
                         } catch (error) {
                           console.error('Error checking template:', error);
                         }
@@ -486,16 +468,11 @@ export const DashboardContent = ({ currentUser, userTeam }) => {
                             where('templateName', '==', "Positioning Factor Worksheet")
                           );
                           const querySnapshot = await getDocs(q);
-                          console.log('Template check result:', { 
-                            empty: querySnapshot.empty,
-                            size: querySnapshot.size,
-                            docs: querySnapshot.docs.map(doc => doc.data())
-                          });
                           if (querySnapshot.empty) {
                             alert('Template is being set up. Please try again in a moment.');
                             return;
                           }
-                          router.push('/positioning-factors');
+                          setCurrentTool('positioning-factors');
                         } catch (error) {
                           console.error('Error checking template:', error);
                         }

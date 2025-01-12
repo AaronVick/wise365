@@ -514,8 +514,6 @@ const agentData = [
       VisualSuggestions: "Ideas for supporting images or graphics."
     }
   },
-
-  //ally
   {
     agentId: "ally",
     dataType: "instructions",

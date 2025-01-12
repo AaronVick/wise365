@@ -1,7 +1,5 @@
-//pages/PositiongFactors.js
-
+// components/toolComponents/PositioningFactors.js
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/router";
 import {
   collection,
   query,
@@ -10,15 +8,14 @@ import {
   addDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { db } from "../lib/firebase";
-import { useAuth } from "../contexts/AuthContext";
-import { Button } from "../components/ui/button";
-import { Card } from "../components/ui/card";
-import Checkbox from "../components/ui/checkbox";  // Changed from { Checkbox }
+import { db } from "../../lib/firebase";
+import { useAuth } from "../../contexts/AuthContext";
+import { Button } from "../ui/button";
+import { Card } from "../ui/card";
+import Checkbox from "../ui/checkbox";
 
-const PositioningFactors = () => {
+const PositioningFactors = ({ onComplete }) => {
   const { currentUser } = useAuth() || {};
-  const router = useRouter();
   const [formData, setFormData] = useState({});
   const [shared, setShared] = useState(false);
   const [previousAnswers, setPreviousAnswers] = useState(null);
@@ -29,7 +26,7 @@ const PositioningFactors = () => {
   useEffect(() => {
     const fetchPreviousAnswers = async () => {
       if (!currentUser || !currentUser.uid) {
-        setLoading(false); // Stop loading if no user is logged in
+        setLoading(false);
         return;
       }
 
@@ -89,7 +86,8 @@ const PositioningFactors = () => {
       });
 
       alert("Form submitted successfully!");
-      router.push("/dashboard");
+      setFormData({}); // Clear the form
+      onComplete(); // Return to main dashboard
     } catch (error) {
       console.error("Error submitting form:", error);
       alert("An error occurred while submitting the form. Please try again.");
