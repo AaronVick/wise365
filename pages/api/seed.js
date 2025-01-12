@@ -27,8 +27,6 @@ const db = getFirestore();
 
 // Full JSON data for seeding
 const agentData = [
-
-  //claire
   {
     agentId: "claire",
     dataType: "instructions",
@@ -208,10 +206,6 @@ const agentData = [
       }
     ]
   },
-
-
-
-      //alex
       {
         agentId: "alex",
         dataType: "instructions",
@@ -375,8 +369,6 @@ const agentData = [
           }
         }
       },
-
-  //gabriel
   {
     agentId: "gabriel",
     dataType: "instructions",
@@ -660,9 +652,6 @@ const agentData = [
       PositioningStatement: "Synthesize the refined insights into a compelling positioning statement."
     }
   },
-
-
-  //slyvester
   {
     agentId: "sylvester",
     dataType: "instructions",
@@ -803,9 +792,6 @@ const agentData = [
       KPIEstablishment: "Define measurable KPIs to track the success of the strategy."
     }
   },
-
-
-  //shawn
   {
     agentId: "shawn",
     dataType: "instructions",
@@ -946,8 +932,6 @@ const agentData = [
       }
     ]
   },
-
-  //mike
   {
     agentId: "mike",
     dataType: "instructions",
@@ -1080,9 +1064,6 @@ const agentData = [
       ImageSuggestions: "[Descriptions of custom image concepts based on the user’s request]"
     }
   },
-
-
-  //antonio
   {
     agentId: "antonio",
     dataType: "instructions",
@@ -1214,10 +1195,6 @@ const agentData = [
       VisualSuggestions: "[Ideas for visuals or accompanying imagery for each section]"
     }
   },
-
-
-
-  // caner
   {
     agentId: "caner",
     dataType: "instructions",
@@ -1353,9 +1330,6 @@ const agentData = [
       InsightsSummary: "Provide actionable recommendations based on search results, highlighting content gaps and opportunities."
     }
   },
-
-
-  //daniela
   {
     agentId: "daniela",
     dataType: "instructions",
@@ -1490,9 +1464,6 @@ const agentData = [
       }
     }
   },
-
-
-  // deborah
   {
     agentId: "deborah",
     dataType: "instructions",
@@ -1626,9 +1597,6 @@ const agentData = [
       CTA: "A clear and compelling call-to-action."
     }
   },
-
-
-  //ej
   {
     agentId: "ej",
     dataType: "instructions",
@@ -1717,9 +1685,6 @@ const agentData = [
       AdditionalRecommendations: "[Tips on posting times, engagement strategies, or leveraging TikTok features.]"
     }
   },
-
-
-  //jen
   {
     "agentId": "jen",
     "agentName": "Jen",
@@ -1774,8 +1739,6 @@ const agentData = [
       ]
     }
   },
-
-
   {
     "agentId": "jen",
     "agentName": "Jen",
@@ -1888,9 +1851,6 @@ const agentData = [
       }
     }
   },
-
-
-  //JR
   {
     agentId: "jr",
     dataType: "instructions",
@@ -2054,9 +2014,6 @@ const agentData = [
       ]
     }
   },
-
-  
-  //larry
   {
     agentId: "larry",
     dataType: "instructions",
@@ -2218,10 +2175,6 @@ const agentData = [
       ]
     }
   },
-
-
-  //lisa
-
   {
     agentId: "lisa",
     dataType: "instructions",
@@ -2385,9 +2338,6 @@ const agentData = [
       ]
     }
   },
-
-
-  //mason
   {
     agentId: "mason",
     dataType: "instructions",
@@ -2541,10 +2491,6 @@ const agentData = [
       }
     }
   },
-
-
-
-  //orion
   {
     agentId: "orion",
     dataType: "instructions",
@@ -2720,9 +2666,6 @@ const agentData = [
       ]
     }
   },
-
-
-  //rom
   {
     agentId: "rom",
     dataType: "instructions",
@@ -2902,9 +2845,6 @@ const agentData = [
       ]
     }
   },
-
-
-  //sadie
   {
     agentId: "sadie",
     dataType: "instructions",
@@ -3056,10 +2996,6 @@ const agentData = [
       callToAction: "Sign Up Now"
     }
   },
-
-
-
-  //troy
 {
     agentId: "troy",
     dataType: "instructions",

@@ -254,6 +254,7 @@ const analyzeUserContext = async () => {
 };
 
 
+const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
 
 
 
@@ -746,7 +747,9 @@ useEffect(() => {
               </AccordionItem>
             </Accordion>
 
-           {/* Goals Section */}
+
+
+          {/* Goals Section */}
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="goals">
                 <AccordionTrigger>Goals</AccordionTrigger>
@@ -774,7 +777,7 @@ useEffect(() => {
                           <Button
                             variant="link"
                             className="text-blue-500"
-                            onClick={() => router.push(`/goal/${goal.id}`)} // Navigate to the goal's page if needed
+                            onClick={() => router.push(`/goal/${goal.id}`)} // Navigate to the goal's page
                           >
                             View Goal
                           </Button>
@@ -786,7 +789,6 @@ useEffect(() => {
               </AccordionItem>
             </Accordion>
 
-            {/* Goal Creation Modal */}
             <GoalCreationModal
               isOpen={isGoalModalOpen}
               onClose={() => setIsGoalModalOpen(false)}
@@ -807,14 +809,15 @@ useEffect(() => {
                   });
 
                   // Refresh goals
-                  fetchGoals(); // Call your fetchGoals function to refresh the list
+                  fetchGoals(); // Use the existing fetchGoals function
                   setIsGoalModalOpen(false); // Close the modal
                 } catch (error) {
                   console.error('Error creating goal:', error);
                 }
               }}
-              agents={Object.values(agents).flat()} // Pass all agents
+              agents={Object.values(agents).flat()} // Pass all agents if necessary
             />
+
 
 
 
