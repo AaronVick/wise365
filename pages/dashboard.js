@@ -32,6 +32,13 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import { useDashboard } from '../contexts/DashboardContext';
 import { agents } from '../data/agents';
 
+
+
+const DynamicComponent = dynamic(() => import('../components/ComponentName'), {
+  ssr: false,
+  loading: () => <div>Loading...</div>
+});
+
 // Dynamic Components
 const DynamicGoalCreationModal = dynamic(() => import('../components/GoalCreationModal'), {
   ssr: false,
