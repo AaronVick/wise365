@@ -45,116 +45,134 @@ const SidebarContent = ({
         {/* Scrollable Content */}
           <ScrollArea className="flex-1">
             
-          {/* Agents Section */}
-            <Accordion type="multiple" collapsible className="w-full">
-              <AccordionItem value="agents">
-                <AccordionTrigger>Agents</AccordionTrigger>
-                <AccordionContent>
-                  {Object.entries(agents).map(([category, categoryAgents]) => (
-                    <div key={category} className="mb-4">
-                      <h4 className="font-bold text-lg mb-2">{category}</h4>
-                      {categoryAgents.map((agent) => (
-                        <Accordion key={agent.id} type="single" collapsible className="w-full">
-                          <AccordionItem value={agent.id}>
-                            {/* Agent Name and Role */}
-                            <AccordionTrigger
-                              className="flex justify-between items-center py-2 hover:bg-gray-100 cursor-pointer"
-                              onClick={() =>
-                                router.push(`/chat/${agent.id}-default`) // Navigate to default chat on click
-                              }
-                            >
-                              <div className="flex items-center justify-between w-full">
-                                <span className="font-medium">{agent.name}</span>
-                                <span className="text-sm text-gray-500 ml-4">{agent.role}</span>
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent>
-                              {/* Sub-Chats */}
-                              {nestedChats[agent.id]
-                                ?.filter((subChat) => !subChat.isDefault) // Exclude default chat
-                                .map((subChat) => (
-                                  <div
-                                    key={subChat.id}
-                                    className="py-2 cursor-pointer hover:bg-gray-200 ml-4"
-                                    onClick={() => router.push(`/chat/${subChat.id}`)} // Navigate to subchat
-                                  >
-                                    <p className="text-sm text-white">{subChat.displayName}</p>
-                                  </div>
-                                ))}
-                            </AccordionContent>
-                          </AccordionItem>
-                        </Accordion>
-                      ))}
-                    </div>
-                  ))}
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-
-
-
-
-            {/* Projects Section */}
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="projects">
-                <AccordionTrigger>Projects</AccordionTrigger>
-                <AccordionContent>
-                  {projects.map((project) => (
-                    <div key={project.id} className="flex items-center justify-between py-2 border-b">
-                      <div>
-                        <p className="font-medium">{project.name}</p>
-                        <p className="text-sm text-gray-500">{project.description}</p>
+            {/* Agents Section */}
+<Accordion type="multiple" collapsible className="w-full">
+  <AccordionItem value="agents">
+    <AccordionTrigger>Agents</AccordionTrigger>
+    <AccordionContent>
+      {agents && Object.entries(agents).length > 0 ? (
+        Object.entries(agents).map(([category, categoryAgents]) => (
+          <div key={category} className="mb-4">
+            <h4 className="font-bold text-lg mb-2">{category}</h4>
+            {Array.isArray(categoryAgents) && categoryAgents.length > 0 ? (
+              categoryAgents.map((agent) => (
+                <Accordion key={agent.id} type="single" collapsible className="w-full">
+                  <AccordionItem value={agent.id}>
+                    {/* Agent Name and Role */}
+                    <AccordionTrigger
+                      className="flex justify-between items-center py-2 hover:bg-gray-100 cursor-pointer"
+                      onClick={() =>
+                        router.push(`/chat/${agent.id}-default`) // Navigate to default chat on click
+                      }
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-medium">{agent.name || 'Unknown Agent'}</span>
+                        <span className="text-sm text-gray-500 ml-4">{agent.role || 'No Role Assigned'}</span>
                       </div>
-                      <Button variant="link" className="text-blue-500">
-                        View Details
-                      </Button>
-                    </div>
-                  ))}
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      {/* Sub-Chats */}
+                      {Array.isArray(nestedChats[agent.id]) && nestedChats[agent.id].length > 0 ? (
+                        nestedChats[agent.id]
+                          .filter((subChat) => !subChat.isDefault) // Exclude default chat
+                          .map((subChat) => (
+                            <div
+                              key={subChat.id}
+                              className="py-2 cursor-pointer hover:bg-gray-200 ml-4"
+                              onClick={() => router.push(`/chat/${subChat.id}`)} // Navigate to subchat
+                            >
+                              <p className="text-sm text-white">{subChat.displayName || 'Unnamed Sub-Chat'}</p>
+                            </div>
+                          ))
+                      ) : (
+                        <p className="text-sm text-gray-500 ml-4">No sub-chats available.</p>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500">No agents available in this category.</p>
+            )}
+          </div>
+        ))
+      ) : (
+        <p className="text-gray-500">No agents data available.</p>
+      )}
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
 
 
 
-          {/* Goals Section */}
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="goals">
-                <AccordionTrigger>Goals</AccordionTrigger>
-                <AccordionContent>
-                  <div
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setIsGoalModalOpen(true); // Open the modal on right-click
-                    }}
-                  >
-                    {goals.length === 0 ? (
-                      <p className="text-gray-500 text-sm text-center py-4">
-                        No goals available. Right-click to add a new goal.
-                      </p>
-                    ) : (
-                      goals.map((goal) => (
-                        <div
-                          key={goal.id}
-                          className="flex items-center justify-between py-2 border-b cursor-pointer hover:bg-gray-50"
-                        >
-                          <div>
-                            <p className="font-medium">{goal.title}</p>
-                            <p className="text-sm text-gray-500">{goal.status}</p>
-                          </div>
-                          <Button
-                            variant="link"
-                            className="text-blue-500"
-                            onClick={() => router.push(`/goal/${goal.id}`)} // Navigate to the goal's page
-                          >
-                            View Goal
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+
+{/* Projects Section */}
+<Accordion type="single" collapsible className="w-full">
+  <AccordionItem value="projects">
+    <AccordionTrigger>Projects</AccordionTrigger>
+    <AccordionContent>
+      {Array.isArray(projects) && projects.length > 0 ? (
+        projects.map((project) => (
+          <div key={project.id} className="flex items-center justify-between py-2 border-b">
+            <div>
+              <p className="font-medium">{project.name}</p>
+              <p className="text-sm text-gray-500">{project.description}</p>
+            </div>
+            <Button variant="link" className="text-blue-500">
+              View Details
+            </Button>
+          </div>
+        ))
+      ) : (
+        <p className="text-gray-500">No projects available.</p>
+      )}
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
+
+
+
+{/* Goals Section */}
+<Accordion type="single" collapsible className="w-full">
+  <AccordionItem value="goals">
+    <AccordionTrigger>Goals</AccordionTrigger>
+    <AccordionContent>
+      <div
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setIsGoalModalOpen(true); // Open the modal on right-click
+        }}
+      >
+        {Array.isArray(goals) && goals.length > 0 ? (
+          goals.map((goal) => (
+            <div
+              key={goal.id}
+              className="flex items-center justify-between py-2 border-b cursor-pointer hover:bg-gray-50"
+            >
+              <div>
+                <p className="font-medium">{goal.title || 'Untitled Goal'}</p>
+                <p className="text-sm text-gray-500">{goal.status || 'No Status Provided'}</p>
+              </div>
+              <Button
+                variant="link"
+                className="text-blue-500"
+                onClick={() => router.push(`/goal/${goal.id}`)} // Navigate to the goal's page
+              >
+                View Goal
+              </Button>
+            </div>
+          ))
+        ) : (
+          <p className="text-gray-500 text-sm text-center py-4">
+            No goals available. Right-click to add a new goal.
+          </p>
+        )}
+      </div>
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
+
+
 
             <GoalCreationModal
               isOpen={isGoalModalOpen}
@@ -189,24 +207,39 @@ const SidebarContent = ({
 
 
             {/* Resources Section */}
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="resources">
-                <AccordionTrigger>Resources</AccordionTrigger>
-                <AccordionContent>
-                  {resources.map((resource) => (
-                    <div key={resource.id} className="flex items-center justify-between py-2 border-b">
-                      <div>
-                        <p className="font-medium">{resource.templateName}</p>
-                        <p className="text-sm text-gray-500">{resource.description}</p>
-                      </div>
-                      <Button variant="link" className="text-blue-500">
-                        Access
-                      </Button>
-                    </div>
-                  ))}
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+<Accordion type="single" collapsible className="w-full">
+  <AccordionItem value="resources">
+    <AccordionTrigger>Resources</AccordionTrigger>
+    <AccordionContent>
+      {Array.isArray(resources) && resources.length > 0 ? (
+        resources.map((resource) => (
+          <div
+            key={resource.id}
+            className="flex items-center justify-between py-2 border-b cursor-pointer hover:bg-gray-50"
+          >
+            <div>
+              <p className="font-medium">{resource.templateName || 'Untitled Resource'}</p>
+              <p className="text-sm text-gray-500">{resource.description || 'No Description Available'}</p>
+            </div>
+            <Button
+              variant="link"
+              className="text-blue-500"
+              onClick={() => console.log(`Accessing resource ${resource.id}`)} // Add your logic here
+            >
+              Access
+            </Button>
+          </div>
+        ))
+      ) : (
+        <p className="text-gray-500 text-sm text-center py-4">
+          No resources available. Check back later!
+        </p>
+      )}
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
+
+
           </ScrollArea>
 
 

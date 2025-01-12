@@ -237,40 +237,47 @@ const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
 
 
   // Handler Functions
-  const fetchNestedChats = async (agentId) => {
-    try {
-      console.log(`[Debug] Fetching nested chats for agent: ${agentId}`);
-  
-      // Query for non-default chats under the given agentId
-      const namesQuery = query(
-        collection(db, 'conversationNames'),
-        where('agentId', '==', agentId),
-        where('userId', '==', currentUser.uid),
-        where('isDefault', '==', false) // Ensure we fetch only non-default chats
-      );
-  
-      const namesSnapshot = await getDocs(namesQuery);
-  
-      console.log(`[Debug] Fetched nested chats for agent ${agentId}:`, namesSnapshot.docs);
-  
-      // Map results to extract chat data
-      const chats = namesSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-  
-      // Debugging output
-      console.log(`[Debug] Processed nested chats for agent ${agentId}:`, chats);
-  
-      // Update the state with the fetched nested chats
-      setNestedChats((prev) => ({
-        ...prev,
-        [agentId]: chats,
-      }));
-    } catch (error) {
-      console.error(`[Error] Failed to fetch nested chats for agent ${agentId}:`, error);
-    }
-  };
+  // Consolidated Fetch Nested Chats Function
+const fetchNestedChats = async (agentId) => {
+  try {
+    console.log(`[Debug] Fetching nested chats for agent: ${agentId}`);
+
+    // Query for nested chats for the given agentId
+    const nestedChatsQuery = query(
+      collection(db, 'conversationNames'), // Adjust collection as needed
+      where('agentId', '==', agentId),
+      where('userId', '==', currentUser?.uid || ''), // Ensure currentUser.uid is handled safely
+      where('isDefault', '==', false) // Fetch only non-default chats
+    );
+
+    const snapshot = await getDocs(nestedChatsQuery);
+
+    console.log(`[Debug] Fetched nested chats for agent ${agentId}:`, snapshot.docs);
+
+    // Map results to extract chat data
+    const chats = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    console.log(`[Debug] Processed nested chats for agent ${agentId}:`, chats);
+
+    // Update the state with the fetched nested chats
+    setNestedChats((prev) => ({
+      ...prev,
+      [agentId]: chats.length > 0 ? chats : [], // Ensure it's at least an empty array
+    }));
+  } catch (error) {
+    console.error(`[Error] Failed to fetch nested chats for agent ${agentId}:`, error);
+
+    // Set an empty array for the agentId on error
+    setNestedChats((prev) => ({
+      ...prev,
+      [agentId]: [],
+    }));
+  }
+};
+
 
 
   const renderNestedChats = (agentId) => {
@@ -499,12 +506,7 @@ useEffect(() => {
       ...prev,
       [agentId]: !prev[agentId],
     }));
-  
-    // Fetch nested chats if not already loaded
-    if (!nestedChats[agentId]) {
-      fetchNestedChats(agentId);
-    }
-  };
+
   
 
   const handleContextMenu = async (e, agent) => {
