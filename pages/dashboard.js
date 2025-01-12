@@ -670,6 +670,7 @@ const handleSidebarResizeStart = (e) => {
           resources={resources}
           GoalCreationModal={DynamicGoalCreationModal} 
           sidebarWidth={sidebarWidth}
+          agents={agents} 
         />
       </div>
   
