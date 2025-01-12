@@ -1,6 +1,7 @@
 // /pages/dashboard.js
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 import { auth, db } from '../lib/firebase';
 import {
   collection,
@@ -12,25 +13,26 @@ import {
   addDoc,
   serverTimestamp,
 } from 'firebase/firestore';
+
+// UI Components
 import { Button } from '../components/ui/button'; 
 import { Badge } from "../components/ui/badge";
 import { ScrollArea } from '../components/ui/scroll-area';
-import DashboardContent from '../components/DashboardContent';
-import { useDashboard } from '../contexts/DashboardContext';
-import ChatInterface from '../components/ChatInterface';
-import { ChevronRight, Home, Settings } from 'lucide-react';
-import ErrorBoundary from '../components/ErrorBoundary';
 import Accordion, {
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
 } from '../components/Accordion';
-import GoalCreationModal from '../components/GoalCreationModal';
-import { agents } from '../data/agents';
+import DashboardContent from '../components/DashboardContent';
 import SidebarContent from '../components/SidebarContent';
-import dynamic from 'next/dynamic';
+import ChatInterface from '../components/ChatInterface';
+import ErrorBoundary from '../components/ErrorBoundary';
 
+// Contexts and Data
+import { useDashboard } from '../contexts/DashboardContext';
+import { agents } from '../data/agents';
 
+// Dynamic Components
 const DynamicGoalCreationModal = dynamic(() => import('../components/GoalCreationModal'), {
   ssr: false,
   loading: () => <div>Loading...</div>
@@ -40,8 +42,7 @@ const DynamicMilestonesSection = dynamic(() => import('../components/MilestonesS
   ssr: false
 });
 
-
-
+// Initial States and Hooks
 const Dashboard = () => {
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
@@ -54,121 +55,14 @@ const Dashboard = () => {
   const [expandedProjects, setExpandedProjects] = useState({});
   const [suggestedGoals, setSuggestedGoals] = useState([]);
   const [currentGoals, setCurrentGoals] = useState([]);
+  const [currentTool, setCurrentTool] = useState(null);
 
- 
+  const {
+    goals = [],
+    resources = [],
+    isLoading = false
+  } = useDashboard() || {};
 
-  // Auth Effect
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        router.replace('/');
-        return;
-      }
-      try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          setCurrentUser({ uid: user.uid, ...userDoc.data() });
-        } else {
-          router.replace('/');
-        }
-      } catch (err) {
-        console.error('Error loading user data:', err);
-        router.replace('/');
-      } finally {
-        setAuthChecked(true);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-
-  useEffect(() => {
-    setSidebarWidth(window.innerWidth / 4);
-  }, []);
-
-
-
-  useEffect(() => {
-    if (currentUser?.uid) {
-      fetchSuggestedGoals();
-      // Only analyze if there are no suggested goals
-      const analyzeSuggestions = async () => {
-        const snapshot = await getDocs(query(
-          collection(db, 'suggestedGoals'),
-          where('userId', '==', currentUser.uid),
-          where('isCurrent', '==', false),
-          where('isIgnored', '==', false)
-        ));
-        if (snapshot.empty) {
-          await analyzeUserContext();
-        }
-      };
-      analyzeSuggestions();
-    }
-  }, [currentUser?.uid]);
-
-  // Load All Nested Chats Effect
-useEffect(() => {
-  const loadAllNestedChats = async () => {
-    if (!currentUser?.uid) return;
-    
-    try {
-      // Get all non-default chats for all agents
-      const namesQuery = query(
-        collection(db, 'conversationNames'),
-        where('userId', '==', currentUser.uid)
-      );
-      
-      const namesSnapshot = await getDocs(namesQuery);
-      console.log('[Debug] All conversations found:', namesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })));
-      
-      const conversationsByAgent = {};
-      
-      namesSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const agentId = data.agentId;
-
-        // Skip if it's a default chat
-        if (data.isDefault === true) {
-          console.log('[Debug] Skipping default chat:', data);
-          return;
-        }
-        
-        if (!conversationsByAgent[agentId]) {
-          conversationsByAgent[agentId] = [];
-        }
-
-        conversationsByAgent[agentId].push({
-          id: doc.id,
-          displayName: data.conversationName,
-          agentId: data.agentId,
-          conversationName: doc.id,
-          ...data
-        });
-      });
-
-      console.log('[Debug] Conversations by agent:', conversationsByAgent);
-      setNestedChats(conversationsByAgent);
-    } catch (error) {
-      console.error('Error loading nested chats:', error);
-    }
-  };
-
-  loadAllNestedChats();
-}, [currentUser?.uid]);
-
-
-const [currentTool, setCurrentTool] = useState(null);
-
-const {
-  goals = [],
-  resources = [],
-  isLoading = false
-} = useDashboard() || {};
 
 
 //review goals by the user
@@ -655,26 +549,30 @@ const handleSidebarResizeStart = (e) => {
     return <div>Loading...</div>;
   }
 
-
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <div
         className="bg-gray-900 text-white flex flex-col"
-        style={{ width: `${sidebarWidth}px`, resize: 'horizontal', overflow: 'hidden' }}
+        style={{
+          width: `${sidebarWidth}px`,
+          resize: 'horizontal',
+          overflow: 'hidden',
+          minWidth: '200px', // Prevent sidebar from collapsing too much
+        }}
       >
         <SidebarContent
-          ccurrentUser={currentUser}
+          currentUser={currentUser || {}} // Ensure fallback if currentUser is null
           setCurrentChat={setCurrentChat}
-          nestedChats={nestedChats || {}}
-          projects={projects || []}
-          goals={goals || []}
+          nestedChats={nestedChats || {}} // Ensure nestedChats is always defined
+          projects={projects || []} // Ensure projects is always an array
+          goals={goals || []} // Ensure goals is always an array
           isGoalModalOpen={isGoalModalOpen}
           setIsGoalModalOpen={setIsGoalModalOpen}
-          resources={resources || []}
+          resources={resources || []} // Ensure resources is always an array
           GoalCreationModal={DynamicGoalCreationModal}
           sidebarWidth={sidebarWidth}
-          agents={agents || {}}
+          agents={agents || {}} // Ensure agents is always defined
         />
       </div>
   
@@ -682,15 +580,21 @@ const handleSidebarResizeStart = (e) => {
       <div
         className="w-1 cursor-ew-resize bg-gray-700"
         onMouseDown={handleSidebarResizeStart}
+        role="separator" // Added for accessibility
+        aria-orientation="horizontal"
+        aria-label="Resize Sidebar"
       />
   
       {/* Main Content */}
       <div className="flex-1">
         {currentChat ? (
-          <ChatInterface {...currentChat} userId={currentUser.uid} />
+          <ChatInterface
+            {...currentChat}
+            userId={currentUser?.uid || ''} // Ensure userId is safely handled
+          />
         ) : (
-          <DashboardContent 
-            currentUser={currentUser}
+          <DashboardContent
+            currentUser={currentUser || {}} // Ensure currentUser is safely passed
             currentTool={currentTool}
             onToolComplete={() => setCurrentTool(null)}
             setCurrentTool={setCurrentTool}
@@ -699,6 +603,7 @@ const handleSidebarResizeStart = (e) => {
       </div>
     </div>
   );
+  
 
 } 
 
