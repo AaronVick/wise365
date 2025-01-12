@@ -4,6 +4,7 @@
 
 
 // /pages/dashboard.js
+import dynamic from 'next/dynamic';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';

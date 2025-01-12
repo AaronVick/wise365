@@ -1,3 +1,5 @@
+// package.json
+
 {
   "name": "wise365-app",
   "version": "1.0.0",
@@ -37,6 +39,10 @@
     "shadcn-ui": "^0.9.4",
     "socket.io": "^4.7.4",
     "stripe": "^14.14.0",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-popover": "^1.0.7",
+    "@radix-ui/react-select": "^2.0.0",
+    "react-day-picker": "^8.10.0",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7"
   },
