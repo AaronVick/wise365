@@ -1,9 +1,5 @@
-
-
 // /pages/dashboard.js
 
-
-// /pages/dashboard.js
 import dynamic from 'next/dynamic';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -35,7 +31,6 @@ import Accordion, {
 import GoalCreationModal from '../components/GoalCreationModal';
 import { agents } from '../data/agents';
 import SidebarContent from '../components/SidebarContent';
-import DynamicComponent from '../components/DynamicComponent';
 
 
 
