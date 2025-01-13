@@ -11,7 +11,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
-} from '@/components/accordion';
+} from '@/components/Accordion';
 import { 
   Home, 
   Users, 
