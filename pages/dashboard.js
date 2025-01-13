@@ -38,6 +38,9 @@ import {
   analyzeUserContext,
   fetchSuggestedGoals,
   fetchGoals,
+  handleAgentClick,
+  handleProjectClick,
+  handleContextMenu
 } from '../lib/dashboardTools';
 
 
@@ -175,55 +178,6 @@ const handleIgnoreSuggestion = async (suggestion) => {
   }
 };
 
-
-
-
-
-
-  const handleProjectClick = async (project) => {
-    try {
-      // Step 1: Get or create the conversationName for this project
-      const namesRef = collection(db, 'conversationNames');
-      const projectChatQuery = query(
-        namesRef,
-        where('projectId', '==', project.id),
-        where('userId', '==', currentUser.uid),
-        where('isDefault', '==', true)
-      );
-
-      let conversationNameId;
-      const namesSnapshot = await getDocs(projectChatQuery);
-
-      if (namesSnapshot.empty) {
-        // Create new conversation name for project
-        const nameDoc = await addDoc(namesRef, {
-          projectId: project.id,
-          conversationName: 'Project Chat',
-          userId: currentUser.uid,
-          isDefault: true,
-        });
-        conversationNameId = nameDoc.id;
-      } else {
-        conversationNameId = namesSnapshot.docs[0].id;
-      }
-
-      const newChat = {
-        id: conversationNameId,
-        title: "Project Chat",
-        projectId: project.id,
-        projectName: project.ProjectName,
-        participants: project.participants || {},
-        isDefault: true,
-        conversationName: conversationNameId
-      };
-
-      console.log('Setting project chat:', newChat);
-      setCurrentChat(newChat);
-    } catch (error) {
-      console.error('Error in handleProjectClick:', error);
-    }
-  };
-
  
 
   const handleProjectContextMenu = async (e) => {
@@ -272,121 +226,27 @@ const handleIgnoreSuggestion = async (suggestion) => {
 
   
 
-  const handleContextMenu = async (e, agent) => {
-    e.preventDefault();
-    const name = prompt('Enter a name for the new chat:');
-    if (name) {
-      try {
-        const conversationNameRef = await addDoc(collection(db, 'conversationNames'), {
-          agentId: agent.id,
-          conversationName: name,
-          projectName: "",
-          userId: currentUser.uid
-        });
   
-        const docRef = await addDoc(collection(db, 'conversations'), {
-          agentId: agent.id,
-          conversationName: conversationNameRef.id,
-          from: currentUser.uid,
-          timestamp: serverTimestamp(),
-          isDefault: false,
-          type: 'parent'
-        });
-  
-        const newChat = {
-          id: docRef.id,
-          title: name,
-          agentId: agent.id,
-          participants: [currentUser.uid],
-          isDefault: false,
-          conversationName: conversationNameRef.id
-        };
-        
-        console.log('Setting new named chat:', newChat);
-        setCurrentChat(newChat);
-        
-        await fetchNestedChats(agent.id);
-      } catch (error) {
-        console.error('Error creating named chat:', error);
-      }
-    }
-  };
 
-  
-  const handleAgentClick = async (agent) => {
-    try {
-        console.log('Starting handleAgentClick for:', agent.name);
-        
-        // Clear current chat immediately
-        setCurrentChat(null);
+<Button
+  onClick={() => handleAgentClick(agent, currentUser, db, setCurrentChat)}
+>
+  Chat with Agent
+</Button>;
 
-        // 1. Get or create default conversation name
-        const namesRef = collection(db, 'conversationNames');
-        const defaultNameQuery = query(
-            namesRef,
-            where('agentId', '==', agent.id),
-            where('userId', '==', currentUser.uid),
-            where('isDefault', '==', true)
-        );
+<Button
+  onClick={() => handleProjectClick(project, currentUser, db, setCurrentChat)}
+>
+  Open Project Chat
+</Button>;
 
-        const namesSnapshot = await getDocs(defaultNameQuery);
-        let conversationNameId;
-        let isNewConversation = false;
+<div
+  onContextMenu={(e) => handleContextMenu(e, agent, currentUser, db, setCurrentChat, fetchNestedChats)}
+>
+  Right-click to create chat
+</div>
 
-        // Create or get the default conversation name
-        if (namesSnapshot.empty) {
-            console.log('Creating new default conversation');
-            isNewConversation = true;
-            const defaultName = `Chat with ${agent.name}`;
-            const nameDoc = await addDoc(namesRef, {
-                agentId: agent.id,
-                conversationName: defaultName,
-                userId: currentUser.uid,
-                isDefault: true,
-                projectName: '',
-                timestamp: serverTimestamp()
-            });
-            conversationNameId = nameDoc.id;
-        } else {
-            conversationNameId = namesSnapshot.docs[0].id;
-        }
 
-        // 2. Get or create default conversation message
-        if (isNewConversation) {
-            console.log('Creating initial message');
-            const messagesRef = collection(db, 'conversations');
-            await addDoc(messagesRef, {
-                agentId: agent.id,
-                content: `Started conversation with ${agent.name}`,
-                conversationName: conversationNameId,
-                from: userId,
-                isDefault: true,
-                timestamp: serverTimestamp(),
-                type: 'system'
-            });
-        }
-
-        // 3. Set the current chat state
-        const newChat = {
-            id: conversationNameId,  // Using the conversationName ID
-            title: `Chat with ${agent.name}`,
-            agentId: agent.id,
-            participants: [currentUser.uid],
-            isDefault: true,
-            conversationName: conversationNameId
-        };
-
-        console.log('Setting currentChat:', newChat);
-        setCurrentChat(newChat);
-
-        // 4. Refresh nested chats (which should exclude the default chat)
-        await fetchNestedChats(agent.id);
-        
-    } catch (error) {
-        console.error('Error in handleAgentClick:', error);
-        console.error(error);  // Log the full error
-    }
-};
 
 const handleSidebarResizeStart = (e) => {
   const startX = e.clientX;
