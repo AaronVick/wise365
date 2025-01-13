@@ -4,6 +4,8 @@ import { DashboardProvider } from '../contexts/DashboardContext';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../lib/firebase';
 
 const inter = Inter({ subsets: ['latin'], fallback: ['sans-serif'] });
 
@@ -20,60 +22,25 @@ function ErrorFallback({ error }) {
   );
 }
 
-function clearCookies() {
-  document.cookie.split(";").forEach((cookie) => {
-    document.cookie = cookie
-      .replace(/^ +/, "")
-      .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-  });
-  localStorage.clear();
-}
-
-async function checkAuth(setAuthChecked, router) {
-  const authToken = localStorage.getItem('auth_token');
-  const isAdminRoute = router.pathname.startsWith('/admin');
-  
-  // Don't check auth for login pages
-  if (router.pathname === '/admin/login' || router.pathname === '/') {
-    setAuthChecked(true);
-    return;
-  }
-
-  if (!authToken) {
-    if (isAdminRoute) {
-      router.replace('/admin/login');
-    } else {
-      router.replace('/');
-    }
-    return;
-  }
-
-  try {
-    const response = await fetch('/api/verify-auth', {
-      headers: { Authorization: `Bearer ${authToken}` },
-    });
-
-    if (!response.ok) {
-      throw new Error('Invalid token');
-    }
-    
-    setAuthChecked(true);
-  } catch (error) {
-    console.error('Authentication failed:', error);
-    localStorage.removeItem('auth_token');
-    router.replace(isAdminRoute ? '/admin/login' : '/');
-  }
-}
-
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
+  const [user, loading] = useAuthState(auth);
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    checkAuth(setAuthChecked, router);
-  }, [router.pathname]); // Only depend on pathname changes
+    // Handle public routes
+    const isPublicRoute = router.pathname === '/' || router.pathname === '/admin/login';
+    
+    if (!loading) {
+      if (!user && !isPublicRoute) {
+        const isAdminRoute = router.pathname.startsWith('/admin');
+        router.replace(isAdminRoute ? '/admin/login' : '/');
+      }
+      setAuthChecked(true);
+    }
+  }, [user, loading, router.pathname]);
 
-  if (!authChecked) {
+  if (loading || !authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -97,5 +64,3 @@ function MyApp({ Component, pageProps }) {
     </ErrorBoundary>
   );
 }
-
-export default MyApp;

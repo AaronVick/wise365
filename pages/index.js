@@ -18,20 +18,23 @@ const HomePage = () => {
   const [user, authLoading] = useAuthState(auth);
 
   useEffect(() => {
+    let isSubscribed = true;
+
     const checkUser = async () => {
-      if (user) {
+      if (user && isSubscribed) {
         try {
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
           
-          if (userDoc.exists()) {
+          if (userDoc.exists() && isSubscribed) {
+            // Only redirect if component is still mounted
             router.replace('/dashboard');
-          } else {
-            router.replace('/register');
           }
         } catch (error) {
           console.error('Error checking user document:', error);
-          setError('Error verifying user account');
+          if (isSubscribed) {
+            setError('Error verifying user account');
+          }
         }
       }
     };
@@ -39,48 +42,11 @@ const HomePage = () => {
     if (!authLoading) {
       checkUser();
     }
-  }, [user, authLoading, router]);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    if (isLoading) return;
-
-    setIsLoading(true);
-    setError('');
-
-    const email = e.target.email.value.trim();
-    const password = e.target.password.value;
-
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await userCredential.user.getIdToken();
-      localStorage.setItem('auth_token', idToken);
-    } catch (error) {
-      console.error('Login failed:', error);
-      const errorMessages = {
-        'auth/invalid-email': 'Invalid email format',
-        'auth/user-disabled': 'This account has been disabled',
-        'auth/user-not-found': 'No account found with this email',
-        'auth/wrong-password': 'Invalid password',
-        'auth/too-many-requests': 'Too many attempts. Please try again later',
-        'auth/network-request-failed': 'Network error. Please check your connection',
-      };
-      setError(errorMessages[error.code] || 'Unexpected error. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+    return () => {
+      isSubscribed = false;
+    };
+  }, [user, authLoading]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
