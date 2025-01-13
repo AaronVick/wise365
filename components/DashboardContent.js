@@ -7,6 +7,7 @@ import {
   addDoc, 
   doc, 
   updateDoc, 
+  getDoc,
   serverTimestamp, 
   query, 
   where, 
@@ -38,6 +39,7 @@ import { useDashboard } from '../contexts/DashboardContext';
 import { agents } from '../data/agents';
 import dynamic from 'next/dynamic';
 const MilestonesSection = dynamic(() => import('./MilestonesSection'));
+
 
 
 // Badge component definition
@@ -81,8 +83,13 @@ const DashboardContent = ({
   onToolComplete, 
   setCurrentTool,
   currentChat,
-  setCurrentChat  
+  setCurrentChat
 }) => {
+
+  if (!setCurrentChat || typeof setCurrentChat !== 'function') {
+    console.error('setCurrentChat is not a function');
+    return null;
+  }
   const router = useRouter();
   const [hasShawnChat, setHasShawnChat] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -98,7 +105,7 @@ const DashboardContent = ({
   const loadConversationMessages = async (conversationId) => {
     try {
       const conversationRef = doc(db, 'conversations', conversationId);
-      const conversationSnapshot = await getDocs(conversationRef);
+      const conversationSnapshot = await getDoc(conversationRef);  // Use getDoc instead
       if (conversationSnapshot.exists()) {
         setMessages(conversationSnapshot.data().messages || []);
       }
@@ -162,6 +169,11 @@ const DashboardContent = ({
   };
 
   const handleAgentClick = async (agent) => {
+    if (!agent?.id || !currentUser?.uid) {
+      console.error('Missing required agent or user data');
+      return;
+    }
+  
     try {
       const conversationsRef = collection(db, 'conversations');
       const q = query(
@@ -170,19 +182,19 @@ const DashboardContent = ({
         where('participants', 'array-contains', currentUser.uid)
       );
       const querySnapshot = await getDocs(q);
-
+  
       if (!querySnapshot.empty) {
-        const existingConversation = querySnapshot.docs[0];
+        const existingDoc = querySnapshot.docs[0];
+        const existingData = existingDoc.data();
         setCurrentChat({
-          id: existingConversation.id,
+          id: existingDoc.id,
           agentId: agent.id,
-          title: `${agent.name} Conversation`,
-          participants: [currentUser.uid, agent.id],
-          isDefault: false,
-          conversationName: existingConversation.id
+          title: existingData.name || `${agent.name} Conversation`,
+          participants: existingData.participants || [currentUser.uid, agent.id],
+          isDefault: existingData.isDefault || false,
+          conversationName: existingDoc.id
         });
-        await loadConversationMessages(existingConversation.id);
-        router.push(`/chat/${existingConversation.id}`);
+        router.push(`/chat/${existingDoc.id}`);
       } else {
         await startConversation(agent);
       }
@@ -190,6 +202,28 @@ const DashboardContent = ({
       console.error('Error handling agent click:', error);
     }
   };
+
+  useEffect(() => {
+    let mounted = true;
+    
+    // Initialize messages if we have a currentChat
+    if (currentChat?.id) {
+      loadConversationMessages(currentChat.id)
+        .then(() => {
+          if (!mounted) return;
+        })
+        .catch(error => {
+          if (!mounted) return;
+          console.error('Error loading messages:', error);
+        });
+    }
+  
+    return () => {
+      mounted = false;
+    };
+  }, [currentChat?.id]);
+
+  
 
   if (!currentUser) {
     return <div>Loading user data...</div>;
@@ -229,27 +263,30 @@ const DashboardContent = ({
           )}
 
           {/* Existing Conversation (if any) */}
-          {messages.length > 0 && (
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Conversation History</h3>
-              <div className="space-y-4">
-                {messages.map((msg, index) => (
-                  <div key={index} className="p-4 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
-                    <div className="flex items-center">
-                      <div className="text-sm text-gray-500">{msg.role === currentUser.uid ? 'You' : 'Agent'}:</div>
-                      <p className="text-gray-700 ml-2">{msg.content}</p>
+            {currentChat?.id && messages && messages.length > 0 && (
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Conversation History</h3>
+                <div className="space-y-4">
+                  {messages.map((msg, index) => (
+                    <div key={index} className="p-4 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
+                      <div className="flex items-center">
+                        <div className="text-sm text-gray-500">
+                          {msg.role === currentUser?.uid ? 'You' : 'Agent'}:
+                        </div>
+                        <p className="text-gray-700 ml-2">{msg.content}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-              <Button 
-                variant="link"
-                onClick={() => sendMessage("I'm ready to take the next step!")}
-              >
-                Send New Message
-              </Button>
-            </Card>
-          )}
+                  ))}
+                </div>
+                <Button 
+                  variant="link"
+                  onClick={() => currentChat?.id && sendMessage("I'm ready to take the next step!")}
+                  disabled={!currentChat?.id}
+                >
+                  Send New Message
+                </Button>
+              </Card>
+            )}
 
           {/* Quick Stats - with null checks */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

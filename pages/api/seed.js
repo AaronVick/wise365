@@ -1,9 +1,7 @@
 // pages/api/seed.js
-
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Configure API route options
 export const config = {
   api: {
     bodyParser: true,
@@ -13,7 +11,6 @@ export const config = {
   },
 };
 
-// Initialize Firebase Admin if not already initialized
 if (!getApps().length) {
   try {
     const serviceAccount = {
@@ -39,17 +36,14 @@ if (!getApps().length) {
 
 const db = getFirestore();
 
-// Import seed data
 import agentData from '@/data/seedData';
 
 export default async function handler(req, res) {
-  // Add CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Max-Age', '3600');
 
-  // Handle preflight request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -61,42 +55,56 @@ export default async function handler(req, res) {
     });
   }
 
+  const sendProgressUpdate = (res, data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
   try {
     if (!db) {
       throw new Error('Firebase not initialized');
     }
 
-    console.log('Starting seed process...');
+    // Set up SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const totalRecords = agentData.length;
+    console.log(`Total records to process: ${totalRecords}`);
+    
+    sendProgressUpdate(res, {
+      type: 'start',
+      total: totalRecords,
+      message: 'Starting seed process...'
+    });
+
     const results = [];
     const collectionRef = db.collection('resources');
-
     let batch = db.batch();
     let batchCount = 0;
-    const BATCH_SIZE = 100; // Reduced batch size
+    const BATCH_SIZE = 100;
     let totalProcessed = 0;
     
-    // Split into smaller chunks to avoid timeouts
     const chunks = [];
     const CHUNK_SIZE = 500;
     for (let i = 0; i < agentData.length; i += CHUNK_SIZE) {
       chunks.push(agentData.slice(i, i + CHUNK_SIZE));
     }
 
-    // Process each chunk
     for (const chunk of chunks) {
-      console.log(`Processing chunk ${chunks.indexOf(chunk) + 1}/${chunks.length}`);
+      const chunkIndex = chunks.indexOf(chunk);
+      sendProgressUpdate(res, {
+        type: 'chunk-start',
+        current: chunkIndex + 1,
+        total: chunks.length,
+        message: `Processing chunk ${chunkIndex + 1}/${chunks.length}`
+      });
       
       for (const item of chunk) {
         try {
-          // Validate required fields
           if (!item.agentId || !item.datatype) {
             throw new Error(`Missing required fields for item: ${JSON.stringify(item)}`);
           }
-          
-          console.log('Processing item:', { 
-            agentId: item.agentId,
-            datatype: item.datatype 
-          });
 
           const querySnapshot = await collectionRef
             .where('agentId', '==', item.agentId)
@@ -121,8 +129,15 @@ export default async function handler(req, res) {
 
             if (batchCount === BATCH_SIZE) {
               await batch.commit();
-              console.log(`Committed batch of ${BATCH_SIZE} documents`);
               totalProcessed += batchCount;
+              
+              sendProgressUpdate(res, {
+                type: 'progress',
+                processed: totalProcessed,
+                total: totalRecords,
+                message: `Processed ${totalProcessed}/${totalRecords} records`
+              });
+              
               batch = db.batch();
               batchCount = 0;
             }
@@ -133,6 +148,7 @@ export default async function handler(req, res) {
               datatype: item.datatype,
               reason: 'already exists',
             });
+            totalProcessed++;
           }
         } catch (itemError) {
           console.error(`Error processing item:`, itemError);
@@ -142,21 +158,34 @@ export default async function handler(req, res) {
             datatype: item.datatype,
             error: itemError.message || 'Unknown error processing item',
           });
+          totalProcessed++;
+          
+          sendProgressUpdate(res, {
+            type: 'error',
+            message: `Error processing item: ${itemError.message}`,
+            item: { agentId: item.agentId, datatype: item.datatype }
+          });
         }
       }
       
-      // Commit batch at the end of each chunk
       if (batchCount > 0) {
         await batch.commit();
-        console.log(`Committed batch of ${batchCount} documents for chunk`);
         totalProcessed += batchCount;
         batch = db.batch();
         batchCount = 0;
+        
+        sendProgressUpdate(res, {
+          type: 'chunk-complete',
+          current: chunkIndex + 1,
+          total: chunks.length,
+          processed: totalProcessed,
+          message: `Completed chunk ${chunkIndex + 1}/${chunks.length}`
+        });
       }
     }
 
-    // Return success response
-    return res.status(200).json({
+    sendProgressUpdate(res, {
+      type: 'complete',
       success: true,
       message: 'Seeding process completed successfully',
       results: results,
@@ -164,8 +193,9 @@ export default async function handler(req, res) {
       timestamp: new Date().toISOString()
     });
 
+    res.end();
+
   } catch (error) {
-    // Return detailed error response
     const errorMessage = error.message || 'An unknown error occurred';
     console.error('Detailed error:', {
       message: errorMessage,
@@ -173,10 +203,13 @@ export default async function handler(req, res) {
       name: error.name
     });
     
-    return res.status(500).json({
+    sendProgressUpdate(res, {
+      type: 'error',
       success: false,
       error: errorMessage,
       timestamp: new Date().toISOString()
     });
+
+    res.end();
   }
 }

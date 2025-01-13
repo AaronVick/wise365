@@ -20,6 +20,10 @@ const ChatInterface = ({
   projectId,
   projectName 
 }) => {
+  if (!chatId || !userId) {
+    console.error('Missing required props:', { chatId, userId });
+    return <div className="p-4">Missing required chat information</div>;
+  }
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);

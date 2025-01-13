@@ -1,43 +1,82 @@
 // pages/admin/seed.js
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
+import { Progress } from '@/components/ui/progress';
 
 export default function SeedPage() {
   const [status, setStatus] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [currentChunk, setCurrentChunk] = useState({ current: 0, total: 0 });
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [processedRecords, setProcessedRecords] = useState(0);
 
   const handleSeed = async () => {
     if (!confirm('Are you sure you want to seed the database? This action cannot be undone.')) {
       return;
     }
 
-    setStatus('Seeding data...');
+    setStatus('Initializing...');
     setLoading(true);
     setError(null);
     setResults([]);
+    setProgress(0);
+    setCurrentChunk({ current: 0, total: 0 });
+    setTotalRecords(0);
+    setProcessedRecords(0);
 
     try {
-      const response = await fetch('/api/seed', {
-        method: 'POST',
-      });
+      const eventSource = new EventSource('/api/seed');
 
-      const data = await response.json();
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log('Received event:', data);
 
-      if (response.ok) {
-        setStatus('Seeding complete!');
-        setResults(data.results || []);
-      } else {
-        setError(data.error || 'An error occurred while seeding data');
+        switch (data.type) {
+          case 'start':
+            setTotalRecords(data.total);
+            setStatus(data.message);
+            break;
+
+          case 'chunk-start':
+            setCurrentChunk({ current: data.current, total: data.total });
+            setStatus(data.message);
+            break;
+
+          case 'progress':
+            setProcessedRecords(data.processed);
+            setProgress((data.processed / data.total) * 100);
+            setStatus(data.message);
+            break;
+
+          case 'error':
+            setError(data.message);
+            setStatus('Error occurred');
+            break;
+
+          case 'complete':
+            setResults(data.results || []);
+            setStatus('Seeding complete!');
+            setProgress(100);
+            eventSource.close();
+            setLoading(false);
+            break;
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('EventSource error:', error);
+        setError('Connection error occurred');
         setStatus('Failed');
-      }
+        setLoading(false);
+        eventSource.close();
+      };
     } catch (error) {
       console.error('Error seeding data:', error);
       setError(error.message);
       setStatus('Failed');
-    } finally {
       setLoading(false);
     }
   };
@@ -66,6 +105,30 @@ export default function SeedPage() {
             <div className="mt-6">
               <h2 className="font-bold mb-2">Status: {status}</h2>
               
+              {loading && (
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <span>Overall Progress</span>
+                      <span>{Math.round(progress)}%</span>
+                    </div>
+                    <Progress value={progress} className="w-full" />
+                  </div>
+                  
+                  {currentChunk.total > 0 && (
+                    <div className="text-sm text-gray-600">
+                      Processing chunk {currentChunk.current} of {currentChunk.total}
+                    </div>
+                  )}
+                  
+                  {totalRecords > 0 && (
+                    <div className="text-sm text-gray-600">
+                      Processed {processedRecords} of {totalRecords} records
+                    </div>
+                  )}
+                </div>
+              )}
+              
               {error && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                   {error}
@@ -86,7 +149,7 @@ export default function SeedPage() {
                         }`}
                       >
                         <p className="text-sm">
-                          {result.agentId} - {result.dataType}: {result.status}
+                          {result.agentId} - {result.datatype}: {result.status}
                           {result.reason && ` (${result.reason})`}
                           {result.error && ` Error: ${result.error}`}
                         </p>
