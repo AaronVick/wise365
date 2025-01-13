@@ -19,21 +19,20 @@ const HomePage = () => {
     document.cookie = 'login_timestamp=;path=/;expires=Thu, 01 Jan 1970 00:00:00 UTC;';
   };
 
-  const checkCookieValidity = () => {
-    const cookies = document.cookie.split('; ').reduce((acc, cookie) => {
-      const [key, value] = cookie.split('=');
-      acc[key] = value;
-      return acc;
-    }, {});
-    const timestamp = parseInt(cookies.login_timestamp, 10);
-    return timestamp && Date.now() - timestamp < 24 * 60 * 60 * 1000;
-  };
-
   useEffect(() => {
     console.log('Starting auth check...');
+    const timeout = setTimeout(() => {
+      if (isAuthChecking) {
+        console.log('Auth check timed out, clearing session.');
+        clearSession();
+        setIsAuthChecking(false);
+      }
+    }, 10000); // 10 seconds timeout
+
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      clearTimeout(timeout);
       try {
-        if (user && checkCookieValidity()) {
+        if (user) {
           console.log('User found:', user.uid);
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
@@ -58,13 +57,13 @@ const HomePage = () => {
         console.error('Auth check error:', error);
         clearSession();
       } finally {
-        console.log('Auth check complete');
         setIsAuthChecking(false);
       }
     });
 
     return () => {
       console.log('Cleaning up auth listener');
+      clearTimeout(timeout);
       unsubscribe();
     };
   }, [router]);
@@ -103,16 +102,7 @@ const HomePage = () => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      const errorMessages = {
-        'auth/invalid-email': 'Invalid email format',
-        'auth/user-disabled': 'This account has been disabled',
-        'auth/user-not-found': 'No account found with this email',
-        'auth/wrong-password': 'Invalid password',
-        'auth/too-many-requests': 'Too many attempts. Please try again later',
-        'auth/network-request-failed': 'Network error. Please check your connection',
-      };
-
-      setError(errorMessages[error.code] || error.message || 'Login failed. Please try again.');
+      setError('Invalid credentials. Please try again.');
     } finally {
       setIsLoading(false);
     }
