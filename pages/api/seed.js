@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     const collectionRef = db.collection('resources');
 
     // Create a batch for bulk operations
-    const batch = db.batch();
+    let batch = db.batch();  // Changed from const to let
     let batchCount = 0;
     const BATCH_SIZE = 500; // Firestore limit is 500 operations per batch
 
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
           if (batchCount === BATCH_SIZE) {
             await batch.commit();
             console.log(`Committed batch of ${BATCH_SIZE} documents`);
-            batch = db.batch();
+            batch = db.batch();  // Now we can reassign
             batchCount = 0;
           }
         } else {
