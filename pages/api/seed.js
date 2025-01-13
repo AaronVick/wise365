@@ -1,6 +1,7 @@
 // pages/api/seed.js
-import { getFirestore } from '@/lib/firebase-admin/firestore';
-import '@/lib/firebaseAdmin'; // Updated import path
+import { getFirestore } from 'firebase-admin/firestore';
+import '../../lib/firebase';
+import '../../lib/firebaseAdmin';
 
 // Configure API route options
 export const config = {
@@ -13,8 +14,7 @@ export const config = {
 };
 
 // Import seed data
-import agentData from '@/data/seedData';
-
+import agentData from '../../data/seedData';
 
 export default async function handler(req, res) {
   // Add CORS headers
@@ -35,16 +35,16 @@ export default async function handler(req, res) {
     });
   }
 
-  // Set up SSE
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-
   const sendProgressUpdate = (res, data) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
   try {
+    // Set up SSE headers after handling any early returns
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
     // Get Firestore instance
     const db = getFirestore();
     
@@ -52,7 +52,6 @@ export default async function handler(req, res) {
       throw new Error('Failed to initialize Firestore');
     }
 
-    // Log the start of the process
     console.log('Starting seed process...');
     console.log(`Total records to process: ${agentData.length}`);
     
@@ -63,7 +62,7 @@ export default async function handler(req, res) {
     });
 
     const results = [];
-    const collectionRef = db.collection('agentData'); // Changed to 'agentData'
+    const collectionRef = db.collection('agentData');
     let batch = db.batch();
     let batchCount = 0;
     const BATCH_SIZE = 100;
