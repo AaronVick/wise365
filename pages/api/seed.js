@@ -1,6 +1,6 @@
 // pages/api/seed.js
-import { getFirestore } from 'firebase-admin/firestore';
-import '../../../firebaseAdmin'; // Import the admin initialization
+import { getFirestore } from '@/lib/firebase-admin/firestore';
+import '@/lib/firebaseAdmin'; // Updated import path
 
 // Configure API route options
 export const config = {
@@ -14,6 +14,7 @@ export const config = {
 
 // Import seed data
 import agentData from '@/data/seedData';
+
 
 export default async function handler(req, res) {
   // Add CORS headers
