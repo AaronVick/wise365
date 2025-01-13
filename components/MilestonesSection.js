@@ -11,11 +11,20 @@ const MilestonesSection = ({ currentUser }) => {
   const [milestones, setMilestones] = useState([]);
   const [filteredMilestones, setFilteredMilestones] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'ready', 'in_progress', 'completed'
+  const [error, setError] = useState(null);
+  const [activeFilter, setActiveFilter] = useState('all');
 
   useEffect(() => {
+    if (!currentUser?.uid) {
+      setLoading(false);
+      return;
+    }
+
     const fetchMilestones = async () => {
+      setLoading(true);
+      setError(null);
       try {
+        // Fetch funnels data
         const funnelsRef = collection(db, 'funnels');
         const funnelsSnapshot = await getDocs(funnelsRef);
         const funnelsData = funnelsSnapshot.docs.map(doc => ({
@@ -23,6 +32,11 @@ const MilestonesSection = ({ currentUser }) => {
           ...doc.data()
         }));
 
+        if (!Array.isArray(funnelsData) || funnelsData.length === 0) {
+          throw new Error('No funnel data available');
+        }
+
+        // Fetch user's funnel data
         const funnelDataRef = collection(db, 'funnelData');
         const funnelDataQuery = query(
           funnelDataRef,
@@ -38,52 +52,83 @@ const MilestonesSection = ({ currentUser }) => {
 
         // Default to Onboarding Funnel if no milestones started
         if (processedMilestones.length === 0) {
-          const onboardingFunnel = funnelsData.find(funnel => funnel.name === 'Onboarding Funnel');
-          processedMilestones = onboardingFunnel.milestones.map(milestone => ({
-            ...milestone,
-            funnelName: onboardingFunnel.name,
-            progress: 0,
-            status: 'ready',
-            priority: onboardingFunnel.priority
-          }));
+          const onboardingFunnel = funnelsData.find(funnel => 
+            funnel.name === 'Onboarding Funnel' && 
+            Array.isArray(funnel.milestones)
+          );
+
+          if (onboardingFunnel) {
+            processedMilestones = onboardingFunnel.milestones.map(milestone => ({
+              ...milestone,
+              funnelName: onboardingFunnel.name,
+              progress: 0,
+              status: 'ready',
+              priority: onboardingFunnel.priority || 1
+            }));
+          }
         }
 
         setMilestones(processedMilestones);
         applyFilter(processedMilestones, activeFilter);
       } catch (error) {
         console.error('Error fetching milestones:', error);
+        setError(error.message || 'Failed to load milestones');
       } finally {
         setLoading(false);
       }
     };
 
-    if (currentUser?.uid) {
-      fetchMilestones();
-    }
-  }, [currentUser]);
+    fetchMilestones();
+  }, [currentUser?.uid]);
 
   const processMilestones = (funnels, userData) => {
-    return funnels.flatMap(funnel =>
-      funnel.milestones.map(milestone => {
-        const progress = calculateMilestoneProgress(milestone, userData);
-        const status = determineStatus(progress);
+    try {
+      if (!Array.isArray(funnels)) return [];
 
-        return {
-          ...milestone,
-          funnelName: funnel.name,
-          progress,
-          status,
-          priority: funnel.priority
-        };
-      })
-    ).filter(milestone => milestone.status !== 'not_ready');
+      return funnels.flatMap(funnel => {
+        if (!Array.isArray(funnel.milestones)) return [];
+
+        return funnel.milestones.map(milestone => {
+          if (!milestone || typeof milestone !== 'object') return null;
+
+          const progress = calculateMilestoneProgress(milestone, userData);
+          const status = determineStatus(progress);
+
+          return {
+            ...milestone,
+            funnelName: funnel.name || 'Unknown Funnel',
+            progress,
+            status,
+            priority: funnel.priority || 1,
+            conversationId: milestone.conversationId || `milestone-${milestone.name}`
+          };
+        }).filter(Boolean);
+      }).filter(milestone => milestone.status !== 'not_ready');
+    } catch (error) {
+      console.error('Error processing milestones:', error);
+      return [];
+    }
   };
 
   const calculateMilestoneProgress = (milestone, userData) => {
-    if (!userData || userData.length === 0) return 0;
+    if (!userData || !Array.isArray(userData) || !milestone) return 0;
 
-    const relevantData = userData.filter(data => data.conversationId === milestone.conversationId);
-    return relevantData.length > 0 ? 100 : 0; // Example logic, adjust based on real criteria
+    try {
+      const relevantData = userData.filter(data => {
+        const hasConversation = data.conversationId === milestone.conversationId;
+        const hasProgress = typeof data.progress === 'number';
+        return hasConversation && hasProgress;
+      });
+
+      if (relevantData.length === 0) return 0;
+
+      // Calculate average progress if multiple entries exist
+      const totalProgress = relevantData.reduce((sum, data) => sum + data.progress, 0);
+      return Math.round(totalProgress / relevantData.length);
+    } catch (error) {
+      console.error('Error calculating milestone progress:', error);
+      return 0;
+    }
   };
 
   const determineStatus = (progress) => {
@@ -93,17 +138,38 @@ const MilestonesSection = ({ currentUser }) => {
   };
 
   const applyFilter = (milestones, filter) => {
-    if (filter === 'all') {
-      setFilteredMilestones(milestones);
-    } else {
-      setFilteredMilestones(milestones.filter(milestone => milestone.status === filter));
+    if (!Array.isArray(milestones)) {
+      setFilteredMilestones([]);
+      return;
     }
+
+    const filtered = filter === 'all' 
+      ? milestones
+      : milestones.filter(milestone => milestone.status === filter);
+    
+    setFilteredMilestones(filtered);
   };
 
   const handleFilterChange = (filter) => {
     setActiveFilter(filter);
     applyFilter(milestones, filter);
   };
+
+  if (error) {
+    return (
+      <Card className="p-6">
+        <div className="text-center text-red-600">
+          <p>{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 text-blue-600 hover:underline"
+          >
+            Retry
+          </button>
+        </div>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
@@ -126,7 +192,10 @@ const MilestonesSection = ({ currentUser }) => {
       </div>
       <div className="space-y-4">
         {filteredMilestones.map((milestone) => (
-          <MilestoneCard key={`${milestone.funnelName}-${milestone.name}`} milestone={milestone} />
+          <MilestoneCard 
+            key={`${milestone.funnelName}-${milestone.name}`} 
+            milestone={milestone} 
+          />
         ))}
         {filteredMilestones.length === 0 && (
           <div className="text-center text-gray-500 py-4">

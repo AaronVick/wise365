@@ -5,13 +5,13 @@ import { auth, db } from '../lib/firebase';
 import {
   collection,
   getDocs,
-  getDoc,
   query,
   where,
-  doc,
+  onSnapshot,
   addDoc,
-  serverTimestamp,
-  updateDoc
+  updateDoc,
+  doc,
+  serverTimestamp
 } from 'firebase/firestore';
 
 // UI Components
@@ -42,7 +42,7 @@ import {
   handleContextMenu
 } from '../lib/dashboardTools';
 
-
+// Dynamic Imports
 const DynamicGoalCreationModal = dynamic(() => import('../components/GoalCreationModal'), {
   ssr: false,
   loading: () => <div>Loading...</div>
@@ -53,9 +53,12 @@ const DynamicMilestonesSection = dynamic(() => import('../components/MilestonesS
 });
 
 const Dashboard = () => {
+  // State declarations
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [currentChat, setCurrentChat] = useState(null);
   const [nestedChats, setNestedChats] = useState({});
   const [sidebarWidth, setSidebarWidth] = useState(250);
@@ -69,10 +72,71 @@ const Dashboard = () => {
   const [goals, setGoals] = useState([]);
 
   const {
-    resources = [],
-    isLoading = false
+    resources = []
   } = useDashboard() || {};
 
+  // Main authentication listener
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      setAuthChecked(true);
+      if (user) {
+        setCurrentUser(user);
+        try {
+          await initializeUserData(user.uid);
+        } catch (error) {
+          console.error('Error initializing user data:', error);
+          setError('Failed to initialize user data');
+        }
+      } else {
+        router.replace('/login');
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Initialize user data
+  const initializeUserData = async (userId) => {
+    try {
+      // Set up listeners for real-time updates
+      const goalsQuery = query(
+        collection(db, 'goals'),
+        where('userId', '==', userId)
+      );
+      
+      // Real-time goals listener
+      const unsubscribeGoals = onSnapshot(goalsQuery, (snapshot) => {
+        const goalsData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setGoals(goalsData);
+      });
+
+      // Fetch initial projects
+      const projectsQuery = query(
+        collection(db, 'projectNames'),
+        where('userId', '==', userId)
+      );
+      const projectsSnapshot = await getDocs(projectsQuery);
+      const projectsData = projectsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setProjects(projectsData);
+
+      // Clean up listeners on component unmount
+      return () => {
+        unsubscribeGoals();
+      };
+    } catch (error) {
+      console.error('Error initializing user data:', error);
+      throw error; // Propagate error to be handled by the caller
+    }
+  };
+
+  // Fetch goals when user changes
   useEffect(() => {
     if (currentUser?.uid) {
       fetchGoals(currentUser.uid)
@@ -81,6 +145,24 @@ const Dashboard = () => {
     }
   }, [currentUser?.uid]);
 
+  // Early return conditions
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  if (!currentUser && authChecked) {
+    router.replace('/login');
+    return null;
+  }
+
+
+  // event handlers and utility functions
+
+  // Handle accepting a suggested goal
   const handleAcceptSuggestion = async (suggestion) => {
     try {
       const conversationNameRef = await addDoc(collection(db, 'conversationNames'), {
@@ -123,6 +205,7 @@ const Dashboard = () => {
     }
   };
 
+  // Handle ignoring a suggested goal
   const handleIgnoreSuggestion = async (suggestion) => {
     try {
       await updateDoc(doc(db, 'suggestedGoals', suggestion.id), {
@@ -134,6 +217,7 @@ const Dashboard = () => {
     }
   };
 
+  // Handle project context menu (right-click)
   const handleProjectContextMenu = async (e) => {
     e.preventDefault();
     const name = prompt('Enter a name for the new project:');
@@ -165,6 +249,7 @@ const Dashboard = () => {
     }
   };
 
+  // Toggle project expanded state
   const toggleProjectExpanded = (projectId) => {
     setExpandedProjects(prev => ({
       ...prev,
@@ -172,6 +257,7 @@ const Dashboard = () => {
     }));
   };
 
+  // Toggle agent expanded state
   const toggleAgentExpanded = (agentId) => {
     setExpandedAgents((prev) => ({
       ...prev,
@@ -179,6 +265,7 @@ const Dashboard = () => {
     }));
   };
 
+  // Handle sidebar resize
   const handleSidebarResizeStart = (e) => {
     const startX = e.clientX;
     const startWidth = sidebarWidth;
@@ -199,32 +286,9 @@ const Dashboard = () => {
   };
 
 
-  if (!authChecked && !currentUser) {
-    return <div>Loading...</div>;
-  }
-  
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (!authChecked) {
-        console.error("Authentication check timeout");
-        router.replace("/login"); // Example redirect
-      }
-    }, 5000); // Timeout after 5 seconds
-  
-    return () => clearTimeout(timeout);
-  }, [authChecked]);
-  
-
-
-
-  console.log("authChecked:", authChecked);
-console.log("currentUser:", currentUser);
-console.log("goals:", goals);
-console.log("nestedChats:", nestedChats);
-console.log("currentChat:", currentChat);
-
   return (
     <div className="flex h-screen bg-gray-50">
+      {/* Sidebar */}
       <div
         className="bg-gray-900 text-white flex flex-col"
         style={{
@@ -249,6 +313,7 @@ console.log("currentChat:", currentChat);
         />
       </div>
 
+      {/* Resize Handle */}
       <div
         className="w-1 cursor-ew-resize bg-gray-700"
         onMouseDown={handleSidebarResizeStart}
@@ -257,6 +322,7 @@ console.log("currentChat:", currentChat);
         aria-label="Resize Sidebar"
       />
 
+      {/* Main Content */}
       <div className="flex-1">
         {currentChat ? (
           <ChatInterface
