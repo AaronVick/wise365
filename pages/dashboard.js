@@ -1,5 +1,3 @@
-// pages/dashboard.js
-
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -10,17 +8,19 @@ const Dashboard = () => {
   const [user, loading] = useAuthState(auth);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login'); // Redirect to login if not authenticated
+    if (!loading) {
+      if (!user) {
+        router.replace('/login'); // Redirect unauthenticated users to login
+      }
     }
   }, [user, loading, router]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div>Loading...</div>; // Show a loading spinner while checking authentication
   }
 
   if (!user) {
-    return null; // Prevent rendering anything if redirect is happening
+    return null; // Prevent rendering the dashboard until authentication is confirmed
   }
 
   return (
