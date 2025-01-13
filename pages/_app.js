@@ -22,14 +22,13 @@ function ErrorFallback({ error }) {
   );
 }
 
-function MyApp({ Component, pageProps }) {
+const MyApp = ({ Component, pageProps }) => {
   const router = useRouter();
   const [user, loading] = useAuthState(auth);
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    // Handle public routes
-    const isPublicRoute = router.pathname === '/' || router.pathname === '/admin/login';
+    const isPublicRoute = router.pathname === '/' || router.pathname === '/admin/login' || router.pathname === '/register';
     
     if (!loading) {
       if (!user && !isPublicRoute) {
@@ -64,3 +63,5 @@ function MyApp({ Component, pageProps }) {
     </ErrorBoundary>
   );
 }
+
+export default MyApp;
