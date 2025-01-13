@@ -1,7 +1,8 @@
 // pages/api/seed.js
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import '../../../firebaseAdmin'; // Import the admin initialization
 
+// Configure API route options
 export const config = {
   api: {
     bodyParser: true,
@@ -11,39 +12,17 @@ export const config = {
   },
 };
 
-if (!getApps().length) {
-  try {
-    const serviceAccount = {
-      type: process.env.FIREBASE_TYPE,
-      project_id: process.env.FIREBASE_PROJECT_ID,
-      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-      private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      client_email: process.env.FIREBASE_CLIENT_EMAIL,
-      client_id: process.env.FIREBASE_CLIENT_ID,
-      auth_uri: process.env.FIREBASE_AUTH_URI,
-      token_uri: process.env.FIREBASE_TOKEN_URI,
-      auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
-      client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
-    };
-
-    initializeApp({
-      credential: cert(serviceAccount),
-    });
-  } catch (error) {
-    console.error('Error initializing Firebase Admin:', error);
-  }
-}
-
-const db = getFirestore();
-
+// Import seed data
 import agentData from '@/data/seedData';
 
 export default async function handler(req, res) {
+  // Add CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Max-Age', '3600');
-
+  
+  // Handle preflight request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -55,44 +34,52 @@ export default async function handler(req, res) {
     });
   }
 
+  // Set up SSE
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
   const sendProgressUpdate = (res, data) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
   try {
+    // Get Firestore instance
+    const db = getFirestore();
+    
     if (!db) {
-      throw new Error('Firebase not initialized');
+      throw new Error('Failed to initialize Firestore');
     }
 
-    // Set up SSE
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
-    const totalRecords = agentData.length;
-    console.log(`Total records to process: ${totalRecords}`);
+    // Log the start of the process
+    console.log('Starting seed process...');
+    console.log(`Total records to process: ${agentData.length}`);
     
     sendProgressUpdate(res, {
       type: 'start',
-      total: totalRecords,
+      total: agentData.length,
       message: 'Starting seed process...'
     });
 
     const results = [];
-    const collectionRef = db.collection('resources');
+    const collectionRef = db.collection('agentData'); // Changed to 'agentData'
     let batch = db.batch();
     let batchCount = 0;
     const BATCH_SIZE = 100;
     let totalProcessed = 0;
     
+    // Split data into chunks
     const chunks = [];
     const CHUNK_SIZE = 500;
     for (let i = 0; i < agentData.length; i += CHUNK_SIZE) {
       chunks.push(agentData.slice(i, i + CHUNK_SIZE));
     }
 
+    // Process each chunk
     for (const chunk of chunks) {
       const chunkIndex = chunks.indexOf(chunk);
+      console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length}`);
+      
       sendProgressUpdate(res, {
         type: 'chunk-start',
         current: chunkIndex + 1,
@@ -102,10 +89,12 @@ export default async function handler(req, res) {
       
       for (const item of chunk) {
         try {
+          // Validate required fields
           if (!item.agentId || !item.datatype) {
             throw new Error(`Missing required fields for item: ${JSON.stringify(item)}`);
           }
-
+          
+          // Check for existing document
           const querySnapshot = await collectionRef
             .where('agentId', '==', item.agentId)
             .where('datatype', '==', item.datatype)
@@ -134,8 +123,8 @@ export default async function handler(req, res) {
               sendProgressUpdate(res, {
                 type: 'progress',
                 processed: totalProcessed,
-                total: totalRecords,
-                message: `Processed ${totalProcessed}/${totalRecords} records`
+                total: agentData.length,
+                message: `Processed ${totalProcessed}/${agentData.length} records`
               });
               
               batch = db.batch();
@@ -168,6 +157,7 @@ export default async function handler(req, res) {
         }
       }
       
+      // Commit any remaining items in the batch
       if (batchCount > 0) {
         await batch.commit();
         totalProcessed += batchCount;
@@ -184,6 +174,7 @@ export default async function handler(req, res) {
       }
     }
 
+    // Send completion update
     sendProgressUpdate(res, {
       type: 'complete',
       success: true,
@@ -196,9 +187,8 @@ export default async function handler(req, res) {
     res.end();
 
   } catch (error) {
-    const errorMessage = error.message || 'An unknown error occurred';
     console.error('Detailed error:', {
-      message: errorMessage,
+      message: error.message,
       stack: error.stack,
       name: error.name
     });
@@ -206,7 +196,7 @@ export default async function handler(req, res) {
     sendProgressUpdate(res, {
       type: 'error',
       success: false,
-      error: errorMessage,
+      error: error.message || 'An unknown error occurred',
       timestamp: new Date().toISOString()
     });
 
