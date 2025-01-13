@@ -11,6 +11,8 @@ import {
   addDoc,
   updateDoc,
   doc,
+  getDoc,
+  setDoc,
   serverTimestamp
 } from 'firebase/firestore';
 
@@ -106,45 +108,75 @@ useEffect(() => {
 
 // Initialize user data
 const initializeUserData = async (userId) => {
+  if (!userId) {
+    console.error('Missing required parameter: userId');
+    return;
+  }
+
   try {
     console.log('Initializing user data for UID:', userId);
 
-    // Set up real-time listener for goals
+    // Verify user exists in users collection first
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      console.warn('User document does not exist for UID:', userId);
+      // Create basic user document if it doesn't exist
+      await setDoc(userRef, {
+        uid: userId,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    // Set up real-time listener for goals with error handling
     const goalsQuery = query(
       collection(db, 'goals'),
       where('userId', '==', userId)
     );
 
-    const unsubscribeGoals = onSnapshot(goalsQuery, (snapshot) => {
-      const goalsData = snapshot.docs.map((doc) => ({
+    const unsubscribeGoals = onSnapshot(goalsQuery, 
+      (snapshot) => {
+        const goalsData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        console.log('Real-time goals updated:', goalsData);
+        setGoals(goalsData);
+      },
+      (error) => {
+        console.error('Error in goals listener:', error);
+        setError('Failed to load goals');
+      }
+    );
+
+    // Fetch initial project names with error handling
+    try {
+      const projectsQuery = query(
+        collection(db, 'projectNames'),
+        where('userId', '==', userId)
+      );
+
+      const projectsSnapshot = await getDocs(projectsQuery);
+      const projectsData = projectsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-      console.log('Real-time goals updated:', goalsData);
-      setGoals(goalsData);
-    });
+      console.log('Projects fetched:', projectsData);
+      setProjects(projectsData);
+    } catch (projectError) {
+      console.error('Error fetching projects:', projectError);
+      setError('Failed to load projects');
+    }
 
-    // Fetch initial project names
-    const projectsQuery = query(
-      collection(db, 'projectNames'),
-      where('userId', '==', userId)
-    );
-
-    const projectsSnapshot = await getDocs(projectsQuery);
-    const projectsData = projectsSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    console.log('Projects fetched:', projectsData);
-    setProjects(projectsData);
-
-    // Clean up listeners
+    // Return cleanup function
     return () => {
       console.log('Cleaning up goals listener');
       unsubscribeGoals();
     };
   } catch (error) {
     console.error('Error initializing user data for UID:', userId, error);
+    setError('Failed to initialize user data');
     throw error; // Propagate the error to be handled by the caller
   }
 };
@@ -152,26 +184,27 @@ const initializeUserData = async (userId) => {
 
   // Fetch goals when user changes
   useEffect(() => {
-    if (currentUser?.uid) {
-      fetchGoals(currentUser.uid)
-        .then((goals) => setGoals(goals))
-        .catch((error) => console.error('Error fetching goals:', error));
-    }
-  }, [currentUser?.uid]);
+    const fetchUserGoals = async () => {
+      if (!currentUser?.uid) return;
+      
+      try {
+        const goalsRef = collection(db, 'goals');
+        const q = query(goalsRef, where('userId', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const goalsData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setGoals(goalsData);
+      } catch (error) {
+        console.error('Error fetching goals:', error);
+      }
+    };
 
-  // Early return conditions
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
+    fetchUserGoals();
+  }, [currentUser?.uid, db]);
 
-  if (!currentUser && authChecked) {
-    router.replace('/login');
-    return null;
-  }
+
 
 
   // event handlers and utility functions
