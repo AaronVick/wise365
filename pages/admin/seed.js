@@ -11,6 +11,17 @@ export default function SeedPage() {
   const [currentChunk, setCurrentChunk] = useState({ current: 0, total: 0 });
   const [totalRecords, setTotalRecords] = useState(0);
   const [processedRecords, setProcessedRecords] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
+
+  useEffect(() => {
+    return () => {
+      // Cleanup function to close EventSource on unmount
+      if (window._eventSource) {
+        window._eventSource.close();
+      }
+    };
+  }, []);
 
   const handleSeed = async () => {
     if (!confirm('Are you sure you want to seed the database? This action cannot be undone.')) {
@@ -25,53 +36,95 @@ export default function SeedPage() {
     setCurrentChunk({ current: 0, total: 0 });
     setTotalRecords(0);
     setProcessedRecords(0);
+    setRetryCount(0);
 
     try {
-      const eventSource = new EventSource('/api/seed');
+      // Close existing connection if any
+      if (window._eventSource) {
+        window._eventSource.close();
+      }
 
-      eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log('Received event:', data);
+      const connectEventSource = () => {
+        const eventSource = new EventSource('/api/seed');
+        window._eventSource = eventSource;
 
-        switch (data.type) {
-          case 'start':
-            setTotalRecords(data.total);
-            setStatus(data.message);
-            break;
+        let lastEventTime = Date.now();
+        const TIMEOUT = 30000; // 30 seconds
 
-          case 'chunk-start':
-            setCurrentChunk({ current: data.current, total: data.total });
-            setStatus(data.message);
-            break;
-
-          case 'progress':
-            setProcessedRecords(data.processed);
-            setProgress((data.processed / data.total) * 100);
-            setStatus(data.message);
-            break;
-
-          case 'error':
-            setError(data.message);
-            setStatus('Error occurred');
-            break;
-
-          case 'complete':
-            setResults(data.results || []);
-            setStatus('Seeding complete!');
-            setProgress(100);
+        // Set up heartbeat to check connection
+        const heartbeat = setInterval(() => {
+          if (Date.now() - lastEventTime > TIMEOUT) {
+            clearInterval(heartbeat);
             eventSource.close();
+            
+            if (retryCount < MAX_RETRIES) {
+              setRetryCount(prev => prev + 1);
+              setStatus('Connection lost. Retrying...');
+              setTimeout(connectEventSource, 1000);
+            } else {
+              setError('Connection failed after multiple retries');
+              setStatus('Failed');
+              setLoading(false);
+            }
+          }
+        }, 5000);
+
+        eventSource.onmessage = (event) => {
+          lastEventTime = Date.now();
+          const data = JSON.parse(event.data);
+          console.log('Received event:', data);
+
+          switch (data.type) {
+            case 'start':
+              setTotalRecords(data.total);
+              setStatus(data.message);
+              break;
+
+            case 'chunk-start':
+              setCurrentChunk({ current: data.current, total: data.total });
+              setStatus(data.message);
+              break;
+
+            case 'progress':
+              setProcessedRecords(data.processed);
+              setProgress((data.processed / data.total) * 100);
+              setStatus(data.message);
+              break;
+
+            case 'error':
+              setError(data.message);
+              setStatus('Error occurred');
+              break;
+
+            case 'complete':
+              clearInterval(heartbeat);
+              setResults(data.results || []);
+              setStatus('Seeding complete!');
+              setProgress(100);
+              eventSource.close();
+              setLoading(false);
+              break;
+          }
+        };
+
+        eventSource.onerror = (error) => {
+          console.error('EventSource error:', error);
+          clearInterval(heartbeat);
+          eventSource.close();
+          
+          if (retryCount < MAX_RETRIES) {
+            setRetryCount(prev => prev + 1);
+            setStatus('Connection error. Retrying...');
+            setTimeout(connectEventSource, 1000);
+          } else {
+            setError('Connection failed after multiple retries');
+            setStatus('Failed');
             setLoading(false);
-            break;
-        }
+          }
+        };
       };
 
-      eventSource.onerror = (error) => {
-        console.error('EventSource error:', error);
-        setError('Connection error occurred');
-        setStatus('Failed');
-        setLoading(false);
-        eventSource.close();
-      };
+      connectEventSource();
     } catch (error) {
       console.error('Error seeding data:', error);
       setError(error.message);
@@ -79,6 +132,7 @@ export default function SeedPage() {
       setLoading(false);
     }
   };
+
 
   return (
     <AdminLayout>

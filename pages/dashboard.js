@@ -322,12 +322,18 @@ const Dashboard = () => {
         aria-label="Resize Sidebar"
       />
 
-      {/* Main Content */}
+       {/* Main Content */}
       <div className="flex-1">
-        {currentChat ? (
+        {currentChat?.id ? (  // Change this line to check for currentChat.id
           <ChatInterface
-            {...currentChat}
+            chatId={currentChat.id}
+            agentId={currentChat.agentId}
             userId={currentUser?.uid || ''}
+            isDefault={currentChat.isDefault || false}
+            title={currentChat.title || ''}
+            conversationName={currentChat.conversationName}
+            projectId={currentChat.projectId}
+            projectName={currentChat.projectName}
           />
         ) : (
           <DashboardContent
@@ -340,8 +346,8 @@ const Dashboard = () => {
           />
         )}
       </div>
-    </div>
-  );
-};
+    </div> 
+  );  
+};  
 
 export default Dashboard;
