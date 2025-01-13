@@ -196,8 +196,17 @@ const Dashboard = () => {
 
   // Render agents by category with Shawn at top
   const renderAgentCategories = () => {
-    const categories = ['Administrative', 'Marketing', 'Sales', 'SocialMedia', 'CopyEditing'];
-    const shawn = agents.Administrative.find(agent => agent.id === 'shawn');
+    if (!agents || typeof agents !== 'object') {
+      console.error('Agents data not properly loaded');
+      return null;
+    }
+
+    const categories = Object.keys(agents).filter(category => 
+      Array.isArray(agents[category]) && agents[category].length > 0
+    );
+    
+    // Find Shawn in Administrative category
+    const shawn = agents['Administrative']?.find(agent => agent.id === 'shawn');
     
     return (
       <>
@@ -225,7 +234,7 @@ const Dashboard = () => {
             </AccordionTrigger>
             <AccordionContent>
               {agents[category]
-                ?.filter(agent => agent.id !== 'shawn')
+                ?.filter(agent => agent && agent.id !== 'shawn')
                 .map(agent => (
                   <div key={agent.id} className="space-y-2">
                     <div
