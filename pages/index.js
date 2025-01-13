@@ -14,23 +14,9 @@ const HomePage = () => {
   const [error, setError] = useState('');
   const router = useRouter();
 
-  const clearSession = () => {
-    localStorage.clear();
-    document.cookie = 'login_timestamp=;path=/;expires=Thu, 01 Jan 1970 00:00:00 UTC;';
-  };
-
   useEffect(() => {
-    console.log('Starting auth check...');
-    const timeout = setTimeout(() => {
-      if (isAuthChecking) {
-        console.log('Auth check timed out, clearing session.');
-        clearSession();
-        setIsAuthChecking(false);
-      }
-    }, 10000); // 10 seconds timeout
-
+    console.log('Initializing auth check...');
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      clearTimeout(timeout);
       try {
         if (user) {
           console.log('User found:', user.uid);
@@ -39,31 +25,30 @@ const HomePage = () => {
 
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            console.log('User document exists. Redirecting to dashboard...', userData);
+            console.log('User document exists:', userData);
+            console.log('Redirecting to dashboard...');
             router.replace({
               pathname: '/dashboard',
               query: { userId: userData.userId },
             });
           } else {
             console.log('User document not found. Redirecting to registration...');
-            clearSession();
             router.replace('/register');
           }
         } else {
-          console.log('No valid session or cookie expired. Redirecting to login...');
-          clearSession();
+          console.log('No user found. Remaining on login page.');
+          setIsAuthChecking(false);
         }
       } catch (error) {
-        console.error('Auth check error:', error);
-        clearSession();
+        console.error('Error during auth check:', error.message || error);
       } finally {
+        console.log('Auth check completed.');
         setIsAuthChecking(false);
       }
     });
 
     return () => {
       console.log('Cleaning up auth listener');
-      clearTimeout(timeout);
       unsubscribe();
     };
   }, [router]);
@@ -78,37 +63,45 @@ const HomePage = () => {
     const email = e.target.email.value.trim();
     const password = e.target.password.value;
 
-    console.log('Starting login attempt...');
+    console.log('Attempting login...');
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      console.log('Login successful for user:', user);
+      console.log('Login successful:', user.uid);
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
 
       if (userDoc.exists()) {
         const userData = userDoc.data();
         console.log('User document found. Redirecting to dashboard...');
-        document.cookie = `login_timestamp=${Date.now()};path=/;max-age=${24 * 60 * 60}`;
         router.replace({
           pathname: '/dashboard',
           query: { userId: userData.userId },
         });
       } else {
         console.log('User document not found. Redirecting to registration...');
-        clearSession();
         router.replace('/register');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      setError('Invalid credentials. Please try again.');
+      console.error('Login failed:', error.message || error);
+      const errorMessages = {
+        'auth/invalid-email': 'Invalid email format',
+        'auth/user-disabled': 'This account has been disabled',
+        'auth/user-not-found': 'No account found with this email',
+        'auth/wrong-password': 'Invalid password',
+        'auth/too-many-requests': 'Too many attempts. Please try again later',
+        'auth/network-request-failed': 'Network error. Please check your connection',
+      };
+
+      setError(errorMessages[error.code] || 'Unexpected error. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   if (isAuthChecking) {
+    console.log('Still checking auth...');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
