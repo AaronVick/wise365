@@ -50,43 +50,62 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Simulate JSON dataset (replace with your actual logic)
-    const jsonData = require('../../data/yourDataFile.json'); // Adjust your dataset path
-    const totalRecords = jsonData.length;
+    // Import the seed data dynamically
+    const { default: agentData } = await import('../../data/seedData.js'); // Adjust path if needed
+  
+    if (!Array.isArray(agentData) || agentData.length === 0) {
+      throw new Error('Invalid or empty dataset');
+    }
+  
+    const totalRecords = agentData.length;
     const CHUNK_SIZE = 10;
     const chunks = [];
-
+  
+    // Divide dataset into chunks
     for (let i = 0; i < totalRecords; i += CHUNK_SIZE) {
-      chunks.push(jsonData.slice(i, i + CHUNK_SIZE));
+      chunks.push(agentData.slice(i, i + CHUNK_SIZE));
     }
-
+  
     res.write(`data: ${JSON.stringify({ type: 'start', totalRecords, message: 'Seeding process started.' })}\n\n`);
-
+  
     let processedRecords = 0;
-
+  
     for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
       const chunk = chunks[chunkIndex];
-      res.write(`data: ${JSON.stringify({ type: 'chunk-start', currentChunk: chunkIndex + 1, totalChunks: chunks.length, message: `Processing chunk ${chunkIndex + 1}...` })}\n\n`);
-
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'chunk-start',
+          currentChunk: chunkIndex + 1,
+          totalChunks: chunks.length,
+          message: `Processing chunk ${chunkIndex + 1}...`,
+        })}\n\n`
+      );
+  
       const batch = db.batch();
       const chunkResults = [];
-
+  
       for (const record of chunk) {
         try {
-          if (!record.agentId || !record.datatype) {
+          // Validate required fields
+          if (!record.agentId || !record.datatype || !record.context || !record.responseFormat) {
             throw new Error(`Missing required fields: ${JSON.stringify(record)}`);
           }
-
+  
+          // Check if record already exists
           const querySnapshot = await db
             .collection('agentData')
             .where('agentId', '==', record.agentId)
             .where('datatype', '==', record.datatype)
             .get();
-
+  
           if (querySnapshot.empty) {
+            // Add record to batch
             const docRef = db.collection('agentData').doc();
-            batch.set(docRef, { ...record, lastUpdated: new Date() });
-
+            batch.set(docRef, {
+              ...record,
+              lastUpdated: new Date(),
+            });
+  
             chunkResults.push({
               status: 'added',
               agentId: record.agentId,
@@ -109,20 +128,38 @@ export default async function handler(req, res) {
           });
         }
       }
-
+  
+      // Commit batch writes
       await batch.commit();
       processedRecords += chunk.length;
-
-      res.write(`data: ${JSON.stringify({ type: 'chunk-complete', currentChunk: chunkIndex + 1, totalChunks: chunks.length, processedRecords, totalRecords, chunkResults })}\n\n`);
+  
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'chunk-complete',
+          currentChunk: chunkIndex + 1,
+          totalChunks: chunks.length,
+          processedRecords,
+          totalRecords,
+          chunkResults,
+        })}\n\n`
+      );
+  
+      // Add delay for stability
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-
-    // Final update
-    res.write(`data: ${JSON.stringify({ type: 'complete', totalProcessed: processedRecords, message: 'Seeding process completed successfully!' })}\n\n`);
+  
+    // Final success message
+    res.write(
+      `data: ${JSON.stringify({
+        type: 'complete',
+        totalProcessed: processedRecords,
+        message: 'Seeding process completed successfully!',
+      })}\n\n`
+    );
     res.end();
   } catch (error) {
-    console.error('Error during seeding:', error);
-    res.write(`data: ${JSON.stringify({ type: 'error', message: error.message || 'An unknown error occurred' })}\n\n`);
+    console.error('Seeding error:', error);
+    res.write(`data: ${JSON.stringify({ type: 'error', message: error.message || 'Unknown error occurred' })}\n\n`);
     res.end();
   }
-}
+  
