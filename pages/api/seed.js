@@ -24,39 +24,54 @@ if (!getApps().length) {
     });
   } catch (error) {
     console.error('Error initializing Firebase Admin:', error);
+    // Don't throw here, let the API handler handle the error
   }
 }
 
 const db = getFirestore();
 
-// Separate the agent data into a different file
+// Import seed data
 import agentData from '@/data/seedData';
 
 export default async function handler(req, res) {
+  // Add CORS headers if needed
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ 
+      success: false,
+      error: 'Method not allowed' 
+    });
   }
 
   try {
+    if (!db) {
+      throw new Error('Firebase not initialized');
+    }
+
     console.log('Starting seed process...');
     const results = [];
     const collectionRef = db.collection('resources');
 
-    // Create a batch for bulk operations
-    let batch = db.batch();  // Changed from const to let
+    let batch = db.batch();
     let batchCount = 0;
-    const BATCH_SIZE = 500; // Firestore limit is 500 operations per batch
+    const BATCH_SIZE = 500;
 
     for (const item of agentData) {
       try {
-        // Check if document already exists
         const querySnapshot = await collectionRef
           .where('agentId', '==', item.agentId)
           .where('datatype', '==', item.datatype)
           .get();
 
         if (querySnapshot.empty) {
-          // Create new document reference
           const docRef = collectionRef.doc();
           batch.set(docRef, {
             ...item,
@@ -72,11 +87,10 @@ export default async function handler(req, res) {
 
           batchCount++;
 
-          // If batch size limit reached, commit and create new batch
           if (batchCount === BATCH_SIZE) {
             await batch.commit();
             console.log(`Committed batch of ${BATCH_SIZE} documents`);
-            batch = db.batch();  // Now we can reassign
+            batch = db.batch();
             batchCount = 0;
           }
         } else {
@@ -93,27 +107,34 @@ export default async function handler(req, res) {
           status: 'error',
           agentId: item.agentId,
           datatype: item.datatype,
-          error: itemError.message,
+          error: itemError.message || 'Unknown error processing item',
         });
       }
     }
 
-    // Commit any remaining documents in the final batch
     if (batchCount > 0) {
       await batch.commit();
       console.log(`Committed final batch of ${batchCount} documents`);
     }
 
+    // Return success response
     return res.status(200).json({
-      message: 'Seeding process completed',
-      results,
+      success: true,
+      message: 'Seeding process completed successfully',
+      results: results,
+      totalProcessed: results.length,
+      timestamp: new Date().toISOString()
     });
+
   } catch (error) {
     console.error('Error in seed process:', error);
+    
+    // Return error response
     return res.status(500).json({
+      success: false,
       error: 'Error seeding data',
-      details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      message: error.message || 'An unknown error occurred',
+      timestamp: new Date().toISOString()
     });
   }
 }

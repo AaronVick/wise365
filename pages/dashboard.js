@@ -335,6 +335,8 @@ const Dashboard = () => {
             currentTool={currentTool}
             onToolComplete={() => setCurrentTool(null)}
             setCurrentTool={setCurrentTool}
+            currentChat={currentChat}          
+            setCurrentChat={setCurrentChat} 
           />
         )}
       </div>

@@ -73,10 +73,18 @@ const Badge = ({
 };
 
 
-const DashboardContent = ({ currentUser, currentTool, onToolComplete, setCurrentTool }) => {
+const DashboardContent = (
+  { currentUser, 
+    currentTool, 
+    onToolComplete, 
+    setCurrentTool, 
+    currentChat,
+    setCurrentChat
+    }) => {
+
+  
   const router = useRouter();
   const [hasShawnChat, setHasShawnChat] = useState(false);
-  const [currentConversation, setCurrentConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   
@@ -86,16 +94,6 @@ const DashboardContent = ({ currentUser, currentTool, onToolComplete, setCurrent
     recentActivity = [],
     isLoading = false
   } = useDashboard() || {};
-
-  // Safety check for currentUser
-  if (!currentUser?.uid) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-gray-600">Loading user data...</div>
-      </div>
-    );
-  }
-
 
 
 
