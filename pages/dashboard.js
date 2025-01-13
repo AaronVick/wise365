@@ -1,5 +1,7 @@
 // pages/dashboard.js
 
+// pages/dashboard.js
+
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -26,6 +28,7 @@ import {
 import { agents } from '../data/agents';
 import { useDashboard } from '../contexts/DashboardContext';
 import DashboardContent from '../components/DashboardContent';
+import ChatInterface from '@/components/ChatInterface';
 
 const Dashboard = () => {
   const router = useRouter();
@@ -36,6 +39,9 @@ const Dashboard = () => {
   const [currentChat, setCurrentChat] = useState(null);
   const [nestedChats, setNestedChats] = useState({});
   const [currentTool, setCurrentTool] = useState(null);
+
+
+  // user data fetch
 
   // Fetch user data and nested chats
   useEffect(() => {
@@ -51,12 +57,13 @@ const Dashboard = () => {
             
             // Fetch nested chats for each agent
             const chatsRef = collection(db, 'conversations');
-            const chatsSnapshot = await getDocs(chatsRef);
+            const q = query(chatsRef, where('isDefault', '==', false));
+            const chatsSnapshot = await getDocs(q);
             const chatsByAgent = {};
 
             chatsSnapshot.docs.forEach(doc => {
               const chatData = doc.data();
-              if (chatData.agentId && !chatData.isDefault) {
+              if (chatData.agentId) {
                 if (!chatsByAgent[chatData.agentId]) {
                   chatsByAgent[chatData.agentId] = [];
                 }
@@ -68,6 +75,7 @@ const Dashboard = () => {
             });
 
             setNestedChats(chatsByAgent);
+            console.log('Nested chats loaded:', chatsByAgent);
           } else {
             console.error('No user document found. Redirecting to login...');
             router.replace('/');
@@ -88,10 +96,9 @@ const Dashboard = () => {
   }, [user, loading, router]);
 
 
+  // agent and chat handlers
 
-  //agent and chat functions
-
-  // Handler for starting or resuming chat with an agent
+  // Handle clicking on an agent
   const handleAgentClick = async (agent) => {
     if (!agent?.id || !user?.uid) {
       console.error('Missing required agent or user data');
@@ -132,7 +139,6 @@ const Dashboard = () => {
   // Start a new conversation with an agent
   const startNewConversation = async (agent) => {
     try {
-      // Create the conversation document
       const conversationData = {
         agentId: agent.id,
         createdAt: serverTimestamp(),
@@ -162,7 +168,7 @@ const Dashboard = () => {
     }
   };
 
-  // Handle subchat click
+  // Handle clicking on a subchat
   const handleSubChatClick = (agentId, subChat) => {
     setCurrentChat({
       id: subChat.id,
@@ -175,6 +181,7 @@ const Dashboard = () => {
     router.push(`/chat/${subChat.id}`);
   };
 
+  // Handle sidebar resize
   const handleSidebarResize = (e) => {
     const startX = e.clientX;
     const startWidth = sidebarWidth;
@@ -194,8 +201,13 @@ const Dashboard = () => {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  // Render agents by category with Shawn at top
+
+
+  // agent categories and rendering
+  // Render the agent categories
   const renderAgentCategories = () => {
+    console.log('Rendering agents:', agents); // Debug log
+    
     if (!agents || typeof agents !== 'object') {
       console.error('Agents data not properly loaded');
       return null;
@@ -273,8 +285,9 @@ const Dashboard = () => {
   };
 
 
-  // render and layout
+  // dashboard rendering
 
+  // Loading and error states
   if (loading || isLoadingUserData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -318,6 +331,83 @@ const Dashboard = () => {
             {/* Agents Section */}
             <Accordion type="multiple" className="w-full">
               {renderAgentCategories()}
+            </Accordion>
+
+            {/* Projects Section */}
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="projects">
+                <AccordionTrigger className="text-white hover:text-white">Projects</AccordionTrigger>
+                <AccordionContent>
+                  {nestedChats && Object.keys(nestedChats).length > 0 ? (
+                    Object.entries(nestedChats).map(([agentId, chats]) => (
+                      <div key={agentId} className="space-y-2">
+                        {chats.map(chat => (
+                          <div
+                            key={chat.id}
+                            className="px-4 py-2 hover:bg-gray-800 rounded cursor-pointer"
+                            onClick={() => handleSubChatClick(agentId, chat)}
+                          >
+                            <p className="text-sm text-white">{chat.name || 'Untitled Project'}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-400 text-sm px-4">No projects available</p>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+            {/* Goals Section */}
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="goals">
+                <AccordionTrigger className="text-white hover:text-white">Goals</AccordionTrigger>
+                <AccordionContent>
+                  <div className="px-4">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-white hover:bg-gray-800"
+                      onClick={() => setCurrentTool('goals')}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add New Goal
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+            {/* Resources Section */}
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="resources">
+                <AccordionTrigger className="text-white hover:text-white">Resources</AccordionTrigger>
+                <AccordionContent>
+                  <div className="px-4 space-y-2">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-white hover:bg-gray-800"
+                      onClick={() => setCurrentTool('buyer-persona')}
+                    >
+                      Buyer Persona Tool
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-white hover:bg-gray-800"
+                      onClick={() => setCurrentTool('success-wheel')}
+                    >
+                      Success Wheel
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-white hover:bg-gray-800"
+                      onClick={() => setCurrentTool('positioning-factors')}
+                    >
+                      Positioning Factors
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
             </Accordion>
           </div>
         </ScrollArea>
