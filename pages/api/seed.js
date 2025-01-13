@@ -41,10 +41,21 @@ export default async function handler(req, res) {
   // Connection Test
   try {
     const existingCount = (await db.collection('agentData').get()).size;
-    res.write(`data: ${JSON.stringify({ type: 'connection-test', message: 'Connection successful', existingCount })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({
+        type: 'connection-test',
+        message: 'Connection successful',
+        existingCount,
+      })}\n\n`
+    );
   } catch (error) {
     console.error('Connection error:', error);
-    res.write(`data: ${JSON.stringify({ type: 'error', message: 'Failed to connect to Firestore' })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({
+        type: 'error',
+        message: 'Failed to connect to Firestore',
+      })}\n\n`
+    );
     res.end();
     return;
   }
@@ -52,24 +63,30 @@ export default async function handler(req, res) {
   try {
     // Import the seed data dynamically
     const { default: agentData } = await import('../../data/seedData.js'); // Adjust path if needed
-  
+
     if (!Array.isArray(agentData) || agentData.length === 0) {
       throw new Error('Invalid or empty dataset');
     }
-  
+
     const totalRecords = agentData.length;
     const CHUNK_SIZE = 10;
     const chunks = [];
-  
+
     // Divide dataset into chunks
     for (let i = 0; i < totalRecords; i += CHUNK_SIZE) {
       chunks.push(agentData.slice(i, i + CHUNK_SIZE));
     }
-  
-    res.write(`data: ${JSON.stringify({ type: 'start', totalRecords, message: 'Seeding process started.' })}\n\n`);
-  
+
+    res.write(
+      `data: ${JSON.stringify({
+        type: 'start',
+        totalRecords,
+        message: 'Seeding process started.',
+      })}\n\n`
+    );
+
     let processedRecords = 0;
-  
+
     for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
       const chunk = chunks[chunkIndex];
       res.write(
@@ -80,24 +97,25 @@ export default async function handler(req, res) {
           message: `Processing chunk ${chunkIndex + 1}...`,
         })}\n\n`
       );
-  
+
       const batch = db.batch();
       const chunkResults = [];
-  
+
       for (const record of chunk) {
         try {
           // Validate required fields
           if (!record.agentId || !record.datatype || !record.context || !record.responseFormat) {
             throw new Error(`Missing required fields: ${JSON.stringify(record)}`);
           }
-  
-          // Check if record already exists
+      
+          // Check if record already exists based on agentId, datatype, and description
           const querySnapshot = await db
             .collection('agentData')
             .where('agentId', '==', record.agentId)
             .where('datatype', '==', record.datatype)
+            .where('description', '==', record.description)
             .get();
-  
+      
           if (querySnapshot.empty) {
             // Add record to batch
             const docRef = db.collection('agentData').doc();
@@ -105,17 +123,19 @@ export default async function handler(req, res) {
               ...record,
               lastUpdated: new Date(),
             });
-  
+      
             chunkResults.push({
               status: 'added',
               agentId: record.agentId,
               datatype: record.datatype,
+              description: record.description,
             });
           } else {
             chunkResults.push({
               status: 'skipped',
               agentId: record.agentId,
               datatype: record.datatype,
+              description: record.description,
               reason: 'Already exists',
             });
           }
@@ -124,15 +144,17 @@ export default async function handler(req, res) {
             status: 'error',
             agentId: record.agentId,
             datatype: record.datatype,
+            description: record.description,
             error: error.message,
           });
         }
       }
-  
-      // Commit batch writes
+      
+      // Commit batch writes (outside the inner loop)
       await batch.commit();
       processedRecords += chunk.length;
-  
+      
+      // Send chunk completion update
       res.write(
         `data: ${JSON.stringify({
           type: 'chunk-complete',
@@ -143,11 +165,11 @@ export default async function handler(req, res) {
           chunkResults,
         })}\n\n`
       );
-  
+      
       // Add delay for stability
       await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-  
+      
+
     // Final success message
     res.write(
       `data: ${JSON.stringify({
@@ -159,7 +181,12 @@ export default async function handler(req, res) {
     res.end();
   } catch (error) {
     console.error('Seeding error:', error);
-    res.write(`data: ${JSON.stringify({ type: 'error', message: error.message || 'Unknown error occurred' })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({
+        type: 'error',
+        message: error.message || 'Unknown error occurred',
+      })}\n\n`
+    );
     res.end();
   }
-  
+}
