@@ -40,7 +40,7 @@ export default function SeedPage() {
         window._eventSource.close();
       }
   
-      const authToken = localStorage.getItem('auth_token'); // Ensure the token exists
+      const authToken = localStorage.getItem('auth_token');
       if (!authToken) {
         setError('User is not authenticated. Please log in.');
         setStatus('Failed');
@@ -49,9 +49,9 @@ export default function SeedPage() {
       }
   
       const eventSource = new EventSource('/api/seed', {
-        withCredentials: true, // Ensure cookies are sent for authentication
+        withCredentials: true,
         headers: {
-          Authorization: `Bearer ${authToken}`, // Pass token in the headers
+          Authorization: `Bearer ${authToken}`,
         },
       });
       window._eventSource = eventSource;
@@ -118,20 +118,6 @@ export default function SeedPage() {
     }
   };
   
-
-      eventSource.onerror = () => {
-        setError('Connection error. Please try again.');
-        setStatus('Failed');
-        eventSource.close();
-        setLoading(false);
-      };
-    } catch (error) {
-      console.error('Error during seeding:', error);
-      setError(error.message);
-      setStatus('Failed');
-      setLoading(false);
-    }
-  };
 
   return (
     <AdminLayout>
