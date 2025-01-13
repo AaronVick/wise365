@@ -1,3 +1,5 @@
+// pages/api/seed.js
+
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import '../../lib/firebase';
@@ -62,7 +64,7 @@ export default async function handler(req, res) {
 
   try {
     // Import the seed data dynamically
-    const { default: agentData } = await import('../../data/seedData.js'); // Adjust path if needed
+    const { default: agentData } = await import('../../data/seedData.js');
 
     if (!Array.isArray(agentData) || agentData.length === 0) {
       throw new Error('Invalid or empty dataset');
@@ -103,27 +105,24 @@ export default async function handler(req, res) {
 
       for (const record of chunk) {
         try {
-          // Validate required fields
-          if (!record.agentId || !record.datatype || !record.context || !record.responseFormat) {
+          if (!record.agentId || !record.datatype || !record.description) {
             throw new Error(`Missing required fields: ${JSON.stringify(record)}`);
           }
-      
-          // Check if record already exists based on agentId, datatype, and description
+
           const querySnapshot = await db
             .collection('agentData')
             .where('agentId', '==', record.agentId)
             .where('datatype', '==', record.datatype)
             .where('description', '==', record.description)
             .get();
-      
+
           if (querySnapshot.empty) {
-            // Add record to batch
             const docRef = db.collection('agentData').doc();
             batch.set(docRef, {
               ...record,
               lastUpdated: new Date(),
             });
-      
+
             chunkResults.push({
               status: 'added',
               agentId: record.agentId,
@@ -149,12 +148,10 @@ export default async function handler(req, res) {
           });
         }
       }
-      
-      // Commit batch writes (outside the inner loop)
+
       await batch.commit();
       processedRecords += chunk.length;
-      
-      // Send chunk completion update
+
       res.write(
         `data: ${JSON.stringify({
           type: 'chunk-complete',
@@ -165,12 +162,10 @@ export default async function handler(req, res) {
           chunkResults,
         })}\n\n`
       );
-      
-      // Add delay for stability
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      
 
-    // Final success message
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
     res.write(
       `data: ${JSON.stringify({
         type: 'complete',
