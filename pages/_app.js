@@ -25,20 +25,49 @@ function MyApp({ Component, pageProps }) {
   const router = useRouter();
 
   useEffect(() => {
-    const authToken = localStorage.getItem('auth_token'); // Replace with your token key
+    const checkAuth = async () => {
+      const authToken = localStorage.getItem('auth_token');
+      const isAdminRoute = router.pathname.startsWith('/admin');
+      
+      if (!authToken) {
+        // If it's an admin route, redirect to admin login
+        if (isAdminRoute) {
+          router.push('/admin/login');
+        } else {
+          // For regular routes, redirect to main login
+          router.push('/');
+        }
+        return;
+      }
 
-    if (!authToken) {
-      // Redirect to the login page if the user is not authenticated
-      router.push('/index'); // Adjust to match your login route
-    }
-  }, []);
+      // If we have a token and it's an admin route, verify admin status
+      if (isAdminRoute) {
+        try {
+          const response = await fetch('/api/verify-admin', {
+            headers: {
+              Authorization: `Bearer ${authToken}`
+            }
+          });
+          
+          if (!response.ok) {
+            // If not admin, redirect to dashboard
+            router.push('/dashboard');
+          }
+        } catch (error) {
+          console.error('Error verifying admin status:', error);
+          router.push('/dashboard');
+        }
+      }
+    };
+
+    checkAuth();
+  }, [router.pathname]);
 
   return (
     <ErrorBoundary
       FallbackComponent={ErrorFallback}
       onError={(error, info) => {
         console.error("ErrorBoundary caught an error", error, info);
-        // Add external logging service here if needed (e.g., Sentry)
       }}
     >
       <DashboardProvider>
