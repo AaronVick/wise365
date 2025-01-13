@@ -42,10 +42,6 @@ import {
   handleContextMenu
 } from '../lib/dashboardTools';
 
-const DynamicComponent = dynamic(() => import('../components/ComponentName'), {
-  ssr: false,
-  loading: () => <div>Loading...</div>
-});
 
 const DynamicGoalCreationModal = dynamic(() => import('../components/GoalCreationModal'), {
   ssr: false,
