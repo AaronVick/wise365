@@ -76,65 +76,79 @@ const Dashboard = () => {
   } = useDashboard() || {};
 
   // Main authentication listener
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      setAuthChecked(true);
-      if (user) {
-        setCurrentUser(user);
-        try {
-          await initializeUserData(user.uid);
-        } catch (error) {
-          console.error('Error initializing user data:', error);
-          setError('Failed to initialize user data');
-        }
-      } else {
-        router.replace('/login');
+useEffect(() => {
+  const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    setAuthChecked(true);
+    setIsLoading(true);
+
+    if (user) {
+      setCurrentUser(user);
+      console.log('User found:', user);
+
+      try {
+        // Initialize user data
+        await initializeUserData(user.uid);
+        console.log('User data initialized successfully for UID:', user.uid);
+      } catch (error) {
+        console.error('Error initializing user data:', error);
+        setError('Failed to initialize user data');
       }
-      setIsLoading(false);
+    } else {
+      console.warn('No user found, redirecting to login');
+      router.replace('/login');
+    }
+
+    setIsLoading(false);
+  });
+
+  return () => unsubscribe(); // Clean up auth listener on component unmount
+}, []);
+
+// Initialize user data
+const initializeUserData = async (userId) => {
+  try {
+    console.log('Initializing user data for UID:', userId);
+
+    // Set up real-time listener for goals
+    const goalsQuery = query(
+      collection(db, 'goals'),
+      where('userId', '==', userId)
+    );
+
+    const unsubscribeGoals = onSnapshot(goalsQuery, (snapshot) => {
+      const goalsData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      console.log('Real-time goals updated:', goalsData);
+      setGoals(goalsData);
     });
 
-    return () => unsubscribe();
-  }, []);
+    // Fetch initial project names
+    const projectsQuery = query(
+      collection(db, 'projectNames'),
+      where('userId', '==', userId)
+    );
 
-  // Initialize user data
-  const initializeUserData = async (userId) => {
-    try {
-      // Set up listeners for real-time updates
-      const goalsQuery = query(
-        collection(db, 'goals'),
-        where('userId', '==', userId)
-      );
-      
-      // Real-time goals listener
-      const unsubscribeGoals = onSnapshot(goalsQuery, (snapshot) => {
-        const goalsData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setGoals(goalsData);
-      });
+    const projectsSnapshot = await getDocs(projectsQuery);
+    const projectsData = projectsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    console.log('Projects fetched:', projectsData);
+    setProjects(projectsData);
 
-      // Fetch initial projects
-      const projectsQuery = query(
-        collection(db, 'projectNames'),
-        where('userId', '==', userId)
-      );
-      const projectsSnapshot = await getDocs(projectsQuery);
-      const projectsData = projectsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setProjects(projectsData);
+    // Clean up listeners
+    return () => {
+      console.log('Cleaning up goals listener');
+      unsubscribeGoals();
+    };
+  } catch (error) {
+    console.error('Error initializing user data for UID:', userId, error);
+    throw error; // Propagate the error to be handled by the caller
+  }
+};
 
-      // Clean up listeners on component unmount
-      return () => {
-        unsubscribeGoals();
-      };
-    } catch (error) {
-      console.error('Error initializing user data:', error);
-      throw error; // Propagate error to be handled by the caller
-    }
-  };
 
   // Fetch goals when user changes
   useEffect(() => {
