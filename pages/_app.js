@@ -3,6 +3,8 @@ import '../styles/globals.css';
 import { Inter } from 'next/font/google';
 import { DashboardProvider } from '../contexts/DashboardContext';
 import { ErrorBoundary } from 'react-error-boundary';
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
 
 const inter = Inter({ subsets: ['latin'], fallback: ['sans-serif'] });
 
@@ -20,6 +22,17 @@ function ErrorFallback({ error }) {
 }
 
 function MyApp({ Component, pageProps }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    const authToken = localStorage.getItem('auth_token'); // Replace with your token key
+
+    if (!authToken) {
+      // Redirect to the login page if the user is not authenticated
+      router.push('/login'); // Adjust to match your login route
+    }
+  }, []);
+
   return (
     <ErrorBoundary
       FallbackComponent={ErrorFallback}
