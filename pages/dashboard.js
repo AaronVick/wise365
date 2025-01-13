@@ -324,27 +324,23 @@ const Dashboard = () => {
 
        {/* Main Content */}
       <div className="flex-1">
-        {currentChat?.id ? (  // Change this line to check for currentChat.id
+        {currentChat && currentChat.id ? (
           <ChatInterface
             chatId={currentChat.id}
-            agentId={currentChat.agentId}
+            agentId={currentChat.agentId || ''}
             userId={currentUser?.uid || ''}
-            isDefault={currentChat.isDefault || false}
-            title={currentChat.title || ''}
-            conversationName={currentChat.conversationName}
-            projectId={currentChat.projectId}
-            projectName={currentChat.projectName}
+            // other props
           />
         ) : (
-          <DashboardContent
-            currentUser={currentUser || {}}
-            currentTool={currentTool}
-            onToolComplete={() => setCurrentTool(null)}
-            setCurrentTool={setCurrentTool}
-            currentChat={currentChat}          
-            setCurrentChat={setCurrentChat} 
-          />
-        )}
+            <DashboardContent
+              currentUser={currentUser}
+              currentTool={currentTool}
+              setCurrentChat={setCurrentChat}
+              onToolComplete={() => setCurrentTool(null)}
+              setCurrentTool={setCurrentTool}
+              currentChat={currentChat}          
+            />
+          )}
       </div>
     </div> 
   );  
