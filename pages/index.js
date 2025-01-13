@@ -20,13 +20,17 @@ const HomePage = () => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       try {
         if (user) {
-          console.log('User found:', user);
+          console.log('User found:', user.uid);
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
 
           if (userDoc.exists()) {
-            console.log('User document exists. Redirecting to dashboard...');
-            router.replace('/dashboard');
+            const userData = userDoc.data();
+            console.log('User document exists. Redirecting to dashboard...', userData);
+            router.replace({
+              pathname: '/dashboard',
+              query: { userId: userData.userId },
+            });
           } else {
             console.log('User document not found. Redirecting to registration...');
             router.replace('/register');
@@ -37,7 +41,6 @@ const HomePage = () => {
       } catch (error) {
         console.error('Auth check error:', error);
       } finally {
-        console.log('Auth check complete');
         setIsAuthChecking(false);
       }
     });
@@ -68,8 +71,12 @@ const HomePage = () => {
       const userDoc = await getDoc(userDocRef);
 
       if (userDoc.exists()) {
+        const userData = userDoc.data();
         console.log('User document found. Redirecting to dashboard...');
-        router.replace('/dashboard');
+        router.replace({
+          pathname: '/dashboard',
+          query: { userId: userData.userId },
+        });
       } else {
         console.log('User document not found. Redirecting to registration...');
         router.replace('/register');

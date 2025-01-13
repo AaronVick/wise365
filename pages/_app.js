@@ -1,4 +1,3 @@
-// pages/_app.js
 import '../styles/globals.css';
 import { Inter } from 'next/font/google';
 import { DashboardProvider } from '../contexts/DashboardContext';
@@ -61,7 +60,11 @@ function MyApp({ Component, pageProps }) {
   }, [authChecked, router.pathname]);
 
   if (!authChecked) {
-    return null; // Or a loading spinner
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div>Loading...</div>
+      </div>
+    );
   }
 
   return (
