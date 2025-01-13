@@ -20,42 +20,72 @@ function ErrorFallback({ error }) {
   );
 }
 
+function clearCookies() {
+  document.cookie.split(";").forEach((cookie) => {
+    document.cookie = cookie
+      .replace(/^ +/, "")
+      .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+  });
+  localStorage.clear();
+}
+
+async function checkAuth(authChecked, setAuthChecked, router) {
+  const authToken = localStorage.getItem('auth_token');
+  const isAdminRoute = router.pathname.startsWith('/admin');
+
+  if (!authToken) {
+    if (isAdminRoute) {
+      router.push('/admin/login');
+    } else {
+      router.push('/');
+    }
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/verify-auth', {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+
+    if (!response.ok) {
+      throw new Error('Invalid token');
+    }
+
+    const cookies = document.cookie
+      .split(';')
+      .reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
+        acc[key] = value;
+        return acc;
+      }, {});
+
+    const loginTimestamp = cookies.login_timestamp;
+    if (loginTimestamp) {
+      const cookieDate = new Date(Number(loginTimestamp));
+      const now = new Date();
+
+      if (now - cookieDate > 24 * 60 * 60 * 1000) {
+        console.log('Cookie expired, forcing re-login...');
+        clearCookies();
+        router.push(isAdminRoute ? '/admin/login' : '/');
+        return;
+      }
+    }
+    setAuthChecked(true);
+  } catch (error) {
+    console.error('Authentication failed:', error);
+    clearCookies();
+    router.push(isAdminRoute ? '/admin/login' : '/');
+  }
+}
+
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const authToken = localStorage.getItem('auth_token');
-      const isAdminRoute = router.pathname.startsWith('/admin');
-
-      if (!authToken) {
-        if (isAdminRoute) {
-          router.push('/admin/login');
-        } else {
-          router.push('/');
-        }
-        return;
-      }
-
-      try {
-        const response = await fetch('/api/verify-auth', {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
-
-        if (!response.ok) {
-          throw new Error('Invalid token');
-        }
-        setAuthChecked(true);
-      } catch (error) {
-        console.error('Authentication failed:', error);
-        localStorage.removeItem('auth_token');
-        router.push('/');
-      }
-    };
-
     if (!authChecked) {
-      checkAuth();
+      checkAuth(authChecked, setAuthChecked, router);
     }
   }, [authChecked, router.pathname]);
 

@@ -23,6 +23,9 @@ export default function AdminLogin() {
       // Save token to localStorage
       localStorage.setItem('auth_token', idToken);
 
+      // Set a cookie for login timestamp
+      document.cookie = `login_timestamp=${Date.now()};path=/;max-age=${24 * 60 * 60};`;
+
       // Verify admin status
       const response = await fetch('/api/verify-admin', {
         headers: {
@@ -37,6 +40,7 @@ export default function AdminLogin() {
         console.error('Not authorized as admin');
         setError('Access denied. You are not authorized to view this page.');
         localStorage.removeItem('auth_token');
+        document.cookie = 'login_timestamp=;path=/;expires=Thu, 01 Jan 1970 00:00:00 UTC;';
       }
     } catch (error) {
       console.error('Login error:', error);

@@ -14,16 +14,30 @@ const HomePage = () => {
   const [error, setError] = useState('');
   const router = useRouter();
 
-  // Check for existing auth session
+  const clearSession = () => {
+    localStorage.clear();
+    document.cookie = 'login_timestamp=;path=/;expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+  };
+
+  const checkCookieValidity = () => {
+    const cookies = document.cookie.split('; ').reduce((acc, cookie) => {
+      const [key, value] = cookie.split('=');
+      acc[key] = value;
+      return acc;
+    }, {});
+    const timestamp = parseInt(cookies.login_timestamp, 10);
+    return timestamp && Date.now() - timestamp < 24 * 60 * 60 * 1000;
+  };
+
   useEffect(() => {
     console.log('Starting auth check...');
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       try {
-        if (user) {
+        if (user && checkCookieValidity()) {
           console.log('User found:', user.uid);
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
-  
+
           if (userDoc.exists()) {
             const userData = userDoc.data();
             console.log('User document exists. Redirecting to dashboard...', userData);
@@ -33,25 +47,27 @@ const HomePage = () => {
             });
           } else {
             console.log('User document not found. Redirecting to registration...');
+            clearSession();
             router.replace('/register');
           }
         } else {
-          console.log('No user found. Remaining on login page.');
+          console.log('No valid session or cookie expired. Redirecting to login...');
+          clearSession();
         }
       } catch (error) {
         console.error('Auth check error:', error);
+        clearSession();
       } finally {
         console.log('Auth check complete');
         setIsAuthChecking(false);
       }
     });
-  
+
     return () => {
       console.log('Cleaning up auth listener');
       unsubscribe();
     };
   }, [router]);
-  
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -75,12 +91,14 @@ const HomePage = () => {
       if (userDoc.exists()) {
         const userData = userDoc.data();
         console.log('User document found. Redirecting to dashboard...');
+        document.cookie = `login_timestamp=${Date.now()};path=/;max-age=${24 * 60 * 60}`;
         router.replace({
           pathname: '/dashboard',
           query: { userId: userData.userId },
         });
       } else {
         console.log('User document not found. Redirecting to registration...');
+        clearSession();
         router.replace('/register');
       }
     } catch (error) {
