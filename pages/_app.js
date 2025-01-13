@@ -29,7 +29,7 @@ function MyApp({ Component, pageProps }) {
 
     if (!authToken) {
       // Redirect to the login page if the user is not authenticated
-      router.push('/login'); // Adjust to match your login route
+      router.push('/index'); // Adjust to match your login route
     }
   }, []);
 
