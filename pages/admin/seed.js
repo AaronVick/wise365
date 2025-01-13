@@ -1,7 +1,6 @@
 // pages/admin/seed.js
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
-import { Progress } from '@/components/ui/progress';
 
 export default function SeedPage() {
   const [status, setStatus] = useState('');
@@ -112,7 +111,12 @@ export default function SeedPage() {
                       <span>Overall Progress</span>
                       <span>{Math.round(progress)}%</span>
                     </div>
-                    <Progress value={progress} className="w-full" />
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div 
+                        className="bg-green-500 h-2.5 rounded-full transition-all duration-300" 
+                        style={{ width: `${progress}%` }}
+                      ></div>
+                    </div>
                   </div>
                   
                   {currentChunk.total > 0 && (
