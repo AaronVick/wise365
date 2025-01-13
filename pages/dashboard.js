@@ -1,9 +1,11 @@
+// pages/dashboard.js
+
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { doc, getDoc, collection, getDocs, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -15,11 +17,15 @@ import {
 import { 
   Home, 
   Users, 
-  Calendar, 
   Settings,
   LogOut,
-  Plus
+  Plus,
+  MessageSquare,
+  Target
 } from 'lucide-react';
+import { agents } from '../data/agents';
+import { useDashboard } from '../contexts/DashboardContext';
+import DashboardContent from '../components/DashboardContent';
 
 const Dashboard = () => {
   const router = useRouter();
@@ -27,26 +33,47 @@ const Dashboard = () => {
   const [userData, setUserData] = useState(null);
   const [isLoadingUserData, setIsLoadingUserData] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(250);
-  const [projects, setProjects] = useState([]);
-  const [goals, setGoals] = useState([]);
-  const [resources, setResources] = useState([]);
+  const [currentChat, setCurrentChat] = useState(null);
+  const [nestedChats, setNestedChats] = useState({});
+  const [currentTool, setCurrentTool] = useState(null);
 
+  // Fetch user data and nested chats
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchUserDataAndChats = async () => {
       if (user) {
         try {
+          // Fetch user data
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
 
           if (userDoc.exists()) {
             setUserData(userDoc.data());
-            console.log('User data fetched:', userDoc.data());
+            
+            // Fetch nested chats for each agent
+            const chatsRef = collection(db, 'conversations');
+            const chatsSnapshot = await getDocs(chatsRef);
+            const chatsByAgent = {};
+
+            chatsSnapshot.docs.forEach(doc => {
+              const chatData = doc.data();
+              if (chatData.agentId && !chatData.isDefault) {
+                if (!chatsByAgent[chatData.agentId]) {
+                  chatsByAgent[chatData.agentId] = [];
+                }
+                chatsByAgent[chatData.agentId].push({
+                  id: doc.id,
+                  ...chatData,
+                });
+              }
+            });
+
+            setNestedChats(chatsByAgent);
           } else {
             console.error('No user document found. Redirecting to login...');
             router.replace('/');
           }
         } catch (error) {
-          console.error('Error fetching user document:', error);
+          console.error('Error fetching data:', error);
         } finally {
           setIsLoadingUserData(false);
         }
@@ -54,23 +81,101 @@ const Dashboard = () => {
     };
 
     if (!loading && user) {
-      fetchUserData();
+      fetchUserDataAndChats();
     } else if (!loading && !user) {
-      console.log('No user found, redirecting to login...');
       router.replace('/');
     }
   }, [user, loading, router]);
 
-  const handleLogout = async () => {
+
+
+  //agent and chat functions
+
+  // Handler for starting or resuming chat with an agent
+  const handleAgentClick = async (agent) => {
+    if (!agent?.id || !user?.uid) {
+      console.error('Missing required agent or user data');
+      return;
+    }
+  
     try {
-      await auth.signOut();
-      router.replace('/');
+      const conversationsRef = collection(db, 'conversations');
+      const q = query(
+        conversationsRef,
+        where('agentId', '==', agent.id),
+        where('participants', 'array-contains', user.uid),
+        where('isDefault', '==', true)
+      );
+      const querySnapshot = await getDocs(q);
+  
+      if (!querySnapshot.empty) {
+        const existingDoc = querySnapshot.docs[0];
+        const existingData = existingDoc.data();
+        setCurrentChat({
+          id: existingDoc.id,
+          agentId: agent.id,
+          title: existingData.name || `${agent.name} Conversation`,
+          participants: existingData.participants || [user.uid, agent.id],
+          isDefault: true,
+          conversationName: existingDoc.id
+        });
+      } else {
+        await startNewConversation(agent);
+      }
+      
+      router.push(`/chat/${agent.id}`);
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('Error handling agent click:', error);
     }
   };
 
-  const handleSidebarResizeStart = (e) => {
+  // Start a new conversation with an agent
+  const startNewConversation = async (agent) => {
+    try {
+      // Create the conversation document
+      const conversationData = {
+        agentId: agent.id,
+        createdAt: serverTimestamp(),
+        createdBy: user.uid,
+        isDefault: true,
+        lastUpdatedAt: serverTimestamp(),
+        messages: [],
+        name: `${agent.name} Conversation`,
+        participants: [user.uid, agent.id]
+      };
+
+      const conversationRef = await addDoc(collection(db, 'conversations'), conversationData);
+      
+      setCurrentChat({
+        id: conversationRef.id,
+        agentId: agent.id,
+        title: `${agent.name} Conversation`,
+        participants: [user.uid, agent.id],
+        isDefault: true,
+        conversationName: conversationRef.id
+      });
+
+      return conversationRef;
+    } catch (error) {
+      console.error('Error starting new conversation:', error);
+      throw error;
+    }
+  };
+
+  // Handle subchat click
+  const handleSubChatClick = (agentId, subChat) => {
+    setCurrentChat({
+      id: subChat.id,
+      agentId: agentId,
+      title: subChat.name || 'Untitled Chat',
+      participants: subChat.participants,
+      isDefault: false,
+      conversationName: subChat.id
+    });
+    router.push(`/chat/${subChat.id}`);
+  };
+
+  const handleSidebarResize = (e) => {
     const startX = e.clientX;
     const startWidth = sidebarWidth;
     
@@ -88,6 +193,78 @@ const Dashboard = () => {
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
+
+  // Render agents by category with Shawn at top
+  const renderAgentCategories = () => {
+    const categories = ['Administrative', 'Marketing', 'Sales', 'SocialMedia', 'CopyEditing'];
+    const shawn = agents.Administrative.find(agent => agent.id === 'shawn');
+    
+    return (
+      <>
+        {/* Shawn section at the top */}
+        {shawn && (
+          <div className="mb-4 px-4 py-2 bg-gray-800 rounded">
+            <div 
+              className="flex items-center justify-between cursor-pointer"
+              onClick={() => handleAgentClick(shawn)}
+            >
+              <div>
+                <h4 className="font-medium text-white">{shawn.name}</h4>
+                <p className="text-xs text-gray-400">{shawn.role}</p>
+              </div>
+              <MessageSquare className="h-4 w-4 text-gray-400" />
+            </div>
+          </div>
+        )}
+
+        {/* Rest of the categories */}
+        {categories.map(category => (
+          <AccordionItem key={category} value={category}>
+            <AccordionTrigger className="text-white hover:text-white">
+              {category}
+            </AccordionTrigger>
+            <AccordionContent>
+              {agents[category]
+                ?.filter(agent => agent.id !== 'shawn')
+                .map(agent => (
+                  <div key={agent.id} className="space-y-2">
+                    <div
+                      className="px-4 py-2 hover:bg-gray-800 rounded cursor-pointer"
+                      onClick={() => handleAgentClick(agent)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium text-white">{agent.name}</h4>
+                          <p className="text-xs text-gray-400">{agent.role}</p>
+                        </div>
+                        <MessageSquare className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </div>
+                    {/* Sub-chats for this agent */}
+                    {nestedChats[agent.id]?.length > 0 && (
+                      <div className="ml-4 space-y-1">
+                        {nestedChats[agent.id].map(subChat => (
+                          <div
+                            key={subChat.id}
+                            className="px-3 py-1 hover:bg-gray-800 rounded cursor-pointer text-sm text-gray-300"
+                            onClick={() => handleSubChatClick(agent.id, subChat)}
+                          >
+                            {subChat.name || 'Untitled Chat'}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </>
+    );
+  };
+
+
+  // render and layout
 
   if (loading || isLoadingUserData) {
     return (
@@ -109,15 +286,18 @@ const Dashboard = () => {
       {/* Sidebar */}
       <div
         className="bg-gray-900 text-white flex flex-col"
-        style={{
-          width: `${sidebarWidth}px`,
-          minWidth: '200px',
-          maxWidth: '400px'
-        }}
+        style={{ width: `${sidebarWidth}px`, minWidth: '200px', maxWidth: '400px' }}
       >
-        {/* Home and Title Bar */}
+        {/* Logo and Home */}
         <div className="p-4 border-b border-gray-700 flex items-center space-x-4">
-          <Button variant="ghost" className="text-white hover:text-white">
+          <Button 
+            variant="ghost" 
+            className="text-white hover:text-white"
+            onClick={() => {
+              setCurrentChat(null);
+              router.push('/dashboard');
+            }}
+          >
             <Home className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-bold">Business Wise365</h1>
@@ -126,80 +306,9 @@ const Dashboard = () => {
         {/* Scrollable Content */}
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-4">
-            {/* Projects Section */}
-            <Accordion type="single" collapsible>
-              <AccordionItem value="projects">
-                <AccordionTrigger className="text-white">
-                  Projects
-                </AccordionTrigger>
-                <AccordionContent>
-                  {projects.length > 0 ? (
-                    projects.map((project) => (
-                      <div key={project.id} className="py-2 px-4 hover:bg-gray-800 rounded">
-                        <p className="text-sm">{project.name}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-400 px-4">No projects yet</p>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full mt-2 text-white hover:text-white hover:bg-gray-800"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Project
-                  </Button>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-
-            {/* Goals Section */}
-            <Accordion type="single" collapsible>
-              <AccordionItem value="goals">
-                <AccordionTrigger className="text-white">
-                  Goals
-                </AccordionTrigger>
-                <AccordionContent>
-                  {goals.length > 0 ? (
-                    goals.map((goal) => (
-                      <div key={goal.id} className="py-2 px-4 hover:bg-gray-800 rounded">
-                        <p className="text-sm">{goal.title}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-400 px-4">No goals yet</p>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full mt-2 text-white hover:text-white hover:bg-gray-800"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Goal
-                  </Button>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-
-            {/* Resources Section */}
-            <Accordion type="single" collapsible>
-              <AccordionItem value="resources">
-                <AccordionTrigger className="text-white">
-                  Resources
-                </AccordionTrigger>
-                <AccordionContent>
-                  {resources.length > 0 ? (
-                    resources.map((resource) => (
-                      <div key={resource.id} className="py-2 px-4 hover:bg-gray-800 rounded">
-                        <p className="text-sm">{resource.name}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-400 px-4">No resources yet</p>
-                  )}
-                </AccordionContent>
-              </AccordionItem>
+            {/* Agents Section */}
+            <Accordion type="multiple" className="w-full">
+              {renderAgentCategories()}
             </Accordion>
           </div>
         </ScrollArea>
@@ -209,18 +318,25 @@ const Dashboard = () => {
           <div className="flex items-center mb-4">
             <div className="flex-shrink-0">
               <div className="h-10 w-10 rounded-full bg-gray-700 flex items-center justify-center">
-                {userData.name?.charAt(0) || 'U'}
+                {userData?.name?.charAt(0) || 'U'}
               </div>
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium">{userData.name}</p>
-              <p className="text-xs text-gray-400">{userData.role}</p>
+              <p className="text-sm font-medium">{userData?.name}</p>
+              <p className="text-xs text-gray-400">{userData?.role}</p>
             </div>
           </div>
           <Button
             variant="ghost"
             className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-            onClick={handleLogout}
+            onClick={async () => {
+              try {
+                await auth.signOut();
+                router.replace('/');
+              } catch (error) {
+                console.error('Error signing out:', error);
+              }
+            }}
           >
             <LogOut className="h-5 w-5 mr-3" />
             Sign out
@@ -231,57 +347,32 @@ const Dashboard = () => {
       {/* Resize Handle */}
       <div
         className="w-1 cursor-ew-resize bg-gray-700"
-        onMouseDown={handleSidebarResizeStart}
+        onMouseDown={handleSidebarResize}
       />
 
-      {/* Main content */}
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-white shadow">
-          <div className="px-6 py-4">
-            <h2 className="text-xl font-semibold text-gray-800">Dashboard</h2>
-          </div>
-        </header>
-
-        {/* Main content area */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Overview Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-600">User ID: {userData.userId}</p>
-                  <p className="text-sm text-gray-600">Role: {userData.role}</p>
-                  <p className="text-sm text-gray-600">Auth ID: {user.uid}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Recent Activity Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600">No recent activity</p>
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button className="w-full">Create New Project</Button>
-                <Button variant="outline" className="w-full">View Reports</Button>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
+        {currentChat ? (
+          // If we have a current chat, show the ChatInterface
+          <ChatInterface
+            chatId={currentChat.id}
+            agentId={currentChat.agentId}
+            userId={user.uid}
+            isDefault={currentChat.isDefault}
+            title={currentChat.title}
+            conversationName={currentChat.conversationName}
+          />
+        ) : (
+          // Otherwise show the dashboard content
+          <DashboardContent
+            currentUser={userData}
+            currentTool={currentTool}
+            setCurrentTool={setCurrentTool}
+            onToolComplete={() => setCurrentTool(null)}
+            currentChat={currentChat}
+            setCurrentChat={setCurrentChat}
+          />
+        )}
       </div>
     </div>
   );
