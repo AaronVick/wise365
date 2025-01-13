@@ -29,15 +29,21 @@ function clearCookies() {
   localStorage.clear();
 }
 
-async function checkAuth(authChecked, setAuthChecked, router) {
+async function checkAuth(setAuthChecked, router) {
   const authToken = localStorage.getItem('auth_token');
   const isAdminRoute = router.pathname.startsWith('/admin');
+  
+  // Don't check auth for login pages
+  if (router.pathname === '/admin/login' || router.pathname === '/') {
+    setAuthChecked(true);
+    return;
+  }
 
   if (!authToken) {
     if (isAdminRoute) {
-      router.push('/admin/login');
+      router.replace('/admin/login');
     } else {
-      router.push('/');
+      router.replace('/');
     }
     return;
   }
@@ -50,32 +56,12 @@ async function checkAuth(authChecked, setAuthChecked, router) {
     if (!response.ok) {
       throw new Error('Invalid token');
     }
-
-    const cookies = document.cookie
-      .split(';')
-      .reduce((acc, cookie) => {
-        const [key, value] = cookie.trim().split('=');
-        acc[key] = value;
-        return acc;
-      }, {});
-
-    const loginTimestamp = cookies.login_timestamp;
-    if (loginTimestamp) {
-      const cookieDate = new Date(Number(loginTimestamp));
-      const now = new Date();
-
-      if (now - cookieDate > 24 * 60 * 60 * 1000) {
-        console.log('Cookie expired, forcing re-login...');
-        clearCookies();
-        router.push(isAdminRoute ? '/admin/login' : '/');
-        return;
-      }
-    }
+    
     setAuthChecked(true);
   } catch (error) {
     console.error('Authentication failed:', error);
-    clearCookies();
-    router.push(isAdminRoute ? '/admin/login' : '/');
+    localStorage.removeItem('auth_token');
+    router.replace(isAdminRoute ? '/admin/login' : '/');
   }
 }
 
@@ -84,15 +70,16 @@ function MyApp({ Component, pageProps }) {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    if (!authChecked) {
-      checkAuth(authChecked, setAuthChecked, router);
-    }
-  }, [authChecked, router.pathname]);
+    checkAuth(setAuthChecked, router);
+  }, [router.pathname]); // Only depend on pathname changes
 
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div>Loading...</div>
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }

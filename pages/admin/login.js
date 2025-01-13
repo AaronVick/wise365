@@ -1,5 +1,8 @@
-import { useState } from 'react';
+// pages/admin/login.js
+
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../../lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
@@ -9,24 +12,50 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const [user, authLoading] = useAuthState(auth);
+
+  useEffect(() => {
+    const checkAdminAccess = async () => {
+      if (user) {
+        try {
+          const idToken = await user.getIdToken();
+          const response = await fetch('/api/verify-admin', {
+            headers: {
+              Authorization: `Bearer ${idToken}`,
+            },
+          });
+
+          if (response.ok) {
+            router.replace('/admin');
+          } else {
+            setError('Not authorized as admin');
+            await auth.signOut();
+          }
+        } catch (error) {
+          console.error('Admin verification failed:', error);
+          setError('Error verifying admin access');
+          await auth.signOut();
+        }
+      }
+    };
+
+    if (!authLoading) {
+      checkAdminAccess();
+    }
+  }, [user, authLoading, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLoading) return;
+
     setIsLoading(true);
-    setError(''); // Clear previous errors
+    setError('');
 
     try {
-      // Authenticate admin
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const idToken = await userCredential.user.getIdToken();
-
-      // Save token to localStorage
       localStorage.setItem('auth_token', idToken);
-
-      // Set a cookie for login timestamp
-      document.cookie = `login_timestamp=${Date.now()};path=/;max-age=${24 * 60 * 60};`;
-
-      // Verify admin status
+      
       const response = await fetch('/api/verify-admin', {
         headers: {
           Authorization: `Bearer ${idToken}`,
@@ -34,13 +63,9 @@ export default function AdminLogin() {
       });
 
       if (response.ok) {
-        console.log('Admin authenticated successfully');
-        router.push('/admin');
+        router.replace('/admin');
       } else {
-        console.error('Not authorized as admin');
-        setError('Access denied. You are not authorized to view this page.');
-        localStorage.removeItem('auth_token');
-        document.cookie = 'login_timestamp=;path=/;expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+        throw new Error('Not authorized as admin');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -48,16 +73,27 @@ export default function AdminLogin() {
         'auth/invalid-email': 'Invalid email format',
         'auth/user-disabled': 'This account has been disabled',
         'auth/user-not-found': 'No account found with this email',
-        'auth/wrong-password': 'Incorrect password. Please try again.',
-        'auth/too-many-requests': 'Too many attempts. Please try again later.',
-        'auth/network-request-failed': 'Network error. Please check your connection.',
+        'auth/wrong-password': 'Invalid password',
+        'auth/too-many-requests': 'Too many attempts. Please try again later',
+        'auth/network-request-failed': 'Network error. Please check your connection',
       };
-
-      setError(errorMessages[error.code] || 'An unexpected error occurred. Please try again.');
+      setError(errorMessages[error.code] || error.message || 'Unexpected error. Please try again.');
+      localStorage.removeItem('auth_token');
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

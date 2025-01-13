@@ -1,5 +1,8 @@
+// pages/index.js
+
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db, signInWithEmailAndPassword } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
@@ -10,48 +13,33 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 
 const HomePage = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [error, setError] = useState('');
   const router = useRouter();
+  const [user, authLoading] = useAuthState(auth);
 
   useEffect(() => {
-    console.log('Initializing auth check...');
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      try {
-        if (user) {
-          console.log('User found:', user.uid);
+    const checkUser = async () => {
+      if (user) {
+        try {
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
-
+          
           if (userDoc.exists()) {
-            const userData = userDoc.data();
-            console.log('User document exists:', userData);
-            console.log('Redirecting to dashboard...');
-            router.replace({
-              pathname: '/dashboard',
-              query: { userId: userData.userId },
-            });
+            router.replace('/dashboard');
           } else {
-            console.log('User document not found. Redirecting to registration...');
             router.replace('/register');
           }
-        } else {
-          console.log('No user found. Remaining on login page.');
-          setIsAuthChecking(false);
+        } catch (error) {
+          console.error('Error checking user document:', error);
+          setError('Error verifying user account');
         }
-      } catch (error) {
-        console.error('Error during auth check:', error.message || error);
-      } finally {
-        console.log('Auth check completed.');
-        setIsAuthChecking(false);
       }
-    });
-
-    return () => {
-      console.log('Cleaning up auth listener');
-      unsubscribe();
     };
-  }, [router]);
+
+    if (!authLoading) {
+      checkUser();
+    }
+  }, [user, authLoading, router]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -63,28 +51,12 @@ const HomePage = () => {
     const email = e.target.email.value.trim();
     const password = e.target.password.value;
 
-    console.log('Attempting login...');
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      console.log('Login successful:', user.uid);
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        console.log('User document found. Redirecting to dashboard...');
-        router.replace({
-          pathname: '/dashboard',
-          query: { userId: userData.userId },
-        });
-      } else {
-        console.log('User document not found. Redirecting to registration...');
-        router.replace('/register');
-      }
+      const idToken = await userCredential.user.getIdToken();
+      localStorage.setItem('auth_token', idToken);
     } catch (error) {
-      console.error('Login failed:', error.message || error);
+      console.error('Login failed:', error);
       const errorMessages = {
         'auth/invalid-email': 'Invalid email format',
         'auth/user-disabled': 'This account has been disabled',
@@ -93,15 +65,13 @@ const HomePage = () => {
         'auth/too-many-requests': 'Too many attempts. Please try again later',
         'auth/network-request-failed': 'Network error. Please check your connection',
       };
-
       setError(errorMessages[error.code] || 'Unexpected error. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (isAuthChecking) {
-    console.log('Still checking auth...');
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
