@@ -17,101 +17,105 @@ const HomePage = () => {
   const router = useRouter();
 
   // Check for existing auth session
-  useEffect(() => {
-    console.log('Starting auth check...');
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      try {
-        if (user) {
-          console.log('User found:', user);
-          console.log('Fetching user document...');
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            console.log('User document exists, redirecting...');
+useEffect(() => {
+  console.log('Starting auth check...');
+  const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    try {
+      if (user) {
+        console.log('User found:', user);
+        console.log('Fetching user document...');
+        
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists()) {
+          console.log('User document exists. Redirecting to dashboard...');
+          if (router.pathname !== '/dashboard') {
             router.push('/dashboard');
-          } else {
-            console.log('User document not found');
           }
         } else {
-          console.log('No user found, redirecting to login');
+          console.log('User document not found. Redirecting to registration...');
+          if (router.pathname !== '/register') {
+            router.push('/register');
+          }
         }
-      } catch (error) {
-        console.error('Auth check error:', error);
-      } finally {
-        console.log('Auth check complete');
-        setIsAuthChecking(false);
-      }
-    });
-
-    return () => {
-      console.log('Cleaning up auth listener');
-      unsubscribe();
-    };
-  }, []);
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    if (isLoading) return;
-    
-    setIsLoading(true);
-    setError('');
-
-    const email = e.target.email.value.trim();
-    const password = e.target.password.value;
-
-    console.log('Starting login attempt...');
-
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      console.log('Login successful for user:', user);
-
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (!userDoc.exists()) {
-        console.log('Creating new user document for', user.uid);
-        await setDoc(userDocRef, {
-          email: user.email,
-          createdAt: serverTimestamp(),
-          uid: user.uid,
-          role: 'user'
-        });
       } else {
-        console.log('User document already exists');
+        console.log('No user found. Redirecting to login...');
+        if (router.pathname !== '/') {
+          router.push('/');
+        }
       }
-
-      localStorage.setItem('userId', user.uid);
-      console.log('Redirecting to dashboard...');
-      router.push('/dashboard');
     } catch (error) {
-      console.error('Login error:', error);
-      const errorMessages = {
-        'auth/invalid-email': 'Invalid email format',
-        'auth/user-disabled': 'This account has been disabled',
-        'auth/user-not-found': 'No account found with this email',
-        'auth/wrong-password': 'Invalid password',
-        'auth/too-many-requests': 'Too many attempts. Please try again later',
-        'auth/network-request-failed': 'Network error. Please check your connection',
-        'auth/internal-error': 'Authentication service error. Please try again'
-      };
-
-      setError(errorMessages[error.code] || error.message || 'Login failed. Please try again.');
+      console.error('Auth check error:', error);
     } finally {
-      setIsLoading(false);
+      console.log('Auth check complete');
+      setIsAuthChecking(false);
     }
-  };
+  });
 
-  // Show loading state while checking authentication
-  if (isAuthChecking) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+  return () => {
+    console.log('Cleaning up auth listener');
+    unsubscribe();
+  };
+}, [router]);
+
+const handleLogin = async (e) => {
+  e.preventDefault();
+  if (isLoading) return;
+
+  setIsLoading(true);
+  setError('');
+
+  const email = e.target.email.value.trim();
+  const password = e.target.password.value;
+
+  console.log('Starting login attempt...');
+
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    console.log('Login successful for user:', user);
+
+    const userDocRef = doc(db, 'users', user.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (!userDoc.exists()) {
+      console.log('User document not found. Redirecting to registration...');
+      router.push('/register');
+    } else {
+      console.log('User document already exists. Redirecting to dashboard...');
+      router.push('/dashboard');
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    const errorMessages = {
+      'auth/invalid-email': 'Invalid email format',
+      'auth/user-disabled': 'This account has been disabled',
+      'auth/user-not-found': 'No account found with this email',
+      'auth/wrong-password': 'Invalid password',
+      'auth/too-many-requests': 'Too many attempts. Please try again later',
+      'auth/network-request-failed': 'Network error. Please check your connection',
+      'auth/internal-error': 'Authentication service error. Please try again',
+    };
+
+    setError(errorMessages[error.code] || error.message || 'Login failed. Please try again.');
+  } finally {
+    setIsLoading(false);
   }
+};
+
+// Show loading state while checking authentication
+if (isAuthChecking) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">

@@ -10,7 +10,10 @@ const Dashboard = () => {
   useEffect(() => {
     if (!loading) {
       if (!user) {
+        console.log('No user found, redirecting to login...');
         router.replace('/login'); // Redirect unauthenticated users to login
+      } else {
+        console.log('Authenticated user:', user.uid);
       }
     }
   }, [user, loading, router]);
@@ -20,7 +23,7 @@ const Dashboard = () => {
   }
 
   if (!user) {
-    return null; // Prevent rendering the dashboard until authentication is confirmed
+    return null; // Avoid rendering dashboard if no user is logged in
   }
 
   return (

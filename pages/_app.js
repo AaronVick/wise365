@@ -3,7 +3,7 @@ import '../styles/globals.css';
 import { Inter } from 'next/font/google';
 import { DashboardProvider } from '../contexts/DashboardContext';
 import { ErrorBoundary } from 'react-error-boundary';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 
 const inter = Inter({ subsets: ['latin'], fallback: ['sans-serif'] });
@@ -23,52 +23,51 @@ function ErrorFallback({ error }) {
 
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
       const authToken = localStorage.getItem('auth_token');
       const isAdminRoute = router.pathname.startsWith('/admin');
-      
+
       if (!authToken) {
-        // If it's an admin route, redirect to admin login
         if (isAdminRoute) {
           router.push('/admin/login');
         } else {
-          // For regular routes, redirect to main login
           router.push('/');
         }
         return;
       }
 
-      // If we have a token and it's an admin route, verify admin status
-      if (isAdminRoute) {
-        try {
-          const response = await fetch('/api/verify-admin', {
-            headers: {
-              Authorization: `Bearer ${authToken}`
-            }
-          });
-          
-          if (!response.ok) {
-            // If not admin, redirect to dashboard
-            router.push('/dashboard');
-          }
-        } catch (error) {
-          console.error('Error verifying admin status:', error);
-          router.push('/dashboard');
+      try {
+        const response = await fetch('/api/verify-auth', {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+
+        if (!response.ok) {
+          throw new Error('Invalid token');
         }
+        setAuthChecked(true);
+      } catch (error) {
+        console.error('Authentication failed:', error);
+        localStorage.removeItem('auth_token');
+        router.push('/');
       }
     };
 
-    checkAuth();
-  }, [router.pathname]);
+    if (!authChecked) {
+      checkAuth();
+    }
+  }, [authChecked, router.pathname]);
+
+  if (!authChecked) {
+    return null; // Or a loading spinner
+  }
 
   return (
     <ErrorBoundary
       FallbackComponent={ErrorFallback}
-      onError={(error, info) => {
-        console.error("ErrorBoundary caught an error", error, info);
-      }}
+      onError={(error, info) => console.error("ErrorBoundary caught an error", error, info)}
     >
       <DashboardProvider>
         <main className={inter.className}>
