@@ -198,9 +198,30 @@ const Dashboard = () => {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  if (!authChecked) {
+
+  if (!authChecked && !currentUser) {
     return <div>Loading...</div>;
   }
+  
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!authChecked) {
+        console.error("Authentication check timeout");
+        router.replace("/login"); // Example redirect
+      }
+    }, 5000); // Timeout after 5 seconds
+  
+    return () => clearTimeout(timeout);
+  }, [authChecked]);
+  
+
+
+
+  console.log("authChecked:", authChecked);
+console.log("currentUser:", currentUser);
+console.log("goals:", goals);
+console.log("nestedChats:", nestedChats);
+console.log("currentChat:", currentChat);
 
   return (
     <div className="flex h-screen bg-gray-50">
