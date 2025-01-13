@@ -1,4 +1,5 @@
 // /pages/dashboard.js
+
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
@@ -31,7 +32,13 @@ import ErrorBoundary from '../components/ErrorBoundary';
 // Contexts and Data
 import { useDashboard } from '../contexts/DashboardContext';
 import { agents } from '../data/agents';
-
+import {
+  fetchNestedChats,
+  renderNestedChats,
+  analyzeUserContext,
+  fetchSuggestedGoals,
+  fetchGoals,
+} from '../lib/dashboardTools';
 
 
 const DynamicComponent = dynamic(() => import('../components/ComponentName'), {
@@ -72,148 +79,41 @@ const Dashboard = () => {
 
 
 
-//review goals by the user
-const analyzeUserContext = async () => {
-  try {
-    // Fetch agents
-    const agentsSnapshot = await getDocs(collection(db, 'agents'));
-    const agents = agentsSnapshot.docs.map(doc => doc.data());
-
-    // Fetch recent conversations
-    const conversationsQuery = query(
-      collection(db, 'conversations'),
-      where('from', '==', currentUser.uid),
-      orderBy('timestamp', 'desc'),
-      limit(10)
-    );
-    const conversationsSnapshot = await getDocs(conversationsQuery);
-    const conversations = conversationsSnapshot.docs.map(doc => doc.data());
-
-    // Fetch current goals
-    const currentGoalsQuery = query(
-      collection(db, 'goals'),
-      where('userId', '==', currentUser.uid),
-      where('status', 'in', ['not_started', 'in_progress'])
-    );
-    const currentGoalsSnapshot = await getDocs(currentGoalsQuery);
-    const currentGoals = currentGoalsSnapshot.docs.map(doc => doc.data());
-
-    // Get suggestions from LLM
-    const response = await fetch('/api/analyze-user-context', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: currentUser.uid,
-        conversations,
-        agents,
-        currentGoals
-      }),
-    });
-
-    if (response.ok) {
-      const suggestions = await response.json();
-      // Save suggestions to Firebase
-      for (const suggestion of suggestions) {
-        await addDoc(collection(db, 'suggestedGoals'), {
-          ...suggestion,
-          userId: currentUser.uid,
-          isCurrent: false,
-          isIgnored: false,
-          teamId: currentUser.teamId || '',
-          createdAt: serverTimestamp()
-        });
-      }
-      await fetchSuggestedGoals();
-    }
-  } catch (error) {
-    console.error('Error analyzing user context:', error);
-  }
-};
 
 
 const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
 
 
+ 
+useEffect(() => {
+  if (currentUser?.uid) {
+    fetchGoals(currentUser.uid)
+      .then((goals) => setGoals(goals))
+      .catch((error) => console.error('Error fetching goals:', error));
+  }
+}, [currentUser?.uid]);
 
 
-
-  // Handler Functions
-  // Consolidated Fetch Nested Chats Function
-const fetchNestedChats = async (agentId) => {
-  try {
-    console.log(`[Debug] Fetching nested chats for agent: ${agentId}`);
-
-    // Query for nested chats for the given agentId
-    const nestedChatsQuery = query(
-      collection(db, 'conversationNames'), // Adjust collection as needed
-      where('agentId', '==', agentId),
-      where('userId', '==', currentUser?.uid || ''), // Ensure currentUser.uid is handled safely
-      where('isDefault', '==', false) // Fetch only non-default chats
-    );
-
-    const snapshot = await getDocs(nestedChatsQuery);
-
-    console.log(`[Debug] Fetched nested chats for agent ${agentId}:`, snapshot.docs);
-
-    // Map results to extract chat data
-    const chats = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    console.log(`[Debug] Processed nested chats for agent ${agentId}:`, chats);
-
-    // Update the state with the fetched nested chats
-    setNestedChats((prev) => ({
-      ...prev,
-      [agentId]: chats.length > 0 ? chats : [], // Ensure it's at least an empty array
-    }));
-  } catch (error) {
+fetchNestedChats(agentId, currentUser?.uid)
+  .then((chats) => setNestedChats((prev) => ({
+    ...prev,
+    [agentId]: chats,
+  })))
+  .catch((error) => {
     console.error(`[Error] Failed to fetch nested chats for agent ${agentId}:`, error);
-
-    // Set an empty array for the agentId on error
     setNestedChats((prev) => ({
       ...prev,
       [agentId]: [],
     }));
-  }
-};
+  });
 
 
 
-  const renderNestedChats = (agentId) => {
-    const chats = nestedChats[agentId] || []; // Get nested chats for the agent
-    console.log(`Rendering nested chats for agent ${agentId}:`, chats);
-  
-    if (chats.length === 0) {
-      return <div className="ml-4 text-xs text-gray-400">No sub-chats found.</div>;
-    }
-  
-    return (
-      <div className="ml-4 space-y-1">
-        {chats.map((chat) => (
-          <Button
-            key={chat.id}
-            variant="ghost"
-            className="text-left text-xs w-full truncate py-1 h-auto"
-            onClick={() => {
-              setCurrentChat({
-                id: chat.id,
-                title: chat.conversationName,
-                agentId: chat.agentId,
-                participants: [currentUser.uid],
-                isDefault: false,
-                conversationName: chat.id,
-              });
-            }}
-          >
-            {chat.conversationName}
-          </Button>
-        ))}
-      </div>
-    );
-  };
-  
+  analyzeUserContext(currentUser)
+  .then(() => fetchSuggestedGoals(currentUser.uid))
+  .catch((error) => console.error('Error analyzing user context:', error));
+
+
 
 
 // goal handler
@@ -275,44 +175,6 @@ const handleIgnoreSuggestion = async (suggestion) => {
   }
 };
 
-const fetchSuggestedGoals = async () => {
-  try {
-    const suggestedGoalsQuery = query(
-      collection(db, 'suggestedGoals'),
-      where('userId', '==', currentUser.uid),
-      where('isCurrent', '==', false),
-      where('isIgnored', '==', false)
-    );
-    const snapshot = await getDocs(suggestedGoalsQuery);
-    setSuggestedGoals(snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })));
-  } catch (error) {
-    console.error('Error fetching suggested goals:', error);
-  }
-};
-
-
-useEffect(() => {
-  const fetchGoals = async () => {
-    try {
-      const goalsQuery = query(
-        collection(db, 'goals'),
-        where('userId', '==', currentUser?.uid) // Filter by current user's ID
-      );
-      const snapshot = await getDocs(goalsQuery);
-      setGoals(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    } catch (error) {
-      console.error('Error fetching goals:', error);
-      setGoals([]);
-    }
-  };
-
-  if (currentUser?.uid) {
-    fetchGoals();
-  }
-}, [currentUser?.uid]);
 
 
 
