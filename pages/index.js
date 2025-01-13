@@ -23,7 +23,7 @@ const HomePage = () => {
           console.log('User found:', user.uid);
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
-
+  
           if (userDoc.exists()) {
             const userData = userDoc.data();
             console.log('User document exists. Redirecting to dashboard...', userData);
@@ -41,15 +41,17 @@ const HomePage = () => {
       } catch (error) {
         console.error('Auth check error:', error);
       } finally {
+        console.log('Auth check complete');
         setIsAuthChecking(false);
       }
     });
-
+  
     return () => {
       console.log('Cleaning up auth listener');
       unsubscribe();
     };
   }, [router]);
+  
 
   const handleLogin = async (e) => {
     e.preventDefault();
