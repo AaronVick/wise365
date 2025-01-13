@@ -1,4 +1,3 @@
-// pages/admin/login.js
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { auth } from '../../lib/firebase';
@@ -8,30 +7,51 @@ export default function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError(''); // Clear previous errors
+
     try {
+      // Authenticate admin
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const idToken = await userCredential.user.getIdToken();
+
+      // Save token to localStorage
       localStorage.setItem('auth_token', idToken);
-      
-      // Verify if user is admin
+
+      // Verify admin status
       const response = await fetch('/api/verify-admin', {
         headers: {
-          Authorization: `Bearer ${idToken}`
-        }
+          Authorization: `Bearer ${idToken}`,
+        },
       });
 
       if (response.ok) {
+        console.log('Admin authenticated successfully');
         router.push('/admin');
       } else {
-        setError('Not authorized as admin');
+        console.error('Not authorized as admin');
+        setError('Access denied. You are not authorized to view this page.');
         localStorage.removeItem('auth_token');
       }
     } catch (error) {
-      setError(error.message);
+      console.error('Login error:', error);
+      const errorMessages = {
+        'auth/invalid-email': 'Invalid email format',
+        'auth/user-disabled': 'This account has been disabled',
+        'auth/user-not-found': 'No account found with this email',
+        'auth/wrong-password': 'Incorrect password. Please try again.',
+        'auth/too-many-requests': 'Too many attempts. Please try again later.',
+        'auth/network-request-failed': 'Network error. Please check your connection.',
+      };
+
+      setError(errorMessages[error.code] || 'An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -71,9 +91,12 @@ export default function AdminLogin() {
           </div>
           <button
             type="submit"
-            className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
+            className={`w-full py-2 px-4 text-white rounded-md ${
+              isLoading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+            disabled={isLoading}
           >
-            Sign In
+            {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
       </div>
