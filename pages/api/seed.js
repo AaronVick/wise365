@@ -1,11 +1,10 @@
-// pages/api/seed.js
 import { getFirestore } from 'firebase-admin/firestore';
 import '../../lib/firebase';
 import '../../lib/firebaseAdmin';
 
 export const config = {
   api: {
-    bodyParser: false, // SSE does not use the request body parser
+    bodyParser: false,
     externalResolver: true,
     responseLimit: false,
     timeout: 600000, // 10 minutes
@@ -13,121 +12,94 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Content-Type', 'text/event-stream');
-
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
 
-  const db = getFirestore();
-  if (!db) {
-    res.write('data: {"type":"error","message":"Firestore initialization failed"}\n\n');
-    return res.end();
-  }
-
-  // Dummy data placeholder: Replace `agentData` with your actual JSON dataset
-  const agentData = []; // Ensure this is replaced dynamically or preloaded
-  const CHUNK_SIZE = 10; // Process 10 records at a time
-  const results = [];
-  let totalProcessed = 0;
-
-  // Helper function to send updates
-  const sendProgressUpdate = (data) => {
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
-  };
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
 
   try {
-    const collectionRef = db.collection('agentData');
+    const db = getFirestore();
+
+    // Step 1: Connection Test
+    const existingCount = (await db.collection('agentData').get()).size;
+    res.write(`data: ${JSON.stringify({ type: 'connection-test', message: 'Connection successful', existingCount })}\n\n`);
+
+    // Step 2: Simulate loading the JSON dataset
+    const jsonData = require('../../data/yourDataFile.json'); // Replace with your actual dataset
+    const totalRecords = jsonData.length;
+    const CHUNK_SIZE = 10;
     const chunks = [];
-    for (let i = 0; i < agentData.length; i += CHUNK_SIZE) {
-      chunks.push(agentData.slice(i, i + CHUNK_SIZE));
+    for (let i = 0; i < totalRecords; i += CHUNK_SIZE) {
+      chunks.push(jsonData.slice(i, i + CHUNK_SIZE));
     }
 
-    sendProgressUpdate({
-      type: 'start',
-      total: agentData.length,
-      message: 'Starting seeding process...',
-    });
+    // Step 3: Send initial status update
+    res.write(`data: ${JSON.stringify({ type: 'start', totalRecords, message: 'Seeding process started.' })}\n\n`);
 
-    for (const [chunkIndex, chunk] of chunks.entries()) {
-      let batch = db.batch();
+    let processedRecords = 0;
 
-      sendProgressUpdate({
-        type: 'chunk-start',
-        chunk: chunkIndex + 1,
-        totalChunks: chunks.length,
-        message: `Processing chunk ${chunkIndex + 1}/${chunks.length}...`,
-      });
+    // Step 4: Process chunks
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      const chunk = chunks[chunkIndex];
+      res.write(`data: ${JSON.stringify({ type: 'chunk-start', currentChunk: chunkIndex + 1, totalChunks: chunks.length, message: `Processing chunk ${chunkIndex + 1}...` })}\n\n`);
 
-      for (const item of chunk) {
+      const batch = db.batch();
+      const chunkResults = [];
+
+      for (const record of chunk) {
         try {
-          if (!item.agentId || !item.datatype) {
-            throw new Error(`Missing required fields: ${JSON.stringify(item)}`);
+          if (!record.agentId || !record.datatype) {
+            throw new Error(`Missing required fields: ${JSON.stringify(record)}`);
           }
 
-          const querySnapshot = await collectionRef
-            .where('agentId', '==', item.agentId)
-            .where('datatype', '==', item.datatype)
+          const querySnapshot = await db
+            .collection('agentData')
+            .where('agentId', '==', record.agentId)
+            .where('datatype', '==', record.datatype)
             .get();
 
           if (querySnapshot.empty) {
-            const docRef = collectionRef.doc();
-            batch.set(docRef, { ...item, lastUpdated: new Date() });
+            const docRef = db.collection('agentData').doc();
+            batch.set(docRef, { ...record, lastUpdated: new Date() });
 
-            results.push({
+            chunkResults.push({
               status: 'added',
-              agentId: item.agentId,
-              datatype: item.datatype,
-              docId: docRef.id,
+              agentId: record.agentId,
+              datatype: record.datatype,
             });
           } else {
-            results.push({
+            chunkResults.push({
               status: 'skipped',
-              agentId: item.agentId,
-              datatype: item.datatype,
-              reason: 'Record already exists',
+              agentId: record.agentId,
+              datatype: record.datatype,
+              reason: 'Already exists',
             });
           }
-        } catch (itemError) {
-          results.push({
+        } catch (error) {
+          chunkResults.push({
             status: 'error',
-            agentId: item.agentId,
-            datatype: item.datatype,
-            error: itemError.message || 'Unknown error',
+            agentId: record.agentId,
+            datatype: record.datatype,
+            error: error.message,
           });
         }
       }
 
-      // Commit the batch
       await batch.commit();
-      totalProcessed += chunk.length;
+      processedRecords += chunk.length;
 
-      sendProgressUpdate({
-        type: 'chunk-complete',
-        chunk: chunkIndex + 1,
-        totalChunks: chunks.length,
-        processed: totalProcessed,
-        total: agentData.length,
-        message: `Completed chunk ${chunkIndex + 1}/${chunks.length}`,
-      });
+      res.write(`data: ${JSON.stringify({ type: 'chunk-complete', currentChunk: chunkIndex + 1, totalChunks: chunks.length, processedRecords, totalRecords, chunkResults })}\n\n`);
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
-    sendProgressUpdate({
-      type: 'complete',
-      totalProcessed,
-      results,
-      message: 'Seeding process completed successfully!',
-    });
+    // Step 5: Final update
+    res.write(`data: ${JSON.stringify({ type: 'complete', totalProcessed: processedRecords, message: 'Seeding process completed successfully!' })}\n\n`);
+    res.end();
   } catch (error) {
-    sendProgressUpdate({
-      type: 'error',
-      message: error.message || 'An unknown error occurred',
-    });
-  } finally {
+    res.write(`data: ${JSON.stringify({ type: 'error', message: error.message || 'An unknown error occurred' })}\n\n`);
     res.end();
   }
 }

@@ -285,6 +285,10 @@ const Dashboard = () => {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  useEffect(() => {
+    console.log('currentChat updated:', currentChat);
+  }, [currentChat]);
+  
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -323,25 +327,29 @@ const Dashboard = () => {
       />
 
        {/* Main Content */}
-      <div className="flex-1">
-        {currentChat && currentChat.id ? (
-          <ChatInterface
-            chatId={currentChat.id}
-            agentId={currentChat.agentId || ''}
-            userId={currentUser?.uid || ''}
-            // other props
-          />
-        ) : (
-            <DashboardContent
-              currentUser={currentUser}
-              currentTool={currentTool}
-              setCurrentChat={setCurrentChat}
-              onToolComplete={() => setCurrentTool(null)}
-              setCurrentTool={setCurrentTool}
-              currentChat={currentChat}          
-            />
-          )}
-      </div>
+<div className="flex-1">
+  {currentChat?.id ? (
+    <ChatInterface
+      chatId={currentChat.id}
+      agentId={currentChat.agentId || ''}
+      userId={currentUser?.uid || ''}
+      isDefault={currentChat.isDefault || false}
+      title={currentChat.title || ''}
+      conversationName={currentChat.conversationName || ''}
+      projectId={currentChat.projectId || ''}
+      projectName={currentChat.projectName || ''}
+    />
+  ) : (
+    <DashboardContent
+      currentUser={currentUser}
+      currentTool={currentTool}
+      setCurrentChat={setCurrentChat}
+      onToolComplete={() => setCurrentTool(null)}
+      currentChat={currentChat}
+    />
+  )}
+</div>
+
     </div> 
   );  
 };  

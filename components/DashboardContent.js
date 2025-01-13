@@ -90,6 +90,7 @@ const DashboardContent = ({
     console.error('setCurrentChat is not a function');
     return null;
   }
+  
   const router = useRouter();
   const [hasShawnChat, setHasShawnChat] = useState(false);
   const [messages, setMessages] = useState([]);

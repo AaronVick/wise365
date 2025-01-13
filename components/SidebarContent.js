@@ -45,6 +45,7 @@ const SidebarContent = ({
         {/* Scrollable Content */}
           <ScrollArea className="flex-1">
             
+            
             {/* Agents Section */}
 <Accordion type="multiple" collapsible className="w-full">
   <AccordionItem value="agents">
@@ -58,12 +59,18 @@ const SidebarContent = ({
               categoryAgents.map((agent) => (
                 <Accordion key={agent.id} type="single" collapsible className="w-full">
                   <AccordionItem value={agent.id}>
-                    {/* Agent Name and Role */}
                     <AccordionTrigger
                       className="flex justify-between items-center py-2 hover:bg-gray-100 cursor-pointer"
-                      onClick={() =>
-                        router.push(`/chat/${agent.id}-default`) // Navigate to default chat on click
-                      }
+                      onClick={() => {
+                        setCurrentChat({
+                          id: `${agent.id}-default`,
+                          agentId: agent.id,
+                          isDefault: true,
+                          title: `${agent.name} Conversation`,
+                          conversationName: `${agent.id}-default`,
+                        });
+                        router.push(`/chat/${agent.id}-default`);
+                      }}
                     >
                       <div className="flex items-center justify-between w-full">
                         <span className="font-medium">{agent.name || 'Unknown Agent'}</span>
@@ -71,17 +78,25 @@ const SidebarContent = ({
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                      {/* Sub-Chats */}
                       {Array.isArray(nestedChats[agent.id]) && nestedChats[agent.id].length > 0 ? (
                         nestedChats[agent.id]
-                          .filter((subChat) => !subChat.isDefault) // Exclude default chat
+                          .filter((subChat) => !subChat.isDefault)
                           .map((subChat) => (
                             <div
                               key={subChat.id}
                               className="py-2 cursor-pointer hover:bg-gray-200 ml-4"
-                              onClick={() => router.push(`/chat/${subChat.id}`)} // Navigate to subchat
+                              onClick={() => {
+                                setCurrentChat({
+                                  id: subChat.id,
+                                  agentId: agent.id,
+                                  isDefault: false,
+                                  title: subChat.displayName,
+                                  conversationName: subChat.id,
+                                });
+                                router.push(`/chat/${subChat.id}`);
+                              }}
                             >
-                              <p className="text-sm text-white">{subChat.displayName || 'Unnamed Sub-Chat'}</p>
+                              <p className="text-sm text-gray-800">{subChat.displayName || 'Unnamed Sub-Chat'}</p>
                             </div>
                           ))
                       ) : (
@@ -102,6 +117,7 @@ const SidebarContent = ({
     </AccordionContent>
   </AccordionItem>
 </Accordion>
+
 
 
 

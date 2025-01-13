@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout';
 
 export default function SeedPage() {
   const [status, setStatus] = useState('');
+  const [existingCount, setExistingCount] = useState(0);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -11,12 +12,9 @@ export default function SeedPage() {
   const [currentChunk, setCurrentChunk] = useState({ current: 0, total: 0 });
   const [totalRecords, setTotalRecords] = useState(0);
   const [processedRecords, setProcessedRecords] = useState(0);
-  const [retryCount, setRetryCount] = useState(0);
-  const MAX_RETRIES = 3;
 
   useEffect(() => {
     return () => {
-      // Cleanup function to close EventSource on unmount
       if (window._eventSource) {
         window._eventSource.close();
       }
@@ -36,128 +34,97 @@ export default function SeedPage() {
     setCurrentChunk({ current: 0, total: 0 });
     setTotalRecords(0);
     setProcessedRecords(0);
-    setRetryCount(0);
 
     try {
-      // Close existing connection if any
       if (window._eventSource) {
         window._eventSource.close();
       }
 
-      const connectEventSource = () => {
-        const eventSource = new EventSource('/api/seed');
-        window._eventSource = eventSource;
+      const eventSource = new EventSource('/api/seed');
+      window._eventSource = eventSource;
 
-        let lastEventTime = Date.now();
-        const TIMEOUT = 30000; // 30 seconds
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
 
-        // Set up heartbeat to check connection
-        const heartbeat = setInterval(() => {
-          if (Date.now() - lastEventTime > TIMEOUT) {
-            clearInterval(heartbeat);
+        switch (data.type) {
+          case 'connection-test':
+            setStatus('Connection successful');
+            setExistingCount(data.existingCount);
+            break;
+
+          case 'start':
+            setTotalRecords(data.totalRecords);
+            setStatus('Seeding process started.');
+            break;
+
+          case 'chunk-start':
+            setCurrentChunk({ current: data.currentChunk, total: data.totalChunks });
+            setStatus(data.message);
+            break;
+
+          case 'chunk-complete':
+            setProcessedRecords(data.processedRecords);
+            setProgress((data.processedRecords / data.totalRecords) * 100);
+            setStatus(data.message);
+            setResults((prevResults) => [...prevResults, ...data.chunkResults]);
+            break;
+
+          case 'complete':
+            setProcessedRecords(data.totalProcessed);
+            setProgress(100);
+            setStatus('Seeding complete!');
             eventSource.close();
-            
-            if (retryCount < MAX_RETRIES) {
-              setRetryCount(prev => prev + 1);
-              setStatus('Connection lost. Retrying...');
-              setTimeout(connectEventSource, 1000);
-            } else {
-              setError('Connection failed after multiple retries');
-              setStatus('Failed');
-              setLoading(false);
-            }
-          }
-        }, 5000);
-
-        eventSource.onmessage = (event) => {
-          lastEventTime = Date.now();
-          const data = JSON.parse(event.data);
-          console.log('Received event:', data);
-
-          switch (data.type) {
-            case 'start':
-              setTotalRecords(data.total);
-              setStatus(data.message);
-              break;
-
-            case 'chunk-start':
-              setCurrentChunk({ current: data.current, total: data.total });
-              setStatus(data.message);
-              break;
-
-            case 'progress':
-              setProcessedRecords(data.processed);
-              setProgress((data.processed / data.total) * 100);
-              setStatus(data.message);
-              break;
-
-            case 'error':
-              setError(data.message);
-              setStatus('Error occurred');
-              break;
-
-            case 'complete':
-              clearInterval(heartbeat);
-              setResults(data.results || []);
-              setStatus('Seeding complete!');
-              setProgress(100);
-              eventSource.close();
-              setLoading(false);
-              break;
-          }
-        };
-
-        eventSource.onerror = (error) => {
-          console.error('EventSource error:', error);
-          clearInterval(heartbeat);
-          eventSource.close();
-          
-          if (retryCount < MAX_RETRIES) {
-            setRetryCount(prev => prev + 1);
-            setStatus('Connection error. Retrying...');
-            setTimeout(connectEventSource, 1000);
-          } else {
-            setError('Connection failed after multiple retries');
-            setStatus('Failed');
             setLoading(false);
-          }
-        };
+            break;
+
+          case 'error':
+            setError(data.message);
+            setStatus('Error occurred during seeding');
+            eventSource.close();
+            setLoading(false);
+            break;
+
+          default:
+            console.warn('Unknown event type:', data.type);
+            break;
+        }
       };
 
-      connectEventSource();
+      eventSource.onerror = () => {
+        setError('Connection error. Please try again.');
+        setStatus('Failed');
+        eventSource.close();
+        setLoading(false);
+      };
     } catch (error) {
-      console.error('Error seeding data:', error);
+      console.error('Error during seeding:', error);
       setError(error.message);
       setStatus('Failed');
       setLoading(false);
     }
   };
 
-
   return (
     <AdminLayout>
       <div className="p-6">
         <h1 className="text-2xl font-bold mb-6">Database Seeding</h1>
-        
+
         <div className="bg-white shadow rounded p-6">
-          <div className="mb-6">
-            <p className="text-gray-600 mb-4">
-              This will seed the database with initial agent data. Only use this if you need to
-              initialize or reset the database.
-            </p>
-            <button
-              onClick={handleSeed}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-green-300"
-              disabled={loading}
-            >
-              {loading ? 'Seeding...' : 'Seed Database'}
-            </button>
-          </div>
+          <p className="text-gray-600 mb-4">
+            This will seed the database with initial agent data. Use it to initialize or reset the database.
+          </p>
+          <button
+            onClick={handleSeed}
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-green-300"
+            disabled={loading}
+          >
+            {loading ? 'Seeding...' : 'Seed Database'}
+          </button>
 
           {status && (
             <div className="mt-6">
               <h2 className="font-bold mb-2">Status: {status}</h2>
-              
+
               {loading && (
                 <div className="space-y-4">
                   <div>
@@ -166,19 +133,19 @@ export default function SeedPage() {
                       <span>{Math.round(progress)}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div 
-                        className="bg-green-500 h-2.5 rounded-full transition-all duration-300" 
+                      <div
+                        className="bg-green-500 h-2.5 rounded-full transition-all duration-300"
                         style={{ width: `${progress}%` }}
                       ></div>
                     </div>
                   </div>
-                  
+
                   {currentChunk.total > 0 && (
                     <div className="text-sm text-gray-600">
                       Processing chunk {currentChunk.current} of {currentChunk.total}
                     </div>
                   )}
-                  
+
                   {totalRecords > 0 && (
                     <div className="text-sm text-gray-600">
                       Processed {processedRecords} of {totalRecords} records
@@ -186,7 +153,13 @@ export default function SeedPage() {
                   )}
                 </div>
               )}
-              
+
+              {existingCount > 0 && (
+                <div className="text-sm text-gray-600">
+                  Existing Records: {existingCount}
+                </div>
+              )}
+
               {error && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                   {error}
@@ -198,8 +171,8 @@ export default function SeedPage() {
                   <h3 className="font-bold mb-2">Results:</h3>
                   <div className="max-h-96 overflow-y-auto">
                     {results.map((result, index) => (
-                      <div 
-                        key={index} 
+                      <div
+                        key={index}
                         className={`p-2 mb-1 rounded ${
                           result.status === 'added' ? 'bg-green-100' :
                           result.status === 'skipped' ? 'bg-yellow-100' :
