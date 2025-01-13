@@ -73,29 +73,27 @@ const Badge = ({
 };
 
 
-const DashboardContent = (
-  { currentUser, 
-    currentTool, 
-    onToolComplete, 
-    setCurrentTool, 
-    currentChat,
-    setCurrentChat
-    }) => {
 
-  
+
+const DashboardContent = ({ 
+  currentUser, 
+  currentTool, 
+  onToolComplete, 
+  setCurrentTool,
+  currentChat,
+  setCurrentChat  
+}) => {
   const router = useRouter();
   const [hasShawnChat, setHasShawnChat] = useState(false);
   const [messages, setMessages] = useState([]);
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
-  
+
   const { 
     goals = [],
     setGoals,
     recentActivity = [],
     isLoading = false
   } = useDashboard() || {};
-
-
 
   const loadConversationMessages = async (conversationId) => {
     try {
@@ -124,18 +122,27 @@ const DashboardContent = (
         teamID: currentUser.teamId,
       });
 
-      setCurrentConversation(newConversation.id);
-      loadConversationMessages(newConversation.id); // Load the new conversation
-      router.push(`/chat/${newConversation.id}`); // Navigate to the chat window
+      // Update currentChat instead of using setCurrentConversation
+      setCurrentChat({
+        id: newConversation.id,
+        agentId: agent.id,
+        title: `${agent.name} Conversation`,
+        participants: [currentUser.uid, agent.id],
+        isDefault: false,
+        conversationName: newConversation.id
+      });
+
+      await loadConversationMessages(newConversation.id);
+      router.push(`/chat/${newConversation.id}`);
     } catch (error) {
       console.error('Error starting conversation:', error);
     }
   };
 
   const sendMessage = async (messageContent) => {
-    if (!currentConversation) return;
+    if (!currentChat?.id) return;
     
-    const conversationRef = doc(db, 'conversations', currentConversation);
+    const conversationRef = doc(db, 'conversations', currentChat.id);
     const newMessage = {
       role: currentUser.uid,
       content: messageContent,
@@ -148,7 +155,6 @@ const DashboardContent = (
         lastUpdatedAt: serverTimestamp(),
       });
 
-      // Add the new message to the local state to render it immediately
       setMessages(prevMessages => [...prevMessages, newMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
@@ -156,24 +162,32 @@ const DashboardContent = (
   };
 
   const handleAgentClick = async (agent) => {
-    // First check if there's an existing conversation with the agent
-    const conversationsRef = collection(db, 'conversations');
-    const q = query(
-      conversationsRef,
-      where('agentId', '==', agent.id),
-      where('participants', 'array-contains', currentUser.uid)
-    );
-    const querySnapshot = await getDocs(q);
+    try {
+      const conversationsRef = collection(db, 'conversations');
+      const q = query(
+        conversationsRef,
+        where('agentId', '==', agent.id),
+        where('participants', 'array-contains', currentUser.uid)
+      );
+      const querySnapshot = await getDocs(q);
 
-    if (!querySnapshot.empty) {
-      // If a conversation exists, load it
-      const existingConversation = querySnapshot.docs[0].data();
-      setCurrentConversation(existingConversation.id);
-      loadConversationMessages(existingConversation.id); // Load messages
-      router.push(`/chat/${existingConversation.id}`);
-    } else {
-      // If no conversation exists, create a new one
-      startConversation(agent);
+      if (!querySnapshot.empty) {
+        const existingConversation = querySnapshot.docs[0];
+        setCurrentChat({
+          id: existingConversation.id,
+          agentId: agent.id,
+          title: `${agent.name} Conversation`,
+          participants: [currentUser.uid, agent.id],
+          isDefault: false,
+          conversationName: existingConversation.id
+        });
+        await loadConversationMessages(existingConversation.id);
+        router.push(`/chat/${existingConversation.id}`);
+      } else {
+        await startConversation(agent);
+      }
+    } catch (error) {
+      console.error('Error handling agent click:', error);
     }
   };
 
