@@ -1,15 +1,13 @@
 // pages/dashboard.js
 
-// pages/dashboard.js
-
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, collection, getDocs, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Accordion,
   AccordionItem,
@@ -17,18 +15,28 @@ import {
   AccordionContent,
 } from '@/components/Accordion';
 import { 
-  Home, 
-  Users, 
+  Home,
   Settings,
   LogOut,
   Plus,
   MessageSquare,
-  Target
+  Bot,
+  Briefcase,
+  Target,
+  BookOpen,
+  LayoutDashboard
 } from 'lucide-react';
 import { agents } from '../data/agents';
 import { useDashboard } from '../contexts/DashboardContext';
 import DashboardContent from '../components/DashboardContent';
 import ChatInterface from '@/components/ChatInterface';
+import ChatWithShawn from '@/components/ChatWithShawn';
+import { 
+  fetchNestedChats, 
+  handleAgentClick as handleAgentClickUtil, 
+  handleProjectClick as handleProjectClickUtil,
+  handleContextMenu 
+} from '../lib/dashboardTools';
 
 const Dashboard = () => {
   const router = useRouter();
@@ -39,13 +47,31 @@ const Dashboard = () => {
   const [currentChat, setCurrentChat] = useState(null);
   const [nestedChats, setNestedChats] = useState({});
   const [currentTool, setCurrentTool] = useState(null);
+  const [projects, setProjects] = useState([]);
+
+  // Loading and error states
+  if (loading || isLoadingUserData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || !userData) {
+    return null;
+  }
 
 
-  // user data fetch
 
-  // Fetch user data and nested chats
+  // data fetching
+
+// Data fetching
   useEffect(() => {
-    const fetchUserDataAndChats = async () => {
+    const fetchData = async () => {
       if (user) {
         try {
           // Fetch user data
@@ -56,26 +82,20 @@ const Dashboard = () => {
             setUserData(userDoc.data());
             
             // Fetch nested chats for each agent
-            const chatsRef = collection(db, 'conversations');
-            const q = query(chatsRef, where('isDefault', '==', false));
-            const chatsSnapshot = await getDocs(q);
-            const chatsByAgent = {};
-
-            chatsSnapshot.docs.forEach(doc => {
-              const chatData = doc.data();
-              if (chatData.agentId) {
-                if (!chatsByAgent[chatData.agentId]) {
-                  chatsByAgent[chatData.agentId] = [];
-                }
-                chatsByAgent[chatData.agentId].push({
-                  id: doc.id,
-                  ...chatData,
-                });
-              }
+            Object.values(agents).flat().forEach(agent => {
+              fetchNestedChats(agent.id, user, setNestedChats, db);
             });
 
-            setNestedChats(chatsByAgent);
-            console.log('Nested chats loaded:', chatsByAgent);
+            // Fetch projects
+            const projectsRef = collection(db, 'projectNames');
+            const projectsQuery = query(projectsRef, where('userId', '==', user.uid));
+            const projectsSnapshot = await getDocs(projectsQuery);
+            const projectsData = projectsSnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+            setProjects(projectsData);
+
           } else {
             console.error('No user document found. Redirecting to login...');
             router.replace('/');
@@ -89,96 +109,130 @@ const Dashboard = () => {
     };
 
     if (!loading && user) {
-      fetchUserDataAndChats();
+      fetchData();
     } else if (!loading && !user) {
       router.replace('/');
     }
   }, [user, loading, router]);
 
 
-  // agent and chat handlers
+  // handlers
 
-  // Handle clicking on an agent
+  // Agent handlers
   const handleAgentClick = async (agent) => {
     if (!agent?.id || !user?.uid) {
       console.error('Missing required agent or user data');
       return;
     }
-  
-    try {
-      const conversationsRef = collection(db, 'conversations');
-      const q = query(
-        conversationsRef,
-        where('agentId', '==', agent.id),
-        where('participants', 'array-contains', user.uid),
-        where('isDefault', '==', true)
-      );
-      const querySnapshot = await getDocs(q);
-  
-      if (!querySnapshot.empty) {
-        const existingDoc = querySnapshot.docs[0];
-        const existingData = existingDoc.data();
+
+    // Special handling for Shawn
+    if (agent.id === 'shawn') {
+      try {
+        const conversationsRef = collection(db, 'conversations');
+        const q = query(
+          conversationsRef,
+          where('agentId', '==', 'shawn'),
+          where('participants', 'array-contains', user.uid),
+          where('isDefault', '==', true)
+        );
+        const querySnapshot = await getDocs(q);
+
+        let chatId;
+        let isNewUser = false;
+
+        if (querySnapshot.empty) {
+          // Create new conversation with Shawn
+          const namesRef = collection(db, 'conversationNames');
+          const nameDoc = await addDoc(namesRef, {
+            agentId: 'shawn',
+            conversationName: 'Chat with Shawn',
+            userId: user.uid,
+            isDefault: true,
+            projectName: '',
+            timestamp: serverTimestamp()
+          });
+
+          // Create initial welcome message
+          const welcomeMessage = {
+            agentId: 'shawn',
+            content: "Hi! I'm Shawn, your personal guide to Business Wise365. I'll help you navigate our platform and connect you with the right experts for your business needs. Are you ready to get started?",
+            conversationName: nameDoc.id,
+            from: 'shawn',
+            isDefault: true,
+            timestamp: serverTimestamp(),
+            type: 'agent'
+          };
+
+          const messagesRef = collection(db, 'conversations');
+          await addDoc(messagesRef, welcomeMessage);
+
+          chatId = nameDoc.id;
+          isNewUser = true;
+        } else {
+          chatId = querySnapshot.docs[0].id;
+        }
+
         setCurrentChat({
-          id: existingDoc.id,
-          agentId: agent.id,
-          title: existingData.name || `${agent.name} Conversation`,
-          participants: existingData.participants || [user.uid, agent.id],
+          id: chatId,
+          agentId: 'shawn',
+          title: 'Chat with Shawn',
+          participants: [user.uid, 'shawn'],
           isDefault: true,
-          conversationName: existingDoc.id
+          conversationName: chatId,
+          isNewUser: isNewUser
         });
-      } else {
-        await startNewConversation(agent);
+
+        router.push(`/chat/shawn`);
+        return;
+      } catch (error) {
+        console.error('Error initializing Shawn chat:', error);
+        return;
       }
-      
+    }
+
+    // Regular agent handling using utility
+    try {
+      await handleAgentClickUtil(agent, user, db, setCurrentChat);
       router.push(`/chat/${agent.id}`);
     } catch (error) {
       console.error('Error handling agent click:', error);
     }
   };
 
-  // Start a new conversation with an agent
-  const startNewConversation = async (agent) => {
-    try {
-      const conversationData = {
-        agentId: agent.id,
-        createdAt: serverTimestamp(),
-        createdBy: user.uid,
-        isDefault: true,
-        lastUpdatedAt: serverTimestamp(),
-        messages: [],
-        name: `${agent.name} Conversation`,
-        participants: [user.uid, agent.id]
-      };
-
-      const conversationRef = await addDoc(collection(db, 'conversations'), conversationData);
-      
-      setCurrentChat({
-        id: conversationRef.id,
-        agentId: agent.id,
-        title: `${agent.name} Conversation`,
-        participants: [user.uid, agent.id],
-        isDefault: true,
-        conversationName: conversationRef.id
-      });
-
-      return conversationRef;
-    } catch (error) {
-      console.error('Error starting new conversation:', error);
-      throw error;
-    }
-  };
-
-  // Handle clicking on a subchat
+  // Handle subchat clicking
   const handleSubChatClick = (agentId, subChat) => {
     setCurrentChat({
       id: subChat.id,
       agentId: agentId,
-      title: subChat.name || 'Untitled Chat',
-      participants: subChat.participants,
+      title: subChat.conversationName || 'Untitled Chat',
+      participants: subChat.participants || [user.uid],
       isDefault: false,
       conversationName: subChat.id
     });
     router.push(`/chat/${subChat.id}`);
+  };
+
+  // Project handlers
+  const handleProjectClick = async (project) => {
+    try {
+      await handleProjectClickUtil(project, user, db, setCurrentChat);
+      router.push(`/project/${project.id}`);
+    } catch (error) {
+      console.error('Error handling project click:', error);
+    }
+  };
+
+  const handleProjectDetails = (project) => {
+    try {
+      router.push(`/project/${project.id}/details`);
+    } catch (error) {
+      console.error('Error accessing project details:', error);
+    }
+  };
+
+  // Context menu handler for creating new chats
+  const onAgentContextMenu = (e, agent) => {
+    handleContextMenu(e, agent, user, db, setCurrentChat);
   };
 
   // Handle sidebar resize
@@ -201,110 +255,22 @@ const Dashboard = () => {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-
-
-  // agent categories and rendering
-  // Render the agent categories
-  const renderAgentCategories = () => {
-    console.log('Rendering agents:', agents); // Debug log
-    
-    if (!agents || typeof agents !== 'object') {
-      console.error('Agents data not properly loaded');
-      return null;
+  // Handle sign out
+  const handleSignOut = async () => {
+    try {
+      await auth.signOut();
+      router.replace('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
-
-    const categories = Object.keys(agents).filter(category => 
-      Array.isArray(agents[category]) && agents[category].length > 0
-    );
-    
-    // Find Shawn in Administrative category
-    const shawn = agents['Administrative']?.find(agent => agent.id === 'shawn');
-    
-    return (
-      <>
-        {/* Shawn section at the top */}
-        {shawn && (
-          <div className="mb-4 px-4 py-2 bg-gray-800 rounded">
-            <div 
-              className="flex items-center justify-between cursor-pointer"
-              onClick={() => handleAgentClick(shawn)}
-            >
-              <div>
-                <h4 className="font-medium text-white">{shawn.name}</h4>
-                <p className="text-xs text-gray-400">{shawn.role}</p>
-              </div>
-              <MessageSquare className="h-4 w-4 text-gray-400" />
-            </div>
-          </div>
-        )}
-
-        {/* Rest of the categories */}
-        {categories.map(category => (
-          <AccordionItem key={category} value={category}>
-            <AccordionTrigger className="text-white hover:text-white">
-              {category}
-            </AccordionTrigger>
-            <AccordionContent>
-              {agents[category]
-                ?.filter(agent => agent && agent.id !== 'shawn')
-                .map(agent => (
-                  <div key={agent.id} className="space-y-2">
-                    <div
-                      className="px-4 py-2 hover:bg-gray-800 rounded cursor-pointer"
-                      onClick={() => handleAgentClick(agent)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium text-white">{agent.name}</h4>
-                          <p className="text-xs text-gray-400">{agent.role}</p>
-                        </div>
-                        <MessageSquare className="h-4 w-4 text-gray-400" />
-                      </div>
-                    </div>
-                    {/* Sub-chats for this agent */}
-                    {nestedChats[agent.id]?.length > 0 && (
-                      <div className="ml-4 space-y-1">
-                        {nestedChats[agent.id].map(subChat => (
-                          <div
-                            key={subChat.id}
-                            className="px-3 py-1 hover:bg-gray-800 rounded cursor-pointer text-sm text-gray-300"
-                            onClick={() => handleSubChatClick(agent.id, subChat)}
-                          >
-                            {subChat.name || 'Untitled Chat'}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-            </AccordionContent>
-          </AccordionItem>
-        ))}
-      </>
-    );
   };
 
 
-  // dashboard rendering
 
-  // Loading and error states
-  if (loading || isLoadingUserData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user || !userData) {
-    return null;
-  }
+  // main return & UI
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-slate-50">
       {/* Sidebar */}
       <div
         className="bg-gray-900 text-white flex flex-col"
@@ -327,154 +293,291 @@ const Dashboard = () => {
 
         {/* Scrollable Content */}
         <ScrollArea className="flex-1">
-          <div className="p-4 space-y-4">
-            {/* Agents Section */}
-            <Accordion type="multiple" className="w-full">
-              {renderAgentCategories()}
-            </Accordion>
+          <div className="p-4 space-y-6">
+            {/* Agents Categories */}
+            <div className="space-y-4">
+              {/* Administrative Category (Always First) */}
+              <Accordion type="multiple" className="w-full">
+                <AccordionItem value="Administrative">
+                  <AccordionTrigger className="text-white hover:text-white px-3">
+                    Administrative
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    {/* Shawn - Always First */}
+                    <div 
+                      className="px-4 py-2 mb-2 hover:bg-gray-800 rounded cursor-pointer"
+                      onClick={() => handleAgentClick(agents.Administrative.find(a => a.id === 'shawn'))}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium text-white">Shawn</h4>
+                          <p className="text-xs text-gray-400">Tool Guidance Assistant</p>
+                        </div>
+                        <Bot className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </div>
 
-            {/* Projects Section */}
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="projects">
-                <AccordionTrigger className="text-white hover:text-white">Projects</AccordionTrigger>
-                <AccordionContent>
-                  {nestedChats && Object.keys(nestedChats).length > 0 ? (
-                    Object.entries(nestedChats).map(([agentId, chats]) => (
-                      <div key={agentId} className="space-y-2">
-                        {chats.map(chat => (
+                    {/* Other Administrative Agents */}
+                    {agents.Administrative
+                      .filter(agent => agent.id !== 'shawn')
+                      .map(agent => (
+                        <div key={agent.id} className="mb-2">
                           <div
-                            key={chat.id}
                             className="px-4 py-2 hover:bg-gray-800 rounded cursor-pointer"
-                            onClick={() => handleSubChatClick(agentId, chat)}
+                            onClick={() => handleAgentClick(agent)}
+                            onContextMenu={(e) => onAgentContextMenu(e, agent)}
                           >
-                            <p className="text-sm text-white">{chat.name || 'Untitled Project'}</p>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="font-medium text-white">{agent.name}</h4>
+                                <p className="text-xs text-gray-400">{agent.role}</p>
+                              </div>
+                              <Bot className="h-4 w-4 text-gray-400" />
+                            </div>
+                          </div>
+                          {/* Subchats */}
+                          {nestedChats[agent.id]?.length > 0 && (
+                            <div className="ml-4 mt-1 space-y-1">
+                              {nestedChats[agent.id]
+                                .filter(chat => !chat.isDefault)
+                                .map(subChat => (
+                                  <div
+                                    key={subChat.id}
+                                    className="px-3 py-1 hover:bg-gray-800 rounded cursor-pointer text-sm text-gray-300"
+                                    onClick={() => handleSubChatClick(agent.id, subChat)}
+                                  >
+                                    {subChat.conversationName}
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                    ))}
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Other Categories */}
+                {Object.entries(agents)
+                  .filter(([category]) => category !== 'Administrative')
+                  .map(([category, categoryAgents]) => (
+                    <AccordionItem key={category} value={category}>
+                      <AccordionTrigger className="text-white hover:text-white px-3">
+                        {category}
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        {categoryAgents.map(agent => (
+                          <div key={agent.id} className="mb-2">
+                            <div
+                              className="px-4 py-2 hover:bg-gray-800 rounded cursor-pointer"
+                              onClick={() => handleAgentClick(agent)}
+                              onContextMenu={(e) => onAgentContextMenu(e, agent)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="font-medium text-white">{agent.name}</h4>
+                                  <p className="text-xs text-gray-400">{agent.role}</p>
+                                </div>
+                                <Bot className="h-4 w-4 text-gray-400" />
+                              </div>
+                            </div>
+                            {/* Subchats */}
+                            {nestedChats[agent.id]?.length > 0 && (
+                              <div className="ml-4 mt-1 space-y-1">
+                                {nestedChats[agent.id]
+                                  .filter(chat => !chat.isDefault)
+                                  .map(subChat => (
+                                    <div
+                                      key={subChat.id}
+                                      className="px-3 py-1 hover:bg-gray-800 rounded cursor-pointer text-sm text-gray-300"
+                                      onClick={() => handleSubChatClick(agent.id, subChat)}
+                                    >
+                                      {subChat.conversationName}
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
                           </div>
                         ))}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+              </Accordion>
+            </div>
+
+      {/* Projects Section */}
+      <div className="space-y-1">
+              <div className="flex items-center justify-between px-3 mb-2">
+                <h2 className="text-sm font-semibold text-muted-foreground">Projects</h2>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {projects && projects.length > 0 ? (
+                projects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="px-4 py-2 hover:bg-gray-800 rounded cursor-pointer group"
+                    onClick={() => handleProjectClick(project)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-white">{project.ProjectName}</p>
+                        <p className="text-xs text-gray-400">
+                          {project.participants?.agent ? `With ${project.participants.agent}` : ''}
+                        </p>
                       </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-400 text-sm px-4">No projects available</p>
-                  )}
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleProjectDetails(project);
+                        }}
+                      >
+                        Details
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-400 text-sm px-4">No projects available</p>
+              )}
+            </div>
 
             {/* Goals Section */}
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="goals">
-                <AccordionTrigger className="text-white hover:text-white">Goals</AccordionTrigger>
-                <AccordionContent>
-                  <div className="px-4">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-white hover:bg-gray-800"
-                      onClick={() => setCurrentTool('goals')}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add New Goal
-                    </Button>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between px-3 mb-2">
+                <h2 className="text-sm font-semibold text-muted-foreground">Goals</h2>
+              </div>
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-white hover:bg-gray-800 px-4"
+                onClick={() => setCurrentTool('goals')}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Goal
+              </Button>
+            </div>
 
             {/* Resources Section */}
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="resources">
-                <AccordionTrigger className="text-white hover:text-white">Resources</AccordionTrigger>
-                <AccordionContent>
-                  <div className="px-4 space-y-2">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-white hover:bg-gray-800"
-                      onClick={() => setCurrentTool('buyer-persona')}
-                    >
-                      Buyer Persona Tool
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-white hover:bg-gray-800"
-                      onClick={() => setCurrentTool('success-wheel')}
-                    >
-                      Success Wheel
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-white hover:bg-gray-800"
-                      onClick={() => setCurrentTool('positioning-factors')}
-                    >
-                      Positioning Factors
-                    </Button>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between px-3 mb-2">
+                <h2 className="text-sm font-semibold text-muted-foreground">Resources</h2>
+              </div>
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-white hover:bg-gray-800 px-4"
+                onClick={() => router.push('/resources')}
+              >
+                <BookOpen className="h-4 w-4 mr-2" />
+                View Resources
+              </Button>
+            </div>
           </div>
         </ScrollArea>
 
-        {/* User section */}
-        <div className="p-4 border-t border-gray-700">
-          <div className="flex items-center mb-4">
-            <div className="flex-shrink-0">
-              <div className="h-10 w-10 rounded-full bg-gray-700 flex items-center justify-center">
+        {/* User Profile Section */}
+        <div className="border-t border-gray-700 p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+              <span className="text-sm font-medium text-blue-700">
                 {userData?.name?.charAt(0) || 'U'}
-              </div>
+              </span>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium">{userData?.name}</p>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-white">{userData?.name}</p>
               <p className="text-xs text-gray-400">{userData?.role}</p>
             </div>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="text-gray-400 hover:text-white"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-            onClick={async () => {
-              try {
-                await auth.signOut();
-                router.replace('/');
-              } catch (error) {
-                console.error('Error signing out:', error);
-              }
-            }}
-          >
-            <LogOut className="h-5 w-5 mr-3" />
-            Sign out
-          </Button>
         </div>
       </div>
 
       {/* Resize Handle */}
       <div
-        className="w-1 cursor-ew-resize bg-gray-700"
+        className="w-1 cursor-ew-resize bg-gray-700 hover:bg-blue-600 transition-colors"
         onMouseDown={handleSidebarResize}
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-hidden bg-slate-50">
         {currentChat ? (
-          // If we have a current chat, show the ChatInterface
-          <ChatInterface
-            chatId={currentChat.id}
-            agentId={currentChat.agentId}
-            userId={user.uid}
-            isDefault={currentChat.isDefault}
-            title={currentChat.title}
-            conversationName={currentChat.conversationName}
-          />
+          currentChat.agentId === 'shawn' ? (
+            // Use ChatWithShawn for Shawn
+            <ChatWithShawn 
+              currentUser={userData} 
+              isNewUser={currentChat.isNewUser}
+            />
+          ) : (
+            // Use regular ChatInterface for other agents
+            <ChatInterface
+              chatId={currentChat.id}
+              agentId={currentChat.agentId}
+              userId={user.uid}
+              isDefault={currentChat.isDefault}
+              title={currentChat.title}
+              conversationName={currentChat.conversationName}
+              projectId={currentChat.projectId}
+              projectName={currentChat.projectName}
+            />
+          )
         ) : (
-          // Otherwise show the dashboard content
-          <DashboardContent
-            currentUser={userData}
-            currentTool={currentTool}
-            setCurrentTool={setCurrentTool}
-            onToolComplete={() => setCurrentTool(null)}
-            currentChat={currentChat}
-            setCurrentChat={setCurrentChat}
-          />
+          // Dashboard Welcome View
+          <div className="h-full flex flex-col">
+            {/* Header */}
+            <header className="border-b bg-white shadow-sm">
+              <div className="px-6 py-4">
+                <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+              </div>
+            </header>
+
+            {/* Content */}
+            <main className="flex-1 overflow-auto p-6">
+              {/* Welcome Card */}
+              <Card className="mb-6 bg-white shadow-sm">
+                <CardContent className="flex items-center gap-4 py-6">
+                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                    <Bot className="h-6 w-6 text-blue-700" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold mb-1">Welcome to Business Wise365!</h2>
+                    <p className="text-gray-500">
+                      Connect with our AI team to help grow your business.
+                    </p>
+                  </div>
+                  <Button 
+                    className="ml-auto bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => handleAgentClick(agents.Administrative.find(a => a.id === 'shawn'))}
+                  >
+                    Chat with AI Team
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Main Dashboard Content */}
+              <DashboardContent
+                currentUser={userData}
+                currentTool={currentTool}
+                setCurrentTool={setCurrentTool}
+                onToolComplete={() => setCurrentTool(null)}
+                currentChat={currentChat}
+                setCurrentChat={setCurrentChat}
+              />
+            </main>
+          </div>
         )}
       </div>
     </div>
   );
 };
 
-export default Dashboard;
+export default Dashboard
+
