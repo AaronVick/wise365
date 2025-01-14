@@ -1,8 +1,7 @@
 // pages/admin/seed.js
 import { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout'; // Adjusted for relative path
-import '../../lib/firebase'; // Ensure Firebase client is initialized if needed
-
+import AdminLayout from '../../components/AdminLayout';
+import { auth } from '../../lib/firebase'; // Import auth directly from your firebase.js
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -77,9 +76,9 @@ export default function SeedPage() {
     };
   }, []);
 
+  
   const handleSeed = async () => {
     if (!confirm(`Seed the database with ${selectedFile} for ${selectedCollection}? This action cannot be undone.`)) {
-      console.log('Seeding operation cancelled by user.');
       return;
     }
   
@@ -96,21 +95,18 @@ export default function SeedPage() {
   
     try {
       if (window._eventSource) {
-        console.log('Closing any existing EventSource connection before starting.');
         window._eventSource.close();
       }
   
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        console.error('No authenticated user found.');
-        setError('You must be logged in to seed the database.');
-        setLoading(false);
-        return;
+      // Get the current user's token
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) {
+        throw new Error('Not authenticated');
       }
-  
-      const idToken = await currentUser.getIdToken();
+
+      // Create EventSource with Authorization header in the URL
       const eventSource = new EventSource(
-        `/api/seed?collection=${selectedCollection}&file=${selectedFile}&auth=${idToken}`
+        `/api/seed?collection=${selectedCollection}&file=${selectedFile}&auth=${token}`
       );
   
       window._eventSource = eventSource;

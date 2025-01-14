@@ -2,8 +2,9 @@
 
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
-import '../../lib/firebase'; // Ensures Firebase is initialized elsewhere
-import '../../lib/firebaseAdmin'; // Ensures Admin SDK is properly initialized
+import fs from 'fs';
+import path from 'path';
+import '../../lib/firebaseAdmin'; // This will handle the admin initialization
 
 export const config = {
   api: {
@@ -14,6 +15,45 @@ export const config = {
   },
 };
 
+export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ success: false, message: 'Method not allowed' });
+  }
+
+  const { collection, file, auth: token } = req.query;
+
+  // Validate parameters
+  if (!collection || !file || !token) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Missing required parameters' 
+    });
+  }
+
+  // Verify the token
+  try {
+    const decodedToken = await getAuth().verifyIdToken(token);
+    console.log('Authenticated user:', decodedToken.uid);
+
+    // Check admin status
+    const db = getFirestore();
+    const userSnap = await db.collection('users')
+      .where('authenticationID', '==', decodedToken.uid)
+      .get();
+
+    if (userSnap.empty || !userSnap.docs[0].data().SystemAdmin) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Insufficient permissions' 
+      });
+    }
+
+    // Set up SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    
 export default async function handler(req, res) {
   // Initialize Firebase Admin if not already initialized
   if (!firebaseAdminConfig.apps.length) {
