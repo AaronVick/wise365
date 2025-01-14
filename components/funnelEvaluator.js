@@ -1,38 +1,5 @@
 // components/funnelEvaluator.js
 
-'use client';
-
-const determineStatus = (progress) => {
-  if (progress === 100) return 'completed';
-  if (progress > 0) return 'in_progress';
-  return 'ready';
-};
-
-const checkFunnelCompletion = (funnelName, userData) => {
-  return userData[funnelName]?.status === 'completed';
-};
-
-const checkFunnelPrerequisites = (funnel, userData) => {
-  if (!funnel.dependencies || funnel.dependencies.length === 0) {
-    return true;
-  }
-  return funnel.dependencies.every(dep => checkFunnelCompletion(dep, userData));
-};
-
-const evaluateFunnelStatus = (funnel, userData) => {
-  const funnelData = userData[funnel.name];
-  
-  if (!funnelData) {
-    return funnel.name === 'Onboarding Funnel' ? 'in_progress' : 'not_ready';
-  }
-
-  if (funnelData.status === 'completed') {
-    return 'completed';
-  }
-
-  return funnelData.status || 'ready';
-};
-
 export const evaluateUserFunnels = (funnels, currentUser, userFunnelData = {}) => {
   console.log('Starting funnel evaluation with:', {
     funnelsLength: funnels?.length,
@@ -40,7 +7,6 @@ export const evaluateUserFunnels = (funnels, currentUser, userFunnelData = {}) =
     userFunnelDataKeys: Object.keys(userFunnelData)
   });
 
-  // Start with empty arrays for different funnel categories
   const availableFunnels = {
     inProgress: [],
     ready: [],
@@ -48,69 +14,64 @@ export const evaluateUserFunnels = (funnels, currentUser, userFunnelData = {}) =
   };
 
   try {
-    // If no funnels data, return empty result
     if (!Array.isArray(funnels) || funnels.length === 0) {
       console.log('No funnels data available');
       return availableFunnels;
     }
 
-    // Log all funnel names for debugging
-    console.log('Available funnels:', funnels.map(f => f.name));
-
     // Find onboarding funnel first
-    const onboardingFunnel = funnels.find(f => {
-      console.log('Checking funnel:', f.name, 'has milestones:', Array.isArray(f.milestones));
-      return f.name === 'Onboarding Funnel' && Array.isArray(f.milestones);
-    });
-
+    const onboardingFunnel = funnels.find(f => f.name === 'Onboarding Funnel');
     console.log('Onboarding funnel found:', !!onboardingFunnel);
-    if (onboardingFunnel) {
-      console.log('Onboarding funnel milestones:', onboardingFunnel.milestones.length);
-    }
 
-    // For new users or users without progress
+    // For new users or users without any funnel data
     if (!userFunnelData || Object.keys(userFunnelData).length === 0) {
       console.log('New user or no funnel data - starting with onboarding');
       if (onboardingFunnel) {
-        console.log('Adding onboarding funnel to inProgress');
         availableFunnels.inProgress.push(onboardingFunnel);
+        
+        // Also add any funnels that don't have prerequisites
+        funnels.forEach(funnel => {
+          if (funnel.name !== 'Onboarding Funnel' && (!funnel.dependencies || funnel.dependencies.length === 0)) {
+            availableFunnels.ready.push(funnel);
+          }
+        });
       }
       return availableFunnels;
     }
 
-    // Check if onboarding is completed
-    const isOnboardingCompleted = checkFunnelCompletion('Onboarding Funnel', userFunnelData);
-    console.log('Onboarding completed:', isOnboardingCompleted);
+    // Check onboarding completion status
+    const onboardingStatus = evaluateFunnelStatus(onboardingFunnel, userFunnelData);
+    const isOnboardingCompleted = onboardingStatus === 'completed';
+    console.log('Onboarding status:', onboardingStatus);
 
-    // If onboarding isn't completed, only show onboarding
+    // If onboarding isn't completed, show it and any progress made
     if (!isOnboardingCompleted && onboardingFunnel) {
-      console.log('Onboarding not completed - showing only onboarding funnel');
       availableFunnels.inProgress.push(onboardingFunnel);
-      return availableFunnels;
     }
 
-    // Process each funnel
+    // Process each funnel to determine availability
     funnels.forEach(funnel => {
+      // Skip onboarding as it's already handled
+      if (funnel.name === 'Onboarding Funnel') return;
+
       const status = evaluateFunnelStatus(funnel, userFunnelData);
-      console.log('Evaluated funnel status:', { 
-        funnel: funnel.name, 
-        status, 
-        hasPrereqs: checkFunnelPrerequisites(funnel, userFunnelData) 
+      const meetsPrerequisites = checkFunnelPrerequisites(funnel, userFunnelData);
+      
+      console.log('Evaluated funnel:', {
+        name: funnel.name,
+        status,
+        meetsPrerequisites,
+        dependencies: funnel.dependencies
       });
 
+      // Place funnel in appropriate category
       if (status === 'completed') {
         availableFunnels.completed.push(funnel);
-      } else if (status === 'in_progress') {
+      } else if (status === 'in_progress' || (status === 'ready' && meetsPrerequisites)) {
         availableFunnels.inProgress.push(funnel);
-      } else if (status === 'ready' && checkFunnelPrerequisites(funnel, userFunnelData)) {
+      } else if (meetsPrerequisites) {
         availableFunnels.ready.push(funnel);
       }
-    });
-
-    console.log('Final available funnels:', {
-      inProgress: availableFunnels.inProgress.map(f => f.name),
-      ready: availableFunnels.ready.map(f => f.name),
-      completed: availableFunnels.completed.map(f => f.name)
     });
 
   } catch (error) {
@@ -120,35 +81,57 @@ export const evaluateUserFunnels = (funnels, currentUser, userFunnelData = {}) =
   return availableFunnels;
 };
 
+const evaluateFunnelStatus = (funnel, userData) => {
+  if (!funnel) return 'not_ready';
+  
+  const funnelData = userData[funnel.name];
+  
+  // New funnel with no data
+  if (!funnelData) {
+    // Onboarding is special - it starts as in_progress
+    return funnel.name === 'Onboarding Funnel' ? 'in_progress' : 'ready';
+  }
+
+  // Check completion status
+  if (funnelData.status === 'completed') {
+    return 'completed';
+  }
+
+  // Check milestone progress
+  const hasStartedMilestones = funnel.milestones?.some(milestone => 
+    userData[funnel.name]?.milestones?.[milestone.name]?.progress > 0
+  );
+
+  return hasStartedMilestones ? 'in_progress' : 'ready';
+};
+
 export const updateMilestoneStatus = (milestone, funnelData = {}) => {
   try {
     // For new users or no funnel data
     if (!funnelData || Object.keys(funnelData).length === 0) {
-      console.log('No funnel data for milestone:', milestone.name);
       return {
         ...milestone,
         status: milestone.funnelName === 'Onboarding Funnel' ? 'ready' : 'not_ready',
-        progress: 0
+        progress: 0,
+        priority: milestone.priority || 
+          (milestone.funnelName === 'Onboarding Funnel' ? 1 : 2)
       };
     }
 
     const funnelProgress = funnelData[milestone.funnelName];
-    if (!funnelProgress) {
-      console.log('No progress data for funnel:', milestone.funnelName);
-      return {
-        ...milestone,
-        status: milestone.funnelName === 'Onboarding Funnel' ? 'ready' : 'not_ready',
-        progress: 0
-      };
-    }
-
-    const milestoneProgress = funnelProgress.milestones?.[milestone.name]?.progress || 0;
-    const status = determineStatus(milestoneProgress);
+    const milestoneProgress = funnelProgress?.milestones?.[milestone.name]?.progress || 0;
+    
+    let status;
+    if (milestoneProgress === 100) status = 'completed';
+    else if (milestoneProgress > 0) status = 'in_progress';
+    else status = funnelProgress ? 'ready' : 'not_ready';
 
     return {
       ...milestone,
       status,
-      progress: milestoneProgress
+      progress: milestoneProgress,
+      priority: milestone.priority || 
+        (milestone.funnelName === 'Onboarding Funnel' ? 1 : 2)
     };
   } catch (error) {
     console.error('Error updating milestone status:', error);
