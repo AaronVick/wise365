@@ -1,64 +1,57 @@
-import { useState } from 'react';
-import funnels from '../../data/funnels';
-import styles from '../../styles/Admin.module.css';
+import React, { useState } from 'react';
+import seedData from '../../data/funnels';
 
-export default function ImportFunnels() {
-    const [status, setStatus] = useState('');
-    const [error, setError] = useState('');
-    const [successCount, setSuccessCount] = useState(0);
-    const [failureCount, setFailureCount] = useState(0);
+export default function ImportPage() {
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState(null);
 
-    const handleImport = async () => {
-        setStatus('Processing...');
-        setError('');
-        setSuccessCount(0);
-        setFailureCount(0);
+  const handleImport = async () => {
+    setStatus('Importing data...');
+    setError(null);
 
-        try {
-            const response = await fetch('/api/admin/import', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ funnels }),
-            });
+    try {
+      const response = await fetch('/api/admin/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(seedData),
+      });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-            const result = await response.json();
+      const result = await response.json();
+      setStatus('Import completed successfully!');
+      console.log('Import result:', result);
+    } catch (err) {
+      setStatus('');
+      setError(`Import failed: ${err.message}`);
+      console.error('Import error:', err);
+    }
+  };
 
-            if (result.success) {
-                setStatus('Import completed successfully.');
-                setSuccessCount(result.successCount || 0);
-                setFailureCount(result.failureCount || 0);
-            } else {
-                throw new Error(result.message || 'Unknown error occurred during import.');
-            }
-        } catch (err) {
-            setStatus('');
-            setError(`Import failed: ${err.message}`);
-        }
-    };
+  return (
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+      <h1>Import Funnel Data</h1>
+      <p>Click the button below to import funnel data into the database.</p>
+      <button
+        onClick={handleImport}
+        style={{
+          padding: '10px 20px',
+          backgroundColor: '#0070f3',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '5px',
+          cursor: 'pointer',
+        }}
+      >
+        Import Data
+      </button>
 
-    return (
-        <div className={styles.container}>
-            <h1>Import Funnels</h1>
-            <p>Click the button below to import funnel data into the database.</p>
-            <button className={styles.button} onClick={handleImport}>
-                Start Import
-            </button>
-
-            {status && <p className={styles.success}>{status}</p>}
-            {error && <p className={styles.error}>{error}</p>}
-
-            {(successCount > 0 || failureCount > 0) && (
-                <div className={styles.results}>
-                    <p>Successful imports: {successCount}</p>
-                    <p>Failed imports: {failureCount}</p>
-                </div>
-            )}
-        </div>
-    );
+      {status && <p style={{ marginTop: '20px', color: 'green' }}>{status}</p>}
+      {error && <p style={{ marginTop: '20px', color: 'red' }}>{error}</p>}
+    </div>
+  );
 }
