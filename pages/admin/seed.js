@@ -14,24 +14,42 @@ export default function SeedPage() {
   const [totalRecords, setTotalRecords] = useState(0);
   const [processedRecords, setProcessedRecords] = useState(0);
 
-  const [collections] = useState(['agentData', 'userData', 'funnelData']); // Firebase collections
-  const [selectedCollection, setSelectedCollection] = useState('agentData');
+  const [collections, setCollections] = useState([]);
+  const [selectedCollection, setSelectedCollection] = useState('');
   const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState('');
 
+  // Fetch collections from Firebase
   useEffect(() => {
-    // Dynamically fetch available files for the selected collection
-    const fetchFiles = async () => {
-      console.log('Fetching files for collection:', selectedCollection);
+    const fetchCollections = async () => {
+      console.log('Fetching Firebase collections...');
       try {
-        const allFiles = {
-          agentData: ['agentData.js'],
-          userData: ['userData.js'],
-          funnelData: ['funnelData.js'],
-        };
-        setFiles(allFiles[selectedCollection] || []);
-        setSelectedFile(allFiles[selectedCollection]?.[0] || '');
-        console.log('Available files:', allFiles[selectedCollection]);
+        const response = await fetch('/api/collections');
+        const data = await response.json();
+        setCollections(data.collections || []);
+        setSelectedCollection(data.collections?.[0] || '');
+        console.log('Fetched collections:', data.collections);
+      } catch (err) {
+        console.error('Error fetching collections:', err);
+        setError('Failed to fetch Firebase collections.');
+      }
+    };
+
+    fetchCollections();
+  }, []);
+
+  // Fetch available files dynamically
+  useEffect(() => {
+    const fetchFiles = async () => {
+      if (!selectedCollection) return;
+
+      console.log(`Fetching files for collection: ${selectedCollection}`);
+      try {
+        const response = await fetch(`/api/files?collection=${selectedCollection}`);
+        const data = await response.json();
+        setFiles(data.files || []);
+        setSelectedFile(data.files?.[0] || '');
+        console.log('Available files:', data.files);
       } catch (err) {
         console.error('Error fetching files:', err);
         setError('Failed to fetch files.');
@@ -41,6 +59,7 @@ export default function SeedPage() {
     fetchFiles();
   }, [selectedCollection]);
 
+  // Clean up EventSource on unmount
   useEffect(() => {
     return () => {
       if (window._eventSource) {
@@ -51,7 +70,7 @@ export default function SeedPage() {
   }, []);
 
   const handleSeed = async () => {
-    if (!confirm(`Seed the database with ${selectedFile}? This action cannot be undone.`)) {
+    if (!confirm(`Seed the database with ${selectedFile} for ${selectedCollection}? This action cannot be undone.`)) {
       console.log('Seeding operation cancelled by user.');
       return;
     }
@@ -81,12 +100,6 @@ export default function SeedPage() {
         console.log('Event received:', data);
 
         switch (data.type) {
-          case 'connection-test':
-            console.log('Connection test successful:', data);
-            setStatus('Connection successful');
-            setExistingCount(data.existingCount);
-            break;
-
           case 'start':
             console.log('Seeding process started:', data);
             setTotalRecords(data.totalRecords);

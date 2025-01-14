@@ -4,6 +4,8 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import '../../lib/firebase';
 import '../../lib/firebaseAdmin';
+import fs from 'fs';
+import path from 'path';
 
 export const config = {
   api: {
@@ -21,9 +23,19 @@ export default async function handler(req, res) {
   }
 
   const { collection, file } = req.query;
+
+  // Validate query parameters
   if (!collection || !file) {
     console.error('Missing query parameters:', { collection, file });
     return res.status(400).json({ success: false, message: 'Missing collection or file parameter' });
+  }
+
+  // Validate file exists in the `data` folder
+  const dataFolder = path.resolve('./data');
+  const filePath = path.join(dataFolder, file);
+  if (!fs.existsSync(filePath)) {
+    console.error('Requested file does not exist:', filePath);
+    return res.status(400).json({ success: false, message: `File not found: ${file}` });
   }
 
   console.log('Initializing seeding process for:', { collection, file });
