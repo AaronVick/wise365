@@ -38,17 +38,25 @@ export const evaluateUserFunnels = (funnels, currentUser, userFunnelData = {}) =
     if (!userFunnelData || Object.keys(userFunnelData).length === 0) {
       console.log('New user detected - setting up onboarding');
       if (onboardingFunnel) {
-        console.log('Adding onboarding funnel with milestones:', onboardingFunnel.milestones.length);
+        console.log('Adding onboarding funnel with milestones:', onboardingFunnel);
+        // Make sure to include all the milestone data
         const processedFunnel = {
           ...onboardingFunnel,
           milestones: onboardingFunnel.milestones.map(m => ({
             ...m,
             status: 'ready',
             progress: 0,
-            funnelName: onboardingFunnel.name
+            funnelName: onboardingFunnel.name,
+            priority: 1,
+            // Include these critical fields from the funnel
+            responsibleAgents: onboardingFunnel.responsibleAgents,
+            formsNeeded: onboardingFunnel.formsNeeded,
+            entryCriteria: onboardingFunnel.entryCriteria,
+            dataPath: onboardingFunnel.dataPath
           }))
         };
         availableFunnels.inProgress.push(processedFunnel);
+        console.log('Processed onboarding funnel:', processedFunnel);
       }
       return availableFunnels;
     }

@@ -23,6 +23,7 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
   const [userData, setUserData] = useState(null);
   const [activeFunnel, setActiveFunnel] = useState(null);
   const [selectedMilestone, setSelectedMilestone] = useState(null);
+  const [funnelDefinitions, setFunnelDefinitions] = useState([]);
 
   // Get milestone analysis
   const { analysis: milestoneAnalysis, loading: analysisLoading } = useProgressAnalyzer(
@@ -37,22 +38,22 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
       return;
     }
 
-    const fetchMilestones = async () => {
+    const fetchFunnelsAndProgress = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // Fetch funnels data
+        // Fetch funnel definitions
         const funnelsRef = collection(db, 'funnels');
         const funnelsSnapshot = await getDocs(funnelsRef);
         const funnelsData = funnelsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
+        setFunnelDefinitions(funnelsData);
+        console.log('Available funnel definitions:', funnelsData.map(f => f.name));
 
-        console.log('Fetched funnels:', funnelsData.map(f => f.name));
-
-        // Fetch user's funnel data if it exists
+        // Fetch user's funnel progress data
         const funnelDataRef = collection(db, 'funnelData');
         const funnelDataQuery = query(
           funnelDataRef,
@@ -61,71 +62,56 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
         const funnelDataSnapshot = await getDocs(funnelDataQuery);
         const userFunnelData = funnelDataSnapshot.docs[0]?.data() || {};
         setUserData(userFunnelData);
-
         console.log('User funnel data:', userFunnelData);
 
-        // Get available funnels
-        const { inProgress, ready, completed } = evaluateUserFunnels(
+        // Get all available funnels for the user
+        const availableFunnels = await analyzeFunnelAvailability(
           funnelsData,
-          currentUser,
           userFunnelData
         );
+        console.log('Available funnels:', availableFunnels);
 
-        // Process all milestones
+        // Process milestones for all relevant funnels
         let processedMilestones = [];
 
-        // First, handle in-progress funnels
-        processedMilestones.push(
-          ...inProgress.flatMap(f => 
-            f.milestones.map(m => ({
-              ...m,
-              funnelName: f.name,
-              priority: f.name === 'Onboarding Funnel' ? 1 : (m.priority || 2)
-            }))
-          )
+        // 1. Always process onboarding first for new users
+        const onboardingFunnel = funnelsData.find(f => 
+          f.name.toLowerCase() === 'onboarding funnel'
         );
+        if (onboardingFunnel && (!userFunnelData || !userFunnelData[onboardingFunnel.name]?.completed)) {
+          processedMilestones.push(
+            ...processFunnelMilestones(onboardingFunnel, userFunnelData, true)
+          );
+        }
 
-        // Then ready funnels
-        processedMilestones.push(
-          ...ready.flatMap(f => 
-            f.milestones.map(m => ({
-              ...m,
-              funnelName: f.name,
-              priority: f.name === 'Onboarding Funnel' ? 1 : (m.priority || 3)
-            }))
-          )
+        // 2. Process active funnels (those with progress data)
+        const activeFunnels = funnelsData.filter(f => 
+          userFunnelData[f.name] && 
+          f.name.toLowerCase() !== 'onboarding funnel'
         );
+        activeFunnels.forEach(funnel => {
+          processedMilestones.push(
+            ...processFunnelMilestones(funnel, userFunnelData, false)
+          );
+        });
 
-        // Finally completed funnels
-        processedMilestones.push(
-          ...completed.flatMap(f => 
-            f.milestones.map(m => ({
-              ...m,
-              funnelName: f.name,
-              priority: f.name === 'Onboarding Funnel' ? 1 : (m.priority || 4)
-            }))
-          )
-        );
+        // 3. Process upcoming funnels (meet prerequisites but no progress yet)
+        availableFunnels.upcoming.forEach(funnel => {
+          const upcomingMilestones = processFunnelMilestones(funnel, userFunnelData, false);
+          // Mark first milestone as ready, others as not_ready
+          upcomingMilestones[0].status = 'ready';
+          processedMilestones.push(...upcomingMilestones);
+        });
 
-        console.log('Processed milestones before status update:', processedMilestones);
-
-        // Update milestone status
-        processedMilestones = processedMilestones.map(m => 
-          updateMilestoneStatus(m, userFunnelData)
-        );
-
-        // Sort milestones
+        // Sort milestones by priority and status
         processedMilestones.sort((a, b) => {
+          // First by priority
           if (a.priority !== b.priority) {
             return a.priority - b.priority;
           }
-          if (a.funnelName === 'Onboarding Funnel' && b.funnelName !== 'Onboarding Funnel') {
-            return -1;
-          }
-          if (a.funnelName !== 'Onboarding Funnel' && b.funnelName === 'Onboarding Funnel') {
-            return 1;
-          }
-          return 0;
+          // Then by status (ready > in_progress > completed > not_ready)
+          const statusOrder = { ready: 0, in_progress: 1, completed: 2, not_ready: 3 };
+          return statusOrder[a.status] - statusOrder[b.status];
         });
 
         console.log('Final processed milestones:', processedMilestones);
@@ -134,7 +120,10 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
         if (!selectedMilestone && processedMilestones.length > 0) {
           const firstMilestone = processedMilestones[0];
           setSelectedMilestone(firstMilestone);
-          setActiveFunnel(inProgress[0] || ready[0]);
+          const associatedFunnel = funnelsData.find(f => f.name === firstMilestone.funnelName);
+          if (associatedFunnel) {
+            setActiveFunnel(associatedFunnel);
+          }
         }
 
         setMilestones(processedMilestones);
@@ -148,8 +137,116 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
       }
     };
 
-    fetchMilestones();
+    fetchFunnelsAndProgress();
   }, [currentUser?.uid, selectedMilestone]);
+
+  const analyzeFunnelAvailability = async (funnels, userFunnelData) => {
+    const result = {
+      active: [],    // Currently active funnels
+      upcoming: [],  // Funnels that meet ALL prerequisites
+      locked: []     // Funnels that don't meet prerequisites yet
+    };
+  
+    funnels.forEach(funnel => {
+      // Special handling for onboarding
+      if (funnel.name.toLowerCase() === 'onboarding funnel') {
+        if (!userFunnelData || !userFunnelData[funnel.name]?.completed) {
+          result.active.push(funnel);
+        }
+        return;
+      }
+  
+      const hasProgress = userFunnelData[funnel.name];
+      
+      // Check ALL prerequisites before marking as upcoming
+      const meetsAllCriteria = checkAllFunnelPrerequisites(funnel, userFunnelData);
+  
+      if (hasProgress) {
+        result.active.push(funnel);
+      } else if (meetsAllCriteria) {
+        result.upcoming.push(funnel);
+      } else {
+        result.locked.push(funnel);
+      }
+    });
+  
+    return result;
+  };
+  
+
+  
+  const checkAllFunnelPrerequisites = (funnel, userFunnelData) => {
+    // 1. Check dependencies
+    const dependenciesMet = (funnel.dependencies || []).every(depName => {
+      return userFunnelData[depName]?.completed === true;
+    });
+    if (!dependenciesMet) return false;
+  
+    // 2. Check MSW score requirements
+    if (funnel.entryCriteria?.mswScore) {
+      const userMswScore = userFunnelData.mswScore;
+      if (!userMswScore) return false;
+  
+      if (funnel.entryCriteria.mswScore.includes('-')) {
+        const [min, max] = funnel.entryCriteria.mswScore.split('-').map(Number);
+        if (userMswScore < min || userMswScore > max) return false;
+      } else {
+        if (userMswScore < Number(funnel.entryCriteria.mswScore)) return false;
+      }
+    }
+  
+    // 3. Check reported challenges
+    if (funnel.entryCriteria?.reportedChallenges?.length > 0) {
+      const userChallenges = userFunnelData.reportedChallenges || [];
+      const hasRequiredChallenge = funnel.entryCriteria.reportedChallenges
+        .some(challenge => userChallenges.includes(challenge));
+      if (!hasRequiredChallenge) return false;
+    }
+  
+    // 4. Check required forms
+    if (funnel.formsNeeded?.length > 0) {
+      const completedForms = userFunnelData.completedForms || [];
+      const hasAllRequiredForms = funnel.formsNeeded
+        .every(form => completedForms.includes(form));
+      if (!hasAllRequiredForms) return false;
+    }
+  
+    return true;
+  };
+
+
+
+  const processFunnelMilestones = (funnel, userFunnelData, isOnboarding) => {
+    return funnel.milestones.map((milestone, index) => ({
+      ...milestone,
+      funnelName: funnel.name,
+      status: determineInitialStatus(funnel, milestone, userFunnelData, index, isOnboarding),
+      progress: calculateProgress(funnel.name, milestone.name, userFunnelData),
+      priority: determinePriority(funnel, milestone, index),
+      responsibleAgents: funnel.responsibleAgents,
+      formsNeeded: funnel.formsNeeded
+    }));
+  };
+
+  const determineInitialStatus = (funnel, milestone, userData, index, isOnboarding) => {
+    const funnelProgress = userData[funnel.name];
+    if (!funnelProgress) {
+      return isOnboarding || index === 0 ? 'ready' : 'not_ready';
+    }
+    const progress = funnelProgress.milestones?.[milestone.name]?.progress || 0;
+    if (progress === 100) return 'completed';
+    if (progress > 0) return 'in_progress';
+    return 'ready';
+  };
+
+  const calculateProgress = (funnelName, milestoneName, userData) => {
+    return userData[funnelName]?.milestones?.[milestoneName]?.progress || 0;
+  };
+
+  const determinePriority = (funnel, milestone, index) => {
+    if (funnel.name.toLowerCase() === 'onboarding funnel') return 1;
+    return milestone.priority || funnel.priority || (index + 2);
+  };
 
   const applyFilter = (milestones, filter) => {
     if (!Array.isArray(milestones)) {
@@ -173,22 +270,18 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
     setSelectedMilestone(milestone);
     
     // Find the corresponding funnel
-    const funnelsRef = collection(db, 'funnels');
-    const funnelQuery = query(
-      funnelsRef,
-      where('name', '==', milestone.funnelName)
-    );
-    const funnelSnapshot = await getDocs(funnelQuery);
-    const funnel = funnelSnapshot.docs[0]?.data();
-    
+    const funnel = funnelDefinitions.find(f => f.name === milestone.funnelName);
     if (funnel) {
       setActiveFunnel(funnel);
+    } else {
+      console.error('Could not find funnel for milestone:', milestone.funnelName);
     }
   };
 
   const handleActionComplete = async (actionResult) => {
+    // Update milestone progress
     const updatedMilestones = milestones.map(m => {
-      if (m.name === selectedMilestone.name) {
+      if (m.name === selectedMilestone.name && m.funnelName === selectedMilestone.funnelName) {
         return {
           ...m,
           progress: actionResult.progress || m.progress,
@@ -197,6 +290,25 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
       }
       return m;
     });
+
+    // If this completion unlocks new funnels, trigger a refresh
+    if (actionResult.status === 'completed') {
+      const funnel = funnelDefinitions.find(f => f.name === selectedMilestone.funnelName);
+      if (funnel) {
+        // Refresh available funnels
+        const availableFunnels = await analyzeFunnelAvailability(
+          funnelDefinitions,
+          { ...userData, [funnel.name]: { completed: true } }
+        );
+
+        // Add any newly available funnels
+        const newMilestones = availableFunnels.upcoming.flatMap(f => 
+          processFunnelMilestones(f, userData, false)
+        );
+
+        updatedMilestones.push(...newMilestones);
+      }
+    }
 
     setMilestones(updatedMilestones);
     applyFilter(updatedMilestones, activeFilter);
@@ -228,6 +340,7 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
     );
   }
 
+
   return (
     <div className="space-y-6">
       <Card className="p-6">
@@ -255,7 +368,7 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
             ) : (
               <div className="text-center py-8">
                 <p className="text-gray-500">
-                  No milestones available at this time.
+                  Loading available milestones...
                 </p>
               </div>
             )}
