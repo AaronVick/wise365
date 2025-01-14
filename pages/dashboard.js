@@ -23,7 +23,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
-} from '@/components/ui/Accordion';
+} from '@/components/Accordion';
 import {
   DropdownMenu,
   DropdownMenuContent,
