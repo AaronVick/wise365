@@ -1,10 +1,13 @@
 // components/MilestonesSection.js
 
+
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card } from '@/components/ui/card';
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea } from '@/components/ui/scroll-area';
 import MilestoneCard from './MilestoneCard';
 import MilestoneFilters from './MilestoneFilters';
 import FunnelActionInterface from './FunnelActionInterface';
@@ -12,10 +15,7 @@ import { useProgressAnalyzer } from './ProgressAnalyzer';
 import { evaluateUserFunnels, updateMilestoneStatus } from './funnelEvaluator';
 import { Loader2 } from 'lucide-react';
 
-const MilestonesSection = ({ 
-  currentUser,
-  setCurrentChat // Add this prop for handling chat navigation
-}) => {
+const MilestonesSection = ({ currentUser, setCurrentChat }) => {
   const [milestones, setMilestones] = useState([]);
   const [filteredMilestones, setFilteredMilestones] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +25,6 @@ const MilestonesSection = ({
   const [activeFunnel, setActiveFunnel] = useState(null);
   const [selectedMilestone, setSelectedMilestone] = useState(null);
 
-  // Use progress analyzer for the selected milestone
   const { 
     analysis: milestoneAnalysis, 
     loading: analysisLoading 
@@ -68,91 +67,92 @@ const MilestonesSection = ({
         setUserData(userFunnelData);
 
         // Evaluate available funnels and their milestones
-        // Evaluate available funnels and their milestones
-const { inProgress, ready, completed } = evaluateUserFunnels(
-  funnelsData,
-  currentUser,
-  userFunnelData
-);
+        const { inProgress, ready, completed } = evaluateUserFunnels(
+          funnelsData,
+          currentUser,
+          userFunnelData
+        );
 
-console.log('Evaluated funnels:', { inProgress, ready, completed });
+        console.log('Evaluated funnels:', { inProgress, ready, completed });
 
-// Combine and process milestones
-let processedMilestones = [
-  ...inProgress.flatMap(f => f.milestones),
-  ...ready.flatMap(f => f.milestones),
-  ...completed.flatMap(f => f.milestones)
-].map(milestone => updateMilestoneStatus(milestone, userFunnelData));
+        // Combine and process milestones
+        let processedMilestones = [
+          ...inProgress.flatMap(f => f.milestones),
+          ...ready.flatMap(f => f.milestones),
+          ...completed.flatMap(f => f.milestones)
+        ].map(milestone => updateMilestoneStatus(milestone, userFunnelData));
 
-console.log('Initial processed milestones:', processedMilestones);
+        console.log('Initial processed milestones:', processedMilestones);
 
-// If still no milestones (shouldn't happen with proper evaluation)
-if (processedMilestones.length === 0) {
-  console.log('No processed milestones after evaluation, forcing onboarding');
-  const onboardingFunnel = funnelsData.find(funnel => 
-    funnel.name === 'Onboarding Funnel' && 
-    Array.isArray(funnel.milestones)
-  );
+        // Handle new user case or no milestones case with onboarding
+        if (processedMilestones.length === 0) {
+          console.log('No processed milestones, checking onboarding');
+          const onboardingFunnel = funnelsData.find(funnel => 
+            funnel.name === 'Onboarding Funnel' && 
+            Array.isArray(funnel.milestones)
+          );
 
-  // Evaluate available funnels and their milestones
-const { inProgress, ready, completed } = evaluateUserFunnels(
-  funnelsData,
-  currentUser,
-  userFunnelData
-);
+          if (onboardingFunnel) {
+            console.log('Found onboarding funnel:', onboardingFunnel);
+            setActiveFunnel(onboardingFunnel);
 
-console.log('Evaluated funnels:', { inProgress, ready, completed });
+            // Process onboarding milestones
+            processedMilestones = onboardingFunnel.milestones.map(milestone => ({
+              ...milestone,
+              funnelName: onboardingFunnel.name,
+              progress: 0,
+              status: 'ready',
+              priority: onboardingFunnel.priority || 1,
+              conversationId: milestone.conversationId || `milestone-${milestone.name}`
+            }));
 
-// Combine and process milestones
-let processedMilestones = [
-  ...inProgress.flatMap(f => f.milestones),
-  ...ready.flatMap(f => f.milestones),
-  ...completed.flatMap(f => f.milestones)
-].map(milestone => updateMilestoneStatus(milestone, userFunnelData));
+            // Set the first milestone as selected for new users
+            setSelectedMilestone(processedMilestones[0]);
+            console.log('Processed onboarding milestones:', processedMilestones);
+          } else {
+            console.error('No onboarding funnel found in funnels data');
+          }
+        }
 
-console.log('Initial processed milestones:', processedMilestones);
+        // Sort milestones
+        processedMilestones.sort((a, b) => {
+          if (a.priority !== b.priority) {
+            return a.priority - b.priority;
+          }
+          const statusOrder = { in_progress: 0, ready: 1, completed: 2 };
+          return statusOrder[a.status] - statusOrder[b.status];
+        });
 
-// Handle new user case or no milestones case with onboarding
-if (processedMilestones.length === 0) {
-  console.log('No processed milestones, checking onboarding');
-  const onboardingFunnel = funnelsData.find(funnel => 
-    funnel.name === 'Onboarding Funnel' && 
-    Array.isArray(funnel.milestones)
-  );
+        setMilestones(processedMilestones);
+        applyFilter(processedMilestones, activeFilter);
+      } catch (error) {
+        console.error('Error fetching milestones:', error);
+        setError(error.message || 'Failed to load milestones');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  if (onboardingFunnel) {
-    console.log('Found onboarding funnel:', onboardingFunnel);
-    setActiveFunnel(onboardingFunnel);
+    fetchMilestones();
+  }, [currentUser?.uid]);
 
-    // Process onboarding milestones
-    processedMilestones = onboardingFunnel.milestones.map(milestone => ({
-      ...milestone,
-      funnelName: onboardingFunnel.name,
-      progress: 0,
-      status: 'ready',
-      priority: onboardingFunnel.priority || 1,
-      conversationId: milestone.conversationId || `milestone-${milestone.name}`
-    }));
+  const applyFilter = (milestones, filter) => {
+    if (!Array.isArray(milestones)) {
+      setFilteredMilestones([]);
+      return;
+    }
 
-    // Set the first milestone as selected for new users
-    setSelectedMilestone(processedMilestones[0]);
-    console.log('Processed onboarding milestones:', processedMilestones);
-  } else {
-    console.error('No onboarding funnel found in funnels data');
-  }
-}
+    const filtered = filter === 'all' 
+      ? milestones
+      : milestones.filter(milestone => milestone.status === filter);
+    
+    setFilteredMilestones(filtered);
+  };
 
-// Sort milestones
-processedMilestones.sort((a, b) => {
-  if (a.priority !== b.priority) {
-    return a.priority - b.priority;
-  }
-  const statusOrder = { in_progress: 0, ready: 1, completed: 2 };
-  return statusOrder[a.status] - statusOrder[b.status];
-});
-
-setMilestones(processedMilestones);
-applyFilter(processedMilestones, activeFilter);
+  const handleFilterChange = (filter) => {
+    setActiveFilter(filter);
+    applyFilter(milestones, filter);
+  };
 
   const handleMilestoneClick = async (milestone) => {
     setSelectedMilestone(milestone);
@@ -171,9 +171,7 @@ applyFilter(processedMilestones, activeFilter);
     }
   };
 
-  // Handle completion of funnel actions
   const handleActionComplete = async (actionResult) => {
-    // Refresh milestones after action completion
     const updatedMilestones = milestones.map(m => {
       if (m.name === selectedMilestone.name) {
         return {
