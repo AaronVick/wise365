@@ -1,4 +1,4 @@
-// components/toolComponents/BuyerPersona.js
+// components/toolComponents/buyer-persona.js
 
 import React, { useEffect, useState } from 'react';
 import {

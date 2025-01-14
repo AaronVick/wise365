@@ -1,4 +1,4 @@
-// components/toolComponents/SuccessWheel.js
+// components/toolComponents/success-wheel.js
 import React, { useEffect, useState } from 'react';
 import {
   collection,

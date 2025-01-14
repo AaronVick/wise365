@@ -31,9 +31,9 @@ import { useDashboard } from '../contexts/DashboardContext';
 import DashboardContent from '../components/DashboardContent';
 import ChatInterface from '@/components/ChatInterface';
 import ChatWithShawn from '@/components/ChatWithShawn';
-import BuyerPersona from '../components/toolComponents/BuyerPersona';
-import SuccessWheel from '../components/toolComponents/SuccessWheel';
-import PositioningFactors from '../components/toolComponents/PositioningFactors';
+import BuyerPersona from '../components/toolComponents/buyer-persona';
+import SuccessWheel from '../components/toolComponents/success-wheel';
+import PositioningFactors from '../components/toolComponents/positioning-factors';
 
 import { 
   fetchNestedChats, 

@@ -1,4 +1,4 @@
-// components/toolComponents/PositioningFactors.js
+// components/toolComponents/positioning-factors.js
 import React, { useState, useEffect } from "react";
 import {
   collection,
