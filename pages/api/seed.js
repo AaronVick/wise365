@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
 
-  const { collection, file } = req.query;
+  const { collection, file, auth } = req.query;
 
   // Validate query parameters
   if (!collection || !file) {
@@ -40,22 +40,22 @@ export default async function handler(req, res) {
 
   console.log('Initializing seeding process for:', { collection, file });
 
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.error('Authorization header missing or invalid.');
-    return res.status(401).json({ success: false, message: 'Unauthorized: Missing or invalid token' });
+  // Validate token
+  if (!auth) {
+    console.error('Missing auth token in request.');
+    return res.status(401).json({ success: false, message: 'Unauthorized: Missing auth token' });
   }
 
-  const idToken = authHeader.split(' ')[1];
   let decodedToken;
   try {
-    decodedToken = await getAuth().verifyIdToken(idToken);
+    decodedToken = await getAuth().verifyIdToken(auth);
     console.log('Authenticated user:', decodedToken.uid);
   } catch (error) {
     console.error('Authentication error:', error);
     return res.status(401).json({ success: false, message: 'Invalid or expired token' });
   }
 
+  // Verify user permissions
   const db = getFirestore();
   try {
     const userDoc = await db.collection('users').where('authenticationID', '==', decodedToken.uid).get();

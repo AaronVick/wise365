@@ -77,9 +77,9 @@ export default function SeedPage() {
       console.log('Seeding operation cancelled by user.');
       return;
     }
-
+  
     console.log('Starting seeding for:', { collection: selectedCollection, file: selectedFile });
-
+  
     setStatus('Initializing...');
     setLoading(true);
     setError(null);
@@ -88,40 +88,52 @@ export default function SeedPage() {
     setCurrentChunk({ current: 0, total: 0 });
     setTotalRecords(0);
     setProcessedRecords(0);
-
+  
     try {
       if (window._eventSource) {
         console.log('Closing any existing EventSource connection before starting.');
         window._eventSource.close();
       }
-
-      const eventSource = new EventSource(`/api/seed?collection=${selectedCollection}&file=${selectedFile}`);
+  
+      const user = firebase.auth().currentUser;
+      if (!user) {
+        console.error('No authenticated user found.');
+        setError('You must be logged in to seed the database.');
+        setLoading(false);
+        return;
+      }
+  
+      const idToken = await user.getIdToken();
+      const eventSource = new EventSource(
+        `/api/seed?collection=${selectedCollection}&file=${selectedFile}&auth=${idToken}`
+      );
+  
       window._eventSource = eventSource;
-
+  
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
         console.log('Event received:', data);
-
+  
         switch (data.type) {
           case 'start':
             console.log('Seeding process started:', data);
             setTotalRecords(data.totalRecords);
             setStatus('Seeding process started.');
             break;
-
+  
           case 'chunk-start':
             console.log(`Processing chunk ${data.currentChunk} of ${data.totalChunks}`);
             setCurrentChunk({ current: data.currentChunk, total: data.totalChunks });
             setStatus(data.message);
             break;
-
+  
           case 'chunk-complete':
             console.log(`Chunk complete. Processed ${data.processedRecords}/${data.totalRecords}`);
             setProcessedRecords(data.processedRecords);
             setProgress((data.processedRecords / data.totalRecords) * 100);
             setResults((prevResults) => [...prevResults, ...data.chunkResults]);
             break;
-
+  
           case 'complete':
             console.log('Seeding complete:', data);
             setProcessedRecords(data.totalProcessed);
@@ -130,7 +142,7 @@ export default function SeedPage() {
             eventSource.close();
             setLoading(false);
             break;
-
+  
           case 'error':
             console.error('Error during seeding:', data);
             setError(data.message);
@@ -138,13 +150,13 @@ export default function SeedPage() {
             eventSource.close();
             setLoading(false);
             break;
-
+  
           default:
             console.warn('Unknown event type:', data.type);
             break;
         }
       };
-
+  
       eventSource.onerror = (error) => {
         console.error('EventSource encountered an error:', error);
         setError('Connection error. Please try again.');
@@ -159,6 +171,7 @@ export default function SeedPage() {
       setLoading(false);
     }
   };
+
 
   return (
     <AdminLayout>
