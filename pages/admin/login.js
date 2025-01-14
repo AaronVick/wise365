@@ -22,37 +22,39 @@ export default function AdminLogin() {
     const checkAdminAccess = async () => {
       if (user) {
         console.log('Checking admin access for user:', user.uid);
+    
         try {
+          // Fetch user document
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
-
+    
           if (!userDoc.exists()) {
-            throw new Error('User document not found in Firestore.');
+            console.error('User document not found in Firestore.');
+            throw new Error('User document missing.');
           }
-
+    
           const userData = userDoc.data();
-          console.log('User data retrieved:', userData);
-
+          console.log('Retrieved user data:', userData);
+    
+          // Validate SystemAdmin access
           if (userData.SystemAdmin === true) {
-            if (isSubscribed) {
-              const idToken = await user.getIdToken();
-              console.log('Admin access verified. Redirecting to admin page...');
-              localStorage.setItem('auth_token', idToken);
-              router.replace('/admin');
-            }
+            const idToken = await user.getIdToken();
+            console.log('Admin verified. Redirecting to admin dashboard.');
+            localStorage.setItem('auth_token', idToken);
+            router.replace('/admin');
           } else {
-            throw new Error('User is not authorized as an admin.');
+            console.error('User is not an admin.');
+            throw new Error('Unauthorized access.');
           }
         } catch (error) {
-          console.error('Error verifying admin access:', error);
-          if (isSubscribed) {
-            setError('Error verifying admin access. Please contact support.');
-            await auth.signOut();
-            localStorage.removeItem('auth_token');
-          }
+          console.error('Admin access verification failed:', error);
+          setError('Error verifying admin access. Please contact support.');
+          await auth.signOut();
+          localStorage.removeItem('auth_token');
         }
       }
     };
+    
 
     if (!authLoading && user) {
       checkAdminAccess();
