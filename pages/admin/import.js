@@ -1,36 +1,32 @@
-import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, cert, apps } from 'firebase-admin/app';
-import funnels from '../../data/funnels';
+// pages/admin/import.js
+import React, { useState } from 'react';
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_SDK || '{}');
+const ImportPage = () => {
+  const [status, setStatus] = useState('');
 
-// Initialize Firebase Admin SDK if not already initialized
-if (!apps.length) {
-  initializeApp({
-    credential: cert(serviceAccount),
-  });
-}
+  const handleImport = async () => {
+    try {
+      setStatus('Importing...');
+      const response = await fetch('/api/admin/import', { method: 'POST' });
 
-const db = getFirestore();
+      if (response.ok) {
+        setStatus('Import successful!');
+      } else {
+        const errorData = await response.json();
+        setStatus(`Import failed: ${errorData.message}`);
+      }
+    } catch (error) {
+      setStatus(`Import error: ${error.message}`);
+    }
+  };
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
-    return res.status(405).json({ success: false, message: 'Method Not Allowed' });
-  }
+  return (
+    <div>
+      <h1>Import Funnels</h1>
+      <button onClick={handleImport}>Start Import</button>
+      <p>{status}</p>
+    </div>
+  );
+};
 
-  try {
-    const batch = db.batch();
-    funnels.forEach((record) => {
-      const docRef = db.collection('funnels').doc();
-      batch.set(docRef, record);
-    });
-
-    await batch.commit();
-
-    return res.status(200).json({ success: true, message: 'Data successfully imported!' });
-  } catch (error) {
-    console.error('Error importing data:', error);
-    return res.status(500).json({ success: false, message: 'Failed to import data.', error: error.message });
-  }
-}
+export default ImportPage;
