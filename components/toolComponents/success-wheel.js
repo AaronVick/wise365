@@ -1,6 +1,5 @@
 // components/toolComponents/success-wheel.js
 
-
 import React, { useEffect, useState } from 'react';
 import {
   collection,
@@ -17,6 +16,7 @@ import { Button } from '../ui/button';
 import { Select, SelectItem } from '../ui/select';
 import Checkbox from '../ui/checkbox';
 import { Card } from '../ui/card';
+import { Input } from '../ui/input';
 
 const SuccessWheel = ({ onComplete }) => {
   const { currentUser } = useAuth() || {};
@@ -82,7 +82,9 @@ const SuccessWheel = ({ onComplete }) => {
     if (!template || !currentUser) return;
 
     const allQuestionsAnswered = template.sections.every(
-      (section) => responses[section.question]?.trim()
+      (section) =>
+        responses[section.question]?.trim() ||
+        (section.gradingScale && responses[section.question] !== undefined)
     );
 
     if (!allQuestionsAnswered) {
@@ -156,17 +158,25 @@ const SuccessWheel = ({ onComplete }) => {
               <p className="text-sm text-gray-500 mb-2">{section.definition}</p>
               <p className="text-sm text-gray-500 mb-4">{section.evaluationCriteria}</p>
 
-              <Select
-                value={responses[section.question] || ''}
-                onValueChange={(value) => handleChange(section.question, value)}
-              >
-                <SelectItem value="">Select a grade</SelectItem>
-                {section.gradingScale.map((grade, idx) => (
-                  <SelectItem key={idx} value={grade}>
-                    {grade}
-                  </SelectItem>
-                ))}
-              </Select>
+              {section.gradingScale ? (
+                <Select
+                  value={responses[section.question] || ''}
+                  onValueChange={(value) => handleChange(section.question, value)}
+                >
+                  <SelectItem value="">Select a grade</SelectItem>
+                  {section.gradingScale.map((grade, idx) => (
+                    <SelectItem key={idx} value={grade}>
+                      {grade}
+                    </SelectItem>
+                  ))}
+                </Select>
+              ) : (
+                <Input
+                  value={responses[section.question] || ''}
+                  onChange={(e) => handleChange(section.question, e.target.value)}
+                  placeholder="Enter your answer"
+                />
+              )}
             </div>
           ))}
 

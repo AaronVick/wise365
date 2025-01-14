@@ -272,16 +272,19 @@ const Dashboard = () => {
       >
         {/* Logo and Home */}
         <div className="p-4 border-b border-gray-700 flex items-center space-x-4">
-          <Button 
-            variant="ghost" 
-            className="text-white hover:text-white"
-            onClick={() => {
-              setCurrentChat(null);
-              router.push('/dashboard');
-            }}
-          >
-            <Home className="h-5 w-5" />
-          </Button>
+        <Button
+          variant="ghost"
+          className="text-white hover:text-white"
+          onClick={() => {
+            // Clear any active tools or chats
+            setCurrentChat(null);
+            setCurrentTool(null);
+            // Navigate to the dashboard
+            router.push('/dashboard');
+          }}
+        >
+          <Home className="h-5 w-5" />
+        </Button>
           <h1 className="text-lg font-bold">Business Wise365</h1>
         </div>
 

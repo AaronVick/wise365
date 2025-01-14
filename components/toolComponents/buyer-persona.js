@@ -32,7 +32,7 @@ const BuyerPersona = ({ onComplete }) => {
       try {
         const q = query(
           collection(db, 'resources'),
-          where('templateName', '==', "World's Best Buyer Persona")
+          where('templateName', '==', "Worlds Best Buyer Persona")
         );
         const querySnapshot = await getDocs(q);
 
