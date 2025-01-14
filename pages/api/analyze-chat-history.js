@@ -1,4 +1,4 @@
-// /pages/api/analyze-chat-history.js
+// pages/api/analyze-chat-history.js
 import { db } from '../../lib/firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 
