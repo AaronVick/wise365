@@ -1,65 +1,71 @@
 // pages/admin/import.js
-
 import React, { useState } from 'react';
-import { useRouter } from 'next/router';
 
 const ImportPage = () => {
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
   const handleImport = async () => {
+    setIsLoading(true);
+    setStatus('Starting import...');
+
     try {
-      setIsLoading(true);
-      setStatus('Importing...');
-      
       const response = await fetch('/api/admin/import', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
+        body: JSON.stringify({ action: 'import' })
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setStatus(`Success: ${data.message}`);
-        // Optional: Redirect or refresh after successful import
-        // setTimeout(() => router.push('/admin/funnels'), 2000);
-      } else {
-        setStatus(`Error: ${data.message || 'Import failed'}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Import failed');
       }
+
+      const result = await response.json();
+      setStatus(`Success: ${result.message}`);
+      
     } catch (error) {
-      console.error('Import error:', error);
-      setStatus(`Import error: ${error.message}`);
+      console.error('Import error details:', error);
+      setStatus(`Error: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-4">Import Funnels</h1>
-      <button
-        onClick={handleImport}
-        disabled={isLoading}
-        className={`px-4 py-2 rounded ${
-          isLoading 
-            ? 'bg-gray-400 cursor-not-allowed' 
-            : 'bg-blue-500 hover:bg-blue-600'
-        } text-white font-medium`}
-      >
-        {isLoading ? 'Importing...' : 'Start Import'}
-      </button>
-      {status && (
-        <p className={`mt-4 p-4 rounded ${
-          status.includes('Success') 
-            ? 'bg-green-100 text-green-700' 
-            : 'bg-red-100 text-red-700'
-        }`}>
-          {status}
-        </p>
-      )}
+    <div className="max-w-4xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">Import Funnels</h1>
+      
+      <div className="space-y-4">
+        <button
+          onClick={handleImport}
+          disabled={isLoading}
+          className={`
+            px-4 py-2 rounded-md
+            ${isLoading 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-blue-500 hover:bg-blue-600'
+            }
+            text-white font-medium transition-colors
+          `}
+        >
+          {isLoading ? 'Importing...' : 'Start Import'}
+        </button>
+
+        {status && (
+          <div className={`
+            p-4 rounded-md
+            ${status.includes('Success') 
+              ? 'bg-green-50 text-green-800 border border-green-200' 
+              : 'bg-red-50 text-red-800 border border-red-200'
+            }
+          `}>
+            {status}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

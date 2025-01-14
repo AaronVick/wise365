@@ -1,70 +1,71 @@
 // pages/api/admin/import.js
 
 import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import funnels from '../../../data/funnels';
 
-// Initialize Firebase Admin SDK if not already initialized
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
+
 if (!getApps().length) {
-  try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_SDK || '{}');
-    initializeApp({
-      credential: cert(serviceAccount),
-    });
-  } catch (error) {
-    console.error('Firebase Admin initialization error:', error);
-    throw error;
-  }
+  const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_SDK || '{}');
+  initializeApp({
+    credential: cert(serviceAccount),
+  });
 }
 
 const db = getFirestore();
 
 export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST');
+  console.log('API Route Hit:', req.method);
   
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'POST');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
-    return res.status(405).json({ success: false, message: 'Method Not Allowed' });
+    return res.status(405).json({ 
+      success: false, 
+      message: `Method ${req.method} Not Allowed` 
+    });
   }
 
   try {
-    if (!Array.isArray(funnels) || funnels.length === 0) {
-      return res.status(400).json({ success: false, message: 'Funnels data is empty or invalid.' });
-    }
+    console.log('Processing funnels:', funnels.length);
 
     const batch = db.batch();
     
-    // Process each funnel
-    funnels.forEach((funnel, index) => {
-      if (!funnel.name) {
-        throw new Error(`Invalid funnel at index ${index}: Missing required field 'name'`);
-      }
-
-      // Create a document reference with auto-generated ID
+    for (const funnel of funnels) {
       const docRef = db.collection('funnels').doc();
-      
-      // Add the funnel data with a timestamp
-      batch.set(docRef, {
+      const funnelData = {
         ...funnel,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-    });
+        importedAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
+      };
+      
+      batch.set(docRef, funnelData);
+    }
 
     await batch.commit();
-    
+    console.log('Batch commit successful');
+
     return res.status(200).json({ 
       success: true, 
-      message: `Successfully imported ${funnels.length} funnels!` 
+      message: `Successfully imported ${funnels.length} funnels` 
     });
+    
   } catch (error) {
-    console.error('Error importing data:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to import data.',
-      error: error.message,
+    console.error('Import error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }
