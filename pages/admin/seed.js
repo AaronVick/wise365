@@ -1,7 +1,13 @@
 // pages/admin/seed.js
-
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
+import { getAuth } from 'firebase/auth';
+import { initializeApp } from 'firebase/app';
+import { firebaseConfig } from '@/lib/firebase';
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
 export default function SeedPage() {
   const [status, setStatus] = useState('');
@@ -38,7 +44,7 @@ export default function SeedPage() {
     fetchCollections();
   }, []);
 
-  // Fetch available files dynamically
+  // Fetch available files
   useEffect(() => {
     const fetchFiles = async () => {
       console.log('Fetching all files from the data folder...');
@@ -52,7 +58,7 @@ export default function SeedPage() {
         console.log('Files response:', data);
   
         setFiles(data.files || []);
-        setSelectedFile(data.files?.[0] || ''); // Default to the first file
+        setSelectedFile(data.files?.[0] || '');
       } catch (error) {
         console.error('Error fetching files:', error);
         setError('Failed to fetch files.');
@@ -62,7 +68,7 @@ export default function SeedPage() {
     fetchFiles();
   }, []);
 
-  // Clean up EventSource on unmount
+  // Clean up EventSource
   useEffect(() => {
     return () => {
       if (window._eventSource) {
@@ -95,15 +101,15 @@ export default function SeedPage() {
         window._eventSource.close();
       }
   
-      const user = firebase.auth().currentUser;
-      if (!user) {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
         console.error('No authenticated user found.');
         setError('You must be logged in to seed the database.');
         setLoading(false);
         return;
       }
   
-      const idToken = await user.getIdToken();
+      const idToken = await currentUser.getIdToken();
       const eventSource = new EventSource(
         `/api/seed?collection=${selectedCollection}&file=${selectedFile}&auth=${idToken}`
       );
@@ -171,7 +177,6 @@ export default function SeedPage() {
       setLoading(false);
     }
   };
-
 
   return (
     <AdminLayout>
