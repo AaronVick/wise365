@@ -31,6 +31,10 @@ import { useDashboard } from '../contexts/DashboardContext';
 import DashboardContent from '../components/DashboardContent';
 import ChatInterface from '@/components/ChatInterface';
 import ChatWithShawn from '@/components/ChatWithShawn';
+import BuyerPersona from '../components/toolComponents/BuyerPersona';
+import SuccessWheel from '../components/toolComponents/SuccessWheel';
+import PositioningFactors from '../components/toolComponents/PositioningFactors';
+
 import { 
   fetchNestedChats, 
   handleAgentClick as handleAgentClickUtil, 
