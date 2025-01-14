@@ -1,20 +1,17 @@
 // components/funnelEvaluator.js
 
-/**
- * Evaluates which funnels should be available based on user progress and criteria
- */
-export const evaluateUserFunnels = (funnels, userData = {}, funnelData = {}) => {
+export const evaluateUserFunnels = (funnels, currentUser, userFunnelData = {}) => {
   try {
     // Start with empty arrays for different funnel categories
     const availableFunnels = {
       inProgress: [],
       ready: [],
-      completed: [],
-      locked: []
+      completed: []
     };
 
     // If no funnels data, return empty result
     if (!Array.isArray(funnels) || funnels.length === 0) {
+      console.log('No funnels data available');
       return availableFunnels;
     }
 
@@ -23,164 +20,115 @@ export const evaluateUserFunnels = (funnels, userData = {}, funnelData = {}) => 
       f.name === 'Onboarding Funnel' && Array.isArray(f.milestones)
     );
 
-    // For new users or users without progress, start with onboarding
-    if (!funnelData || Object.keys(funnelData).length === 0) {
+    console.log('Checking user funnel data:', userFunnelData);
+    console.log('Found onboarding funnel:', onboardingFunnel);
+
+    // For new users or users without progress
+    if (!userFunnelData || Object.keys(userFunnelData).length === 0) {
+      console.log('New user or no funnel data - starting with onboarding');
       if (onboardingFunnel) {
-        availableFunnels.inProgress.push(processFunnel(onboardingFunnel));
+        availableFunnels.inProgress.push(onboardingFunnel);
       }
-      // Add other funnels as locked
-      funnels
-        .filter(f => f.name !== 'Onboarding Funnel')
-        .forEach(f => availableFunnels.locked.push(processFunnel(f)));
+      return availableFunnels;
+    }
+
+    // Check if onboarding is completed
+    const isOnboardingCompleted = checkFunnelCompletion('Onboarding Funnel', userFunnelData);
+    console.log('Onboarding completed:', isOnboardingCompleted);
+
+    // If onboarding isn't completed, only show onboarding
+    if (!isOnboardingCompleted && onboardingFunnel) {
+      availableFunnels.inProgress.push(onboardingFunnel);
       return availableFunnels;
     }
 
     // Process each funnel to determine its status
     funnels.forEach(funnel => {
-      const status = evaluateFunnelStatus(funnel, userData, funnelData);
-      availableFunnels[status].push(processFunnel(funnel));
+      const status = evaluateFunnelStatus(funnel, userFunnelData);
+      if (status === 'completed') {
+        availableFunnels.completed.push(funnel);
+      } else if (status === 'in_progress') {
+        availableFunnels.inProgress.push(funnel);
+      } else if (status === 'ready' && checkFunnelPrerequisites(funnel, userFunnelData)) {
+        availableFunnels.ready.push(funnel);
+      }
     });
 
+    console.log('Available funnels:', availableFunnels);
     return availableFunnels;
   } catch (error) {
     console.error('Error evaluating funnels:', error);
     return {
       inProgress: [],
       ready: [],
-      completed: [],
-      locked: []
+      completed: []
     };
   }
 };
 
-/**
- * Determines the status of a single funnel based on criteria and dependencies
- */
-const evaluateFunnelStatus = (funnel, userData, funnelData) => {
-  // Check if funnel is completed
-  if (isFunnelCompleted(funnel.name, funnelData)) {
-    return 'completed';
-  }
-
-  // Check if funnel is in progress
-  if (isFunnelInProgress(funnel.name, funnelData)) {
-    return 'inProgress';
-  }
-
-  // Special case for Onboarding Funnel - always available if not completed
-  if (funnel.name === 'Onboarding Funnel') {
-    return 'inProgress';
-  }
-
-  // Check if funnel dependencies are met
-  if (areDependenciesMet(funnel, funnelData)) {
-    // Check entry criteria
-    if (meetsEntryCriteria(funnel.entryCriteria, userData)) {
-      return 'ready';
+export const updateMilestoneStatus = (milestone, funnelData = {}) => {
+  try {
+    // For new users or no funnel data
+    if (!funnelData || Object.keys(funnelData).length === 0) {
+      console.log('No funnel data for milestone:', milestone.name);
+      return {
+        ...milestone,
+        status: milestone.funnelName === 'Onboarding Funnel' ? 'ready' : 'not_ready',
+        progress: 0
+      };
     }
-  }
 
-  return 'locked';
-};
+    const funnelProgress = funnelData[milestone.funnelName];
+    if (!funnelProgress) {
+      console.log('No progress data for funnel:', milestone.funnelName);
+      return {
+        ...milestone,
+        status: milestone.funnelName === 'Onboarding Funnel' ? 'ready' : 'not_ready',
+        progress: 0
+      };
+    }
 
-/**
- * Processes a funnel to prepare it for display
- */
-const processFunnel = (funnel) => {
-  return {
-    ...funnel,
-    milestones: funnel.milestones.map(milestone => ({
+    const milestoneProgress = funnelProgress.milestones?.[milestone.name]?.progress || 0;
+    const status = determineStatus(milestoneProgress);
+
+    return {
       ...milestone,
-      funnelName: funnel.name,
-      status: 'ready', // Default status, will be updated based on progress
-      progress: 0      // Default progress, will be updated from funnelData
-    }))
-  };
+      status,
+      progress: milestoneProgress
+    };
+  } catch (error) {
+    console.error('Error updating milestone status:', error);
+    return milestone;
+  }
 };
 
-/**
- * Checks if a funnel's dependencies have been completed
- */
-const areDependenciesMet = (funnel, funnelData) => {
+const checkFunnelCompletion = (funnelName, userData) => {
+  return userData[funnelName]?.status === 'completed';
+};
+
+const checkFunnelPrerequisites = (funnel, userData) => {
   if (!funnel.dependencies || funnel.dependencies.length === 0) {
     return true;
   }
-
-  return funnel.dependencies.every(dep => 
-    isFunnelCompleted(dep, funnelData)
-  );
+  return funnel.dependencies.every(dep => checkFunnelCompletion(dep, userData));
 };
 
-/**
- * Checks if entry criteria are met
- */
-const meetsEntryCriteria = (criteria, userData) => {
-  if (!criteria) return true;
-
-  // Check MSW score if required
-  if (criteria.mswScore) {
-    const userScore = userData.mswScore;
-    if (!userScore) return false;
-    
-    if (criteria.mswScore.includes('-')) {
-      const [min, max] = criteria.mswScore.split('-').map(Number);
-      if (userScore < min || userScore > max) return false;
-    } else {
-      if (userScore < Number(criteria.mswScore)) return false;
-    }
+const evaluateFunnelStatus = (funnel, userData) => {
+  const funnelData = userData[funnel.name];
+  
+  if (!funnelData) {
+    return funnel.name === 'Onboarding Funnel' ? 'in_progress' : 'not_ready';
   }
 
-  // Check reported challenges
-  if (Array.isArray(criteria.reportedChallenges) && 
-      criteria.reportedChallenges.length > 0) {
-    const userChallenges = userData.reportedChallenges || [];
-    if (!criteria.reportedChallenges.some(c => userChallenges.includes(c))) {
-      return false;
-    }
+  if (funnelData.status === 'completed') {
+    return 'completed';
   }
 
-  return true;
+  return funnelData.status || 'ready';
 };
 
-/**
- * Checks if a funnel is marked as completed in funnelData
- */
-const isFunnelCompleted = (funnelName, funnelData) => {
-  return funnelData[funnelName]?.status === 'completed';
-};
-
-/**
- * Checks if a funnel is marked as in progress in funnelData
- */
-const isFunnelInProgress = (funnelName, funnelData) => {
-  return funnelData[funnelName]?.status === 'in_progress';
-};
-
-/**
- * Updates milestone status based on funnel progress
- */
-export const updateMilestoneStatus = (milestone, funnelData) => {
-  const funnelProgress = funnelData[milestone.funnelName];
-  if (!funnelProgress) {
-    return {
-      ...milestone,
-      status: milestone.funnelName === 'Onboarding Funnel' ? 'ready' : 'locked',
-      progress: 0
-    };
-  }
-
-  const milestoneProgress = funnelProgress.milestones?.[milestone.name];
-  if (!milestoneProgress) {
-    return {
-      ...milestone,
-      status: 'ready',
-      progress: 0
-    };
-  }
-
-  return {
-    ...milestone,
-    status: milestoneProgress.status || 'ready',
-    progress: milestoneProgress.progress || 0
-  };
+const determineStatus = (progress) => {
+  if (progress === 100) return 'completed';
+  if (progress > 0) return 'in_progress';
+  return 'ready';
 };
