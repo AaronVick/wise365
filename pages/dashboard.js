@@ -504,7 +504,7 @@ const Dashboard = () => {
       />
 
       {/* Main Content Area */}
-        <div className="flex-1 overflow-hidden bg-slate-50">
+        <div className="flex-1 overflow-auto bg-slate-50">
           {currentChat ? (
             currentChat.agentId === 'shawn' ? (
               <ChatWithShawn 
@@ -547,7 +547,6 @@ const Dashboard = () => {
               </main>
             </div>
           ) : (
-            // Dashboard Welcome View
             <DashboardContent
               currentUser={userData}
               currentTool={currentTool}
@@ -558,6 +557,7 @@ const Dashboard = () => {
             />
           )}
         </div>
+
         </div>
           );
         };
