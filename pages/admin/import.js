@@ -1,19 +1,64 @@
-import React from 'react';
-import AdminLayout from '@/components/AdminLayout'; // Assuming this is your admin layout component
-import SeedButton from '@/components/seedButton'; // Adjust the path if SeedButton is in a different directory
+import { useState } from 'react';
+import funnels from '../../data/funnels';
+import styles from '../../styles/Admin.module.css';
 
-export default function ImportPage() {
-  return (
-    <AdminLayout>
-      <div className="p-6">
-        <h1 className="text-2xl font-bold mb-6">Import Data to Firebase</h1>
-        <div className="bg-white shadow rounded p-6">
-          <p className="text-gray-600 mb-4">
-            Click the button below to import the funnel data into Firebase. This action cannot be undone.
-          </p>
-          <SeedButton />
+export default function ImportFunnels() {
+    const [status, setStatus] = useState('');
+    const [error, setError] = useState('');
+    const [successCount, setSuccessCount] = useState(0);
+    const [failureCount, setFailureCount] = useState(0);
+
+    const handleImport = async () => {
+        setStatus('Processing...');
+        setError('');
+        setSuccessCount(0);
+        setFailureCount(0);
+
+        try {
+            const response = await fetch('/api/admin/import', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ funnels }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+                setStatus('Import completed successfully.');
+                setSuccessCount(result.successCount || 0);
+                setFailureCount(result.failureCount || 0);
+            } else {
+                throw new Error(result.message || 'Unknown error occurred during import.');
+            }
+        } catch (err) {
+            setStatus('');
+            setError(`Import failed: ${err.message}`);
+        }
+    };
+
+    return (
+        <div className={styles.container}>
+            <h1>Import Funnels</h1>
+            <p>Click the button below to import funnel data into the database.</p>
+            <button className={styles.button} onClick={handleImport}>
+                Start Import
+            </button>
+
+            {status && <p className={styles.success}>{status}</p>}
+            {error && <p className={styles.error}>{error}</p>}
+
+            {(successCount > 0 || failureCount > 0) && (
+                <div className={styles.results}>
+                    <p>Successful imports: {successCount}</p>
+                    <p>Failed imports: {failureCount}</p>
+                </div>
+            )}
         </div>
-      </div>
-    </AdminLayout>
-  );
+    );
 }
