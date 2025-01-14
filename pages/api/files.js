@@ -16,9 +16,10 @@ export default function handler(req, res) {
   }
 
   try {
-    const dataFolder = path.resolve('./data');
-    const allFiles = fs.readdirSync(dataFolder);
+    const dataFolderPath = path.resolve('./data'); // Path to the `data` folder
+    const allFiles = fs.readdirSync(dataFolderPath); // Read all files in the folder
     const collectionFiles = allFiles.filter((file) => {
+      // Match files based on the collection name
       return file.toLowerCase().includes(collection.toLowerCase()) && (file.endsWith('.js') || file.endsWith('.json'));
     });
 
