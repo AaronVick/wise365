@@ -1,4 +1,7 @@
 // components/seedButton.js
+import React, { useState } from 'react';
+
+
 export default function SeedButton() {
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
