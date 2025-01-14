@@ -296,28 +296,13 @@ const Dashboard = () => {
                   </AccordionTrigger>
                   <AccordionContent>
                     {/* Shawn - Always First */}
-                    <div 
-                      className="px-4 py-2 mb-2 hover:bg-gray-800 rounded cursor-pointer"
-                      onClick={() => handleAgentClick(agents.Administrative.find(a => a.id === 'shawn'))}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium text-white">Shawn</h4>
-                          <p className="text-xs text-gray-400">Tool Guidance Assistant</p>
-                        </div>
-                        <Bot className="h-4 w-4 text-gray-400" />
-                      </div>
-                    </div>
-
-                    {/* Other Administrative Agents */}
-                    {agents.Administrative
-                      .filter(agent => agent.id !== 'shawn')
-                      .map(agent => (
-                        <div key={agent.id} className="mb-2">
-                          <div
-                            className="px-4 py-2 hover:bg-gray-800 rounded cursor-pointer"
+                    {agents['Administrative']?.map(agent => {
+                      if (agent.id === 'shawn') {
+                        return (
+                          <div 
+                            key={agent.id}
+                            className="px-4 py-2 mb-2 hover:bg-gray-800 rounded cursor-pointer"
                             onClick={() => handleAgentClick(agent)}
-                            onContextMenu={(e) => onAgentContextMenu(e, agent)}
                           >
                             <div className="flex items-center justify-between">
                               <div>
@@ -327,23 +312,44 @@ const Dashboard = () => {
                               <Bot className="h-4 w-4 text-gray-400" />
                             </div>
                           </div>
-                          {/* Subchats */}
-                          {nestedChats[agent.id]?.length > 0 && (
-                            <div className="ml-4 mt-1 space-y-1">
-                              {nestedChats[agent.id]
-                                .filter(chat => !chat.isDefault)
-                                .map(subChat => (
-                                  <div
-                                    key={subChat.id}
-                                    className="px-3 py-1 hover:bg-gray-800 rounded cursor-pointer text-sm text-gray-300"
-                                    onClick={() => handleSubChatClick(agent.id, subChat)}
-                                  >
-                                    {subChat.conversationName}
-                                  </div>
-                                ))}
+                        );
+                      }
+                      return null;
+                    })}
+
+                    {/* Other Administrative Agents */}
+                    {agents['Administrative']?.filter(agent => agent.id !== 'shawn').map(agent => (
+                      <div key={agent.id} className="mb-2">
+                        <div
+                          className="px-4 py-2 hover:bg-gray-800 rounded cursor-pointer"
+                          onClick={() => handleAgentClick(agent)}
+                          onContextMenu={(e) => onAgentContextMenu(e, agent)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="font-medium text-white">{agent.name}</h4>
+                              <p className="text-xs text-gray-400">{agent.role}</p>
                             </div>
-                          )}
+                            <Bot className="h-4 w-4 text-gray-400" />
+                          </div>
                         </div>
+                        {/* Subchats */}
+                        {nestedChats[agent.id]?.length > 0 && (
+                          <div className="ml-4 mt-1 space-y-1">
+                            {nestedChats[agent.id]
+                              .filter(chat => !chat.isDefault)
+                              .map(subChat => (
+                                <div
+                                  key={subChat.id}
+                                  className="px-3 py-1 hover:bg-gray-800 rounded cursor-pointer text-sm text-gray-300"
+                                  onClick={() => handleSubChatClick(agent.id, subChat)}
+                                >
+                                  {subChat.conversationName}
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </AccordionContent>
                 </AccordionItem>
@@ -547,7 +553,13 @@ const Dashboard = () => {
                   </div>
                   <Button 
                     className="ml-auto bg-blue-600 hover:bg-blue-700 text-white"
-                    onClick={() => handleAgentClick(agents.Administrative.find(a => a.id === 'shawn'))}
+                    onClick={() => {
+                      const adminAgents = agents['Administrative'] || [];
+                      const shawn = adminAgents.find(a => a.id === 'shawn');
+                      if (shawn) {
+                        handleAgentClick(shawn);
+                      }
+                    }}
                   >
                     Chat with AI Team
                   </Button>
