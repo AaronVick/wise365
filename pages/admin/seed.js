@@ -41,23 +41,26 @@ export default function SeedPage() {
   // Fetch available files dynamically
   useEffect(() => {
     const fetchFiles = async () => {
-      if (!selectedCollection) return;
-
-      console.log(`Fetching files for collection: ${selectedCollection}`);
+      console.log('Fetching all files from the data folder...');
       try {
-        const response = await fetch(`/api/files?collection=${selectedCollection}`);
+        const response = await fetch('/api/files');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch files: ${response.statusText}`);
+        }
+  
         const data = await response.json();
+        console.log('Files response:', data);
+  
         setFiles(data.files || []);
-        setSelectedFile(data.files?.[0] || '');
-        console.log('Available files:', data.files);
-      } catch (err) {
-        console.error('Error fetching files:', err);
+        setSelectedFile(data.files?.[0] || ''); // Default to the first file
+      } catch (error) {
+        console.error('Error fetching files:', error);
         setError('Failed to fetch files.');
       }
     };
-
+  
     fetchFiles();
-  }, [selectedCollection]);
+  }, []);
 
   // Clean up EventSource on unmount
   useEffect(() => {
