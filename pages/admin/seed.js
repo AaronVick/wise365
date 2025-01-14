@@ -14,18 +14,49 @@ export default function SeedPage() {
   const [totalRecords, setTotalRecords] = useState(0);
   const [processedRecords, setProcessedRecords] = useState(0);
 
+  const [collections] = useState(['agentData', 'userData', 'funnelData']); // Firebase collections
+  const [selectedCollection, setSelectedCollection] = useState('agentData');
+  const [files, setFiles] = useState([]);
+  const [selectedFile, setSelectedFile] = useState('');
+
+  useEffect(() => {
+    // Dynamically fetch available files for the selected collection
+    const fetchFiles = async () => {
+      console.log('Fetching files for collection:', selectedCollection);
+      try {
+        const allFiles = {
+          agentData: ['agentData.js'],
+          userData: ['userData.js'],
+          funnelData: ['funnelData.js'],
+        };
+        setFiles(allFiles[selectedCollection] || []);
+        setSelectedFile(allFiles[selectedCollection]?.[0] || '');
+        console.log('Available files:', allFiles[selectedCollection]);
+      } catch (err) {
+        console.error('Error fetching files:', err);
+        setError('Failed to fetch files.');
+      }
+    };
+
+    fetchFiles();
+  }, [selectedCollection]);
+
   useEffect(() => {
     return () => {
       if (window._eventSource) {
+        console.log('Closing EventSource on component unmount.');
         window._eventSource.close();
       }
     };
   }, []);
 
   const handleSeed = async () => {
-    if (!confirm('Are you sure you want to seed the database? This action cannot be undone.')) {
+    if (!confirm(`Seed the database with ${selectedFile}? This action cannot be undone.`)) {
+      console.log('Seeding operation cancelled by user.');
       return;
     }
+
+    console.log('Starting seeding for:', { collection: selectedCollection, file: selectedFile });
 
     setStatus('Initializing...');
     setLoading(true);
@@ -38,39 +69,45 @@ export default function SeedPage() {
 
     try {
       if (window._eventSource) {
+        console.log('Closing any existing EventSource connection before starting.');
         window._eventSource.close();
       }
 
-      const eventSource = new EventSource('/api/seed');
+      const eventSource = new EventSource(`/api/seed?collection=${selectedCollection}&file=${selectedFile}`);
       window._eventSource = eventSource;
 
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
+        console.log('Event received:', data);
 
         switch (data.type) {
           case 'connection-test':
+            console.log('Connection test successful:', data);
             setStatus('Connection successful');
             setExistingCount(data.existingCount);
             break;
 
           case 'start':
+            console.log('Seeding process started:', data);
             setTotalRecords(data.totalRecords);
             setStatus('Seeding process started.');
             break;
 
           case 'chunk-start':
+            console.log(`Processing chunk ${data.currentChunk} of ${data.totalChunks}`);
             setCurrentChunk({ current: data.currentChunk, total: data.totalChunks });
             setStatus(data.message);
             break;
 
           case 'chunk-complete':
+            console.log(`Chunk complete. Processed ${data.processedRecords}/${data.totalRecords}`);
             setProcessedRecords(data.processedRecords);
             setProgress((data.processedRecords / data.totalRecords) * 100);
-            setStatus(data.message);
             setResults((prevResults) => [...prevResults, ...data.chunkResults]);
             break;
 
           case 'complete':
+            console.log('Seeding complete:', data);
             setProcessedRecords(data.totalProcessed);
             setProgress(100);
             setStatus('Seeding complete!');
@@ -79,6 +116,7 @@ export default function SeedPage() {
             break;
 
           case 'error':
+            console.error('Error during seeding:', data);
             setError(data.message);
             setStatus('Error occurred during seeding');
             eventSource.close();
@@ -113,12 +151,44 @@ export default function SeedPage() {
 
         <div className="bg-white shadow rounded p-6">
           <p className="text-gray-600 mb-4">
-            This will seed the database with initial agent data. Use it to initialize or reset the database.
+            Select a collection and corresponding data file to seed the database.
           </p>
+
+          <div className="mb-4">
+            <label className="block mb-2 font-bold text-gray-700">Select Collection:</label>
+            <select
+              value={selectedCollection}
+              onChange={(e) => setSelectedCollection(e.target.value)}
+              className="w-full px-4 py-2 border rounded"
+            >
+              {collections.map((collection) => (
+                <option key={collection} value={collection}>
+                  {collection}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mb-4">
+            <label className="block mb-2 font-bold text-gray-700">Select File:</label>
+            <select
+              value={selectedFile}
+              onChange={(e) => setSelectedFile(e.target.value)}
+              className="w-full px-4 py-2 border rounded"
+              disabled={!files.length}
+            >
+              {files.map((file) => (
+                <option key={file} value={file}>
+                  {file}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button
             onClick={handleSeed}
             className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-green-300"
-            disabled={loading}
+            disabled={loading || !selectedFile}
           >
             {loading ? 'Seeding...' : 'Seed Database'}
           </button>

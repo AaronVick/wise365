@@ -1,7 +1,5 @@
 // pages/api/seed.js
 
-// pages/api/seed.js
-
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import '../../lib/firebase';
@@ -17,12 +15,22 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
+  if (req.method !== 'GET') {
+    console.error('Invalid request method:', req.method);
     return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
 
+  const { collection, file } = req.query;
+  if (!collection || !file) {
+    console.error('Missing query parameters:', { collection, file });
+    return res.status(400).json({ success: false, message: 'Missing collection or file parameter' });
+  }
+
+  console.log('Initializing seeding process for:', { collection, file });
+
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.error('Authorization header missing or invalid.');
     return res.status(401).json({ success: false, message: 'Unauthorized: Missing or invalid token' });
   }
 
@@ -41,6 +49,7 @@ export default async function handler(req, res) {
     const userDoc = await db.collection('users').where('authenticationID', '==', decodedToken.uid).get();
 
     if (userDoc.empty || !userDoc.docs[0].data().SystemAdmin) {
+      console.error('User does not have sufficient permissions:', decodedToken.uid);
       return res.status(403).json({ success: false, message: 'Forbidden: Insufficient permissions' });
     }
   } catch (error) {
@@ -53,18 +62,20 @@ export default async function handler(req, res) {
   res.setHeader('Connection', 'keep-alive');
 
   try {
-    const { default: agentData } = await import('../../data/seedData.js');
+    const { default: seedData } = await import(`../../data/${file}`);
 
-    if (!Array.isArray(agentData) || agentData.length === 0) {
+    if (!Array.isArray(seedData) || seedData.length === 0) {
       throw new Error('Invalid or empty dataset');
     }
 
-    const totalRecords = agentData.length;
+    console.log('Loaded seed data from file:', file);
+
+    const totalRecords = seedData.length;
     const CHUNK_SIZE = 10;
     const chunks = [];
 
     for (let i = 0; i < totalRecords; i += CHUNK_SIZE) {
-      chunks.push(agentData.slice(i, i + CHUNK_SIZE));
+      chunks.push(seedData.slice(i, i + CHUNK_SIZE));
     }
 
     res.write(`data: ${JSON.stringify({ type: 'start', totalRecords, message: 'Seeding process started.' })}\n\n`);
@@ -92,14 +103,14 @@ export default async function handler(req, res) {
           }
 
           const querySnapshot = await db
-            .collection('agentData')
+            .collection(collection)
             .where('agentId', '==', record.agentId)
             .where('datatype', '==', record.datatype)
             .where('description', '==', record.description)
             .get();
 
           if (querySnapshot.empty) {
-            const docRef = db.collection('agentData').doc();
+            const docRef = db.collection(collection).doc();
             batch.set(docRef, {
               ...record,
               lastUpdated: new Date(),
@@ -148,7 +159,9 @@ export default async function handler(req, res) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
-    res.write(`data: ${JSON.stringify({ type: 'complete', totalProcessed: processedRecords, message: 'Seeding process completed successfully!' })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({ type: 'complete', totalProcessed: processedRecords, message: 'Seeding process completed successfully!' })}\n\n`
+    );
     res.end();
   } catch (error) {
     console.error('Seeding error:', error);
