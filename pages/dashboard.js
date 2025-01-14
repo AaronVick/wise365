@@ -585,10 +585,9 @@ const Dashboard = () => {
                 currentChat={currentChat}
                 setCurrentChat={setCurrentChat}
               />
-            </div> {/* Close the "flex-1 overflow-hidden bg-slate-50" div */}
-        </div> {/* Close the main wrapping "flex h-screen bg-slate-50" div */}
-    </div> {/* Ensure all outer wrapping divs are properly closed */}
-);
-};
+              </main>
+              </div> {/* Close the "flex-1 overflow-hidden bg-slate-50" div */}
+              </div> {/* Close the main wrapping "flex h-screen bg-slate-50" div */}
+              );
 
 export default Dashboard;     
