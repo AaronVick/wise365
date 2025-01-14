@@ -1,6 +1,5 @@
 // pages/api/admin/import.js
 
-
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, cert, apps } from 'firebase-admin/app';
 import funnels from '../../../data/funnels';
