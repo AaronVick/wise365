@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { Card } from '@/components/ui/card';
 import MilestoneCard from './MilestoneCard';
 import MilestoneFilters from './MilestoneFilters';
+import { evaluateUserFunnels, updateMilestoneStatus } from './funnelEvaluator';
 
 const MilestonesSection = ({ currentUser }) => {
   const [milestones, setMilestones] = useState([]);
@@ -13,6 +14,7 @@ const MilestonesSection = ({ currentUser }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [userData, setUserData] = useState(null);
 
   useEffect(() => {
     if (!currentUser?.uid) {
@@ -36,37 +38,40 @@ const MilestonesSection = ({ currentUser }) => {
           throw new Error('No funnel data available');
         }
 
-        // Fetch user's funnel data
+        // Fetch user's funnel data if it exists
         const funnelDataRef = collection(db, 'funnelData');
         const funnelDataQuery = query(
           funnelDataRef,
           where('userId', '==', currentUser.uid)
         );
         const funnelDataSnapshot = await getDocs(funnelDataQuery);
-        const userData = funnelDataSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const userFunnelData = funnelDataSnapshot.docs[0]?.data() || {};
+        setUserData(userFunnelData);
 
-        let processedMilestones = processMilestones(funnelsData, userData);
+        // Evaluate available funnels and their milestones
+        const { inProgress, ready, completed } = evaluateUserFunnels(
+          funnelsData,
+          currentUser,
+          userFunnelData
+        );
 
-        // Default to Onboarding Funnel if no milestones started
-        if (processedMilestones.length === 0) {
-          const onboardingFunnel = funnelsData.find(funnel => 
-            funnel.name === 'Onboarding Funnel' && 
-            Array.isArray(funnel.milestones)
-          );
+        // Combine and process milestones
+        let processedMilestones = [
+          ...inProgress.flatMap(f => f.milestones),
+          ...ready.flatMap(f => f.milestones),
+          ...completed.flatMap(f => f.milestones)
+        ].map(milestone => updateMilestoneStatus(milestone, userFunnelData));
 
-          if (onboardingFunnel) {
-            processedMilestones = onboardingFunnel.milestones.map(milestone => ({
-              ...milestone,
-              funnelName: onboardingFunnel.name,
-              progress: 0,
-              status: 'ready',
-              priority: onboardingFunnel.priority || 1
-            }));
+        // Sort milestones by priority and status
+        processedMilestones.sort((a, b) => {
+          // First sort by priority
+          if (a.priority !== b.priority) {
+            return a.priority - b.priority;
           }
-        }
+          // Then sort by status (in_progress first, then ready, then completed)
+          const statusOrder = { in_progress: 0, ready: 1, completed: 2 };
+          return statusOrder[a.status] - statusOrder[b.status];
+        });
 
         setMilestones(processedMilestones);
         applyFilter(processedMilestones, activeFilter);
@@ -80,62 +85,6 @@ const MilestonesSection = ({ currentUser }) => {
 
     fetchMilestones();
   }, [currentUser?.uid]);
-
-  const processMilestones = (funnels, userData) => {
-    try {
-      if (!Array.isArray(funnels)) return [];
-
-      return funnels.flatMap(funnel => {
-        if (!Array.isArray(funnel.milestones)) return [];
-
-        return funnel.milestones.map(milestone => {
-          if (!milestone || typeof milestone !== 'object') return null;
-
-          const progress = calculateMilestoneProgress(milestone, userData);
-          const status = determineStatus(progress);
-
-          return {
-            ...milestone,
-            funnelName: funnel.name || 'Unknown Funnel',
-            progress,
-            status,
-            priority: funnel.priority || 1,
-            conversationId: milestone.conversationId || `milestone-${milestone.name}`
-          };
-        }).filter(Boolean);
-      }).filter(milestone => milestone.status !== 'not_ready');
-    } catch (error) {
-      console.error('Error processing milestones:', error);
-      return [];
-    }
-  };
-
-  const calculateMilestoneProgress = (milestone, userData) => {
-    if (!userData || !Array.isArray(userData) || !milestone) return 0;
-
-    try {
-      const relevantData = userData.filter(data => {
-        const hasConversation = data.conversationId === milestone.conversationId;
-        const hasProgress = typeof data.progress === 'number';
-        return hasConversation && hasProgress;
-      });
-
-      if (relevantData.length === 0) return 0;
-
-      // Calculate average progress if multiple entries exist
-      const totalProgress = relevantData.reduce((sum, data) => sum + data.progress, 0);
-      return Math.round(totalProgress / relevantData.length);
-    } catch (error) {
-      console.error('Error calculating milestone progress:', error);
-      return 0;
-    }
-  };
-
-  const determineStatus = (progress) => {
-    if (progress === 0) return 'ready';
-    if (progress === 100) return 'completed';
-    return 'in_progress';
-  };
 
   const applyFilter = (milestones, filter) => {
     if (!Array.isArray(milestones)) {
@@ -191,17 +140,22 @@ const MilestonesSection = ({ currentUser }) => {
         />
       </div>
       <div className="space-y-4">
-      {filteredMilestones.map((milestone) => (
-        <MilestoneCard 
-          key={`${milestone.funnelName}-${milestone.name}`} 
-          milestone={milestone}
-          currentUser={currentUser}
-          funnelData={userData} 
-        />
-      ))}
-        {filteredMilestones.length === 0 && (
-          <div className="text-center text-gray-500 py-4">
-            No milestones found for the selected filter.
+        {filteredMilestones.length > 0 ? (
+          filteredMilestones.map((milestone) => (
+            <MilestoneCard 
+              key={`${milestone.funnelName}-${milestone.name}`} 
+              milestone={milestone}
+              currentUser={currentUser}
+              funnelData={userData}
+            />
+          ))
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-500">
+              {activeFilter === 'all' 
+                ? 'No milestones available. Starting with onboarding...'
+                : `No ${activeFilter} milestones found.`}
+            </p>
           </div>
         )}
       </div>
