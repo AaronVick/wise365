@@ -1,18 +1,17 @@
 // pages/admin/login.js
 
-
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '../../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [debugInfo, setDebugInfo] = useState(''); // Add debug info state
+  const [debugInfo, setDebugInfo] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const [user, authLoading] = useAuthState(auth);
@@ -26,18 +25,19 @@ export default function AdminLogin() {
       
       console.log('Starting admin access check for UID:', user.uid);
       try {
-        const userDocRef = doc(db, 'users', user.uid);
-        console.log('Attempting to fetch user document for UID:', user.uid);
+        // Query users collection where authenticationID matches the user's UID
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('authenticationID', '==', user.uid));
+        const querySnapshot = await getDocs(q);
         
-        const userDoc = await getDoc(userDocRef);
-        
-        if (!userDoc.exists()) {
-          const errorMsg = `User document not found for UID: ${user.uid}`;
+        if (querySnapshot.empty) {
+          const errorMsg = `No user document found with authenticationID: ${user.uid}`;
           console.error(errorMsg);
           setDebugInfo(errorMsg);
           throw new Error(errorMsg);
         }
 
+        const userDoc = querySnapshot.docs[0];
         const userData = userDoc.data();
         console.log('User document data:', userData);
         console.log('SystemAdmin value:', userData.SystemAdmin);
@@ -49,7 +49,7 @@ export default function AdminLogin() {
           localStorage.setItem('auth_token', idToken);
           router.replace('/admin');
         } else {
-          const errorMsg = `User ${user.uid} is not a SystemAdmin. SystemAdmin value: ${userData.SystemAdmin}`;
+          const errorMsg = `User is not a SystemAdmin. SystemAdmin value: ${userData.SystemAdmin}`;
           console.error(errorMsg);
           setDebugInfo(errorMsg);
           await auth.signOut();
@@ -81,17 +81,17 @@ export default function AdminLogin() {
       console.log('Login Successful:', userCredential.user.uid);
       setDebugInfo(`Authentication successful for UID: ${userCredential.user.uid}`);
       
-      const userDocRef = doc(db, 'users', userCredential.user.uid);
-      console.log('Fetching user document...');
-      const userDoc = await getDoc(userDocRef);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('authenticationID', '==', userCredential.user.uid));
+      const querySnapshot = await getDocs(q);
 
-      if (!userDoc.exists()) {
+      if (querySnapshot.empty) {
         const errorMsg = 'User document not found in Firestore';
         setDebugInfo(errorMsg);
         throw new Error(errorMsg);
       }
 
-      const userData = userDoc.data();
+      const userData = querySnapshot.docs[0].data();
       console.log('User Data:', userData);
       setDebugInfo(`User data retrieved. SystemAdmin: ${userData.SystemAdmin}`);
 
