@@ -1,10 +1,9 @@
 // /pages/api/seed.js
 
-import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
-import { firebaseAdminConfig } from '../../lib/firebaseAdmin';
-import { firebaseClientConfig } from '../../lib/firebase';
+import '../../lib/firebase'; // Ensures Firebase is initialized elsewhere
+import '../../lib/firebaseAdmin'; // Ensures Admin SDK is properly initialized
 
 export const config = {
   api: {

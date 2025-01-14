@@ -1,9 +1,8 @@
 // pages/admin/seed.js
 import { useState, useEffect } from 'react';
-import AdminLayout from '@/components/AdminLayout';
-import { getAuth } from 'firebase/auth';
-import { initializeApp } from 'firebase/app';
-import { firebaseConfig } from '@/lib/firebase';
+import AdminLayout from '../../components/AdminLayout'; // Adjusted for relative path
+import '../../lib/firebase'; // Ensure Firebase client is initialized if needed
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
