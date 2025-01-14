@@ -161,14 +161,8 @@ const BuyerPersona = ({ onComplete }) => {
                     </SelectItem>
                   ))}
                 </Select>
-              ) : section.evaluationCriteria ? (
-                <Textarea
-                  value={formData[section.question] || ''}
-                  onChange={(e) => handleInputChange(section.question, e.target.value)}
-                  placeholder="Your answer"
-                />
               ) : (
-                <Input
+                <Textarea
                   value={formData[section.question] || ''}
                   onChange={(e) => handleInputChange(section.question, e.target.value)}
                   placeholder="Your answer"
@@ -187,9 +181,9 @@ const BuyerPersona = ({ onComplete }) => {
             <label className="text-sm">Share with my team</label>
           </div>
 
-          <Button 
-            type="button" 
-            onClick={handleSubmit} 
+          <Button
+            type="button"
+            onClick={handleSubmit}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             Save
