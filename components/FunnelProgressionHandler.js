@@ -1,46 +1,59 @@
 // components/FunnelProgressionHandler.js
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export const useFunnelProgression = (funnel, currentUser, userData) => {
   const [currentPhase, setCurrentPhase] = useState(null);
   const [nextActions, setNextActions] = useState([]);
   const [requiredForms, setRequiredForms] = useState([]);
+  const [progressDetails, setProgressDetails] = useState(null);
 
   useEffect(() => {
     const analyzeFunnelState = async () => {
       try {
-        // Get user's funnel progress data
-        const funnelDataRef = collection(db, 'funnelData');
-        const q = query(
-          funnelDataRef,
-          where('userId', '==', currentUser.uid),
-          where('funnelName', '==', funnel.name)
+        // Get all relevant funnel data
+        const [funnelData, conversationData, formData] = await Promise.all([
+          getFunnelData(currentUser.uid, funnel.name),
+          getConversationData(currentUser.uid, funnel.name),
+          getFormData(currentUser.uid, funnel.formsNeeded)
+        ]);
+
+        // Calculate comprehensive progress
+        const progress = await calculateFunnelProgress(
+          funnel,
+          conversationData,
+          formData,
+          userData
         );
-        const snapshot = await getDocs(q);
-        const funnelProgress = snapshot.docs[0]?.data() || {};
+        setProgressDetails(progress);
 
         // For Onboarding funnel, special handling
-        if (funnel.name === 'Onboarding Funnel') {
-          const actions = determineOnboardingActions(funnelProgress, userData);
+        if (funnel.name.toLowerCase() === 'onboarding funnel') {
+          const actions = determineOnboardingActions(progress, userData);
           setNextActions(actions);
+          setCurrentPhase(determineOnboardingPhase(progress));
           return;
         }
 
-        // Analyze required forms from funnel definition
-        const forms = funnel.formsNeeded || [];
-        const completedForms = userData.completedForms || [];
-        const missingForms = forms.filter(form => !completedForms.includes(form));
+        // Analyze required forms
+        const completedForms = formData.map(f => f.formId);
+        const missingForms = (funnel.formsNeeded || [])
+          .filter(form => !completedForms.includes(form));
         setRequiredForms(missingForms);
 
-        // Determine current phase based on milestones
-        const phase = determineCurrentPhase(funnel, funnelProgress);
+        // Determine current phase
+        const phase = determineCurrentPhase(funnel, progress);
         setCurrentPhase(phase);
 
-        // Get next actions based on phase
-        const actions = await determineNextActions(phase, funnel, userData);
+        // Get next actions
+        const actions = await determineNextActions(phase, funnel, userData, progress);
         setNextActions(actions);
+
+        // Update funnel data in Firestore if needed
+        if (shouldUpdateFunnelData(progress, funnelData)) {
+          await updateFunnelProgress(currentUser.uid, funnel.name, progress);
+        }
 
       } catch (error) {
         console.error('Error analyzing funnel state:', error);
@@ -52,87 +65,180 @@ export const useFunnelProgression = (funnel, currentUser, userData) => {
     }
   }, [funnel, currentUser, userData]);
 
-  const determineOnboardingActions = (progress, userData) => {
-    const actions = [];
-    
-    // Check if MSW is needed
-    if (!userData.mswScore) {
-      actions.push({
-        type: 'form',
-        formId: 'marketing-success-wheel',
-        description: 'Complete Marketing Success Wheel assessment',
-        priority: 1,
-        agent: 'shawn'
-      });
-    }
+  const calculateFunnelProgress = async (funnel, conversations, forms, userData) => {
+    const progress = {
+      overall: 0,
+      milestones: {},
+      conversations: analyzeConversations(conversations),
+      forms: calculateFormProgress(forms, funnel.formsNeeded),
+      dataRequirements: checkDataRequirements(userData, funnel)
+    };
 
-    // Add other onboarding specific checks
-    if (!userData.basicInfo?.website) {
-      actions.push({
-        type: 'chat',
-        agent: 'shawn',
-        description: 'Gather basic business information',
-        priority: 1
-      });
-    }
+    // Calculate milestone-specific progress
+    funnel.milestones.forEach(milestone => {
+      progress.milestones[milestone.name] = calculateMilestoneProgress(
+        milestone,
+        progress.conversations,
+        progress.forms,
+        progress.dataRequirements
+      );
+    });
 
-    return actions;
+    // Calculate overall funnel progress
+    progress.overall = Math.round(
+      Object.values(progress.milestones)
+        .reduce((sum, val) => sum + val, 0) / funnel.milestones.length
+    );
+
+    return progress;
   };
 
-  const determineCurrentPhase = (funnel, progress) => {
-    // Check milestones in order
-    for (const milestone of funnel.milestones) {
-      const milestoneProgress = progress[milestone.name]?.progress || 0;
-      if (milestoneProgress < 100) {
-        return milestone;
+  const analyzeConversations = (conversations) => {
+    const progress = {};
+    conversations.forEach(conv => {
+      const milestoneId = conv.milestoneId;
+      if (!progress[milestoneId]) {
+        progress[milestoneId] = {
+          messageCount: 0,
+          hasUserInput: false,
+          hasAgentResponse: false,
+          hasCompletion: false
+        };
       }
-    }
-    return funnel.milestones[funnel.milestones.length - 1];
-  };
 
-  const determineNextActions = async (phase, funnel, userData) => {
-    try {
-      // Get AI insights for next steps
-      const response = await fetch('/api/analyze-progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          milestone: phase,
-          userData: userData,
-          funnel: funnel
-        })
-      });
-
-      if (!response.ok) throw new Error('Failed to analyze progress');
+      progress[milestoneId].messageCount++;
       
-      const { suggestedActions } = await response.json();
-      return suggestedActions.map(action => ({
-        ...action,
-        agents: determineRequiredAgents(action, funnel)
-      }));
+      if (conv.type === 'user') {
+        progress[milestoneId].hasUserInput = true;
+      } else if (conv.type === 'agent') {
+        progress[milestoneId].hasAgentResponse = true;
+        if (conv.content.toLowerCase().includes('completed') || 
+            conv.content.toLowerCase().includes('finished')) {
+          progress[milestoneId].hasCompletion = true;
+        }
+      }
+    });
 
-    } catch (error) {
-      console.error('Error determining next actions:', error);
-      return [];
-    }
+    return progress;
   };
 
-  const determineRequiredAgents = (action, funnel) => {
-    const agents = [];
-    // Add lead agent
-    if (funnel.responsibleAgents?.lead) {
-      agents.push(funnel.responsibleAgents.lead);
-    }
-    // Add supporting agents based on action type
-    if (funnel.responsibleAgents?.supporting) {
-      agents.push(...funnel.responsibleAgents.supporting);
-    }
-    return agents;
+  const calculateFormProgress = (completedForms, requiredForms) => {
+    if (!requiredForms?.length) return 100;
+    const completed = requiredForms.filter(form => 
+      completedForms.some(cf => cf.formId === form)
+    );
+    return (completed.length / requiredForms.length) * 100;
   };
+
+  const checkDataRequirements = (userData, funnel) => {
+    if (!funnel.dataRequirements) return 100;
+    let metRequirements = 0;
+    
+    funnel.dataRequirements.forEach(req => {
+      const paths = req.path.split('.');
+      let current = userData;
+      let isValid = true;
+      
+      for (const path of paths) {
+        if (!current || !current[path]) {
+          isValid = false;
+          break;
+        }
+        current = current[path];
+      }
+      
+      if (isValid) metRequirements++;
+    });
+
+    return (metRequirements / funnel.dataRequirements.length) * 100;
+  };
+
+  const calculateMilestoneProgress = (milestone, conversationProgress, formProgress, dataProgress) => {
+    const weights = {
+      conversations: 0.4,
+      forms: 0.3,
+      data: 0.3
+    };
+
+    const conversationScore = getConversationScore(milestone, conversationProgress);
+    const formScore = milestone.requiresForm ? formProgress : 100;
+    const dataScore = milestone.requiresData ? dataProgress : 100;
+
+    return Math.round(
+      (conversationScore * weights.conversations) +
+      (formScore * weights.forms) +
+      (dataScore * weights.data)
+    );
+  };
+
+  const getConversationScore = (milestone, conversationProgress) => {
+    const progress = conversationProgress[milestone.name];
+    if (!progress) return 0;
+
+    let score = 0;
+    if (progress.hasUserInput) score += 30;
+    if (progress.hasAgentResponse) score += 30;
+    if (progress.hasCompletion) score += 40;
+
+    return Math.min(score, 100);
+  };
+
+  // ... rest of your existing helper functions ...
 
   return {
     currentPhase,
     nextActions,
-    requiredForms
+    requiredForms,
+    progressDetails
   };
 };
+
+// Helper functions for data fetching
+async function getFunnelData(userId, funnelName) {
+  const ref = collection(db, 'funnelData');
+  const q = query(ref, 
+    where('userId', '==', userId),
+    where('funnelName', '==', funnelName)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs[0]?.data();
+}
+
+async function getConversationData(userId, funnelName) {
+  const ref = collection(db, 'conversations');
+  const q = query(ref,
+    where('userId', '==', userId),
+    where('funnelName', '==', funnelName),
+    orderBy('timestamp', 'asc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => doc.data());
+}
+
+async function getFormData(userId, formIds) {
+  if (!formIds?.length) return [];
+  const ref = collection(db, 'formData');
+  const q = query(ref,
+    where('userId', '==', userId),
+    where('formId', 'in', formIds)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => doc.data());
+}
+
+async function updateFunnelProgress(userId, funnelName, progress) {
+  const ref = collection(db, 'funnelData');
+  await addDoc(ref, {
+    userId,
+    funnelName,
+    progress,
+    updatedAt: serverTimestamp()
+  });
+}
+
+function shouldUpdateFunnelData(newProgress, existingData) {
+  if (!existingData) return true;
+  const lastUpdate = existingData.updatedAt?.toDate() || 0;
+  const hoursSinceUpdate = (Date.now() - lastUpdate) / (1000 * 60 * 60);
+  return hoursSinceUpdate > 1 || Math.abs(newProgress.overall - existingData.progress.overall) > 5;
+}
