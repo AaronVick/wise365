@@ -463,20 +463,7 @@ const Dashboard = () => {
               </Button>
             </div>
 
-            {/* Resources Section */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between px-3 mb-2">
-                <h2 className="text-sm font-semibold text-muted-foreground">Resources</h2>
-              </div>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-white hover:bg-gray-800 px-4"
-                onClick={() => router.push('/resources')}
-              >
-                <BookOpen className="h-4 w-4 mr-2" />
-                View Resources
-              </Button>
-            </div>
+            
           </div>
         </ScrollArea>
 
