@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '../../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -16,83 +16,41 @@ export default function AdminLogin() {
   const router = useRouter();
   const [user, authLoading] = useAuthState(auth);
 
+  // Clean up any existing sessions on component mount
   useEffect(() => {
-    const checkAdminAccess = async () => {
-      if (!user) {
-        console.log('No user found in checkAdminAccess');
-        return;
-      }
-      
-      console.log('Starting admin access check for UID:', user.uid);
+    const cleanupSession = async () => {
       try {
-        const usersRef = collection(db, 'users');
-        const q = query(usersRef, where('authenticationID', '==', user.uid));
-        const querySnapshot = await getDocs(q);
-        
-        if (querySnapshot.empty) {
-          const errorMsg = `No user document found with authenticationID: ${user.uid}`;
-          console.error(errorMsg);
-          setDebugInfo(errorMsg);
-          throw new Error(errorMsg);
-        }
-
-        const userDoc = querySnapshot.docs[0];
-        const userData = userDoc.data();
-        
-        // Detailed logging
-        console.log('Document ID:', userDoc.id);
-        console.log('Full User Data:', JSON.stringify(userData, null, 2));
-        console.log('SystemAdmin field:', userData.SystemAdmin);
-        console.log('Available fields:', Object.keys(userData));
-        
-        setDebugInfo(`User data retrieved. Document ID: ${userDoc.id}, SystemAdmin: ${userData.SystemAdmin}, Available fields: ${Object.keys(userData).join(', ')}`);
-
-        if (userData.SystemAdmin === true) {
-          console.log('User verified as SystemAdmin');
-          const idToken = await user.getIdToken();
-          localStorage.setItem('auth_token', idToken);
-          router.replace('/admin');
-        } else {
-          const errorMsg = `User is not a SystemAdmin. SystemAdmin value: ${userData.SystemAdmin}`;
-          console.error(errorMsg);
-          setDebugInfo(errorMsg);
-          await auth.signOut();
-          localStorage.removeItem('auth_token');
-          throw new Error('Not authorized as admin');
-        }
+        await signOut(auth);
+        localStorage.clear(); // Clear all local storage
+        console.log('Previous session cleaned up');
       } catch (error) {
-        console.error('Admin verification failed:', error);
-        setError('Error verifying admin access. Please contact support.');
-        setDebugInfo(`Error details: ${error.message}`);
-        await auth.signOut();
-        localStorage.removeItem('auth_token');
+        console.error('Cleanup error:', error);
       }
     };
-
-    if (!authLoading && user) {
-      checkAdminAccess();
-    }
-  }, [user, authLoading, router]);
+    cleanupSession();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-    setDebugInfo('Starting login process...');
+    setDebugInfo('Starting fresh login process...');
 
     try {
+      // Ensure clean state
+      await signOut(auth);
+      localStorage.clear();
+      
+      console.log('Attempting login with email:', email);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log('Login Successful:', userCredential.user.uid);
-      setDebugInfo(`Authentication successful for UID: ${userCredential.user.uid}`);
       
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('authenticationID', '==', userCredential.user.uid));
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-        const errorMsg = 'User document not found in Firestore';
-        setDebugInfo(errorMsg);
-        throw new Error(errorMsg);
+        throw new Error('User document not found in Firestore');
       }
 
       const userDoc = querySnapshot.docs[0];
@@ -101,8 +59,15 @@ export default function AdminLogin() {
       // Detailed logging
       console.log('Document ID:', userDoc.id);
       console.log('Full User Data:', JSON.stringify(userData, null, 2));
+      console.log('User Email:', userData.email);
       console.log('SystemAdmin field:', userData.SystemAdmin);
       console.log('Available fields:', Object.keys(userData));
+
+      setDebugInfo(`Found user document for email: ${userData.email}`);
+
+      if (userData.email !== email) {
+        throw new Error('Email mismatch in records');
+      }
 
       if (userData.SystemAdmin === true) {
         const idToken = await userCredential.user.getIdToken();
@@ -113,8 +78,11 @@ export default function AdminLogin() {
       }
     } catch (error) {
       console.error('Login error:', error);
-      setError('Failed to log in. Please check your credentials.');
+      setError(`Login failed: ${error.message}`);
       setDebugInfo(`Login error details: ${error.message}`);
+      // Clean up on error
+      await signOut(auth);
+      localStorage.clear();
     } finally {
       setIsLoading(false);
     }
