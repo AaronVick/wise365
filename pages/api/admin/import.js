@@ -1,5 +1,6 @@
 // pages/api/admin/import.js
 
+
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, cert, apps } from 'firebase-admin/app';
 import funnels from '../../../data/funnels';
@@ -22,9 +23,17 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (!Array.isArray(funnels) || funnels.length === 0) {
+      return res.status(400).json({ success: false, message: 'Funnels data is empty or invalid.' });
+    }
+
     const batch = db.batch();
     funnels.forEach((record) => {
-      const docRef = db.collection('funnels').doc();
+      if (!record.id || !record.name || !record.details) {
+        throw new Error(`Invalid record: ${JSON.stringify(record)}`);
+      }
+
+      const docRef = db.collection('funnels').doc(record.id);
       batch.set(docRef, record);
     });
 
@@ -33,6 +42,10 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, message: 'Data successfully imported!' });
   } catch (error) {
     console.error('Error importing data:', error);
-    return res.status(500).json({ success: false, message: 'Failed to import data.', error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to import data.',
+      error: error.message,
+    });
   }
 }
