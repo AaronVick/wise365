@@ -1,6 +1,5 @@
 // components/MilestonesSection.js
 
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -51,6 +50,13 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
           id: doc.id,
           ...doc.data()
         }));
+
+        // Log fetched funnels data
+        console.log('Fetched funnels from Firestore:', funnelsData.map(f => ({
+          name: f.name,
+          hasMilestones: Array.isArray(f.milestones),
+          milestonesCount: f.milestones?.length
+        })));
 
         if (!Array.isArray(funnelsData) || funnelsData.length === 0) {
           throw new Error('No funnel data available');
@@ -135,12 +141,6 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
 
     fetchMilestones();
   }, [currentUser?.uid]);
-
-  console.log('Fetched funnels from Firestore:', funnelsData.map(f => ({
-    name: f.name,
-    hasMilestones: Array.isArray(f.milestones),
-    milestonesCount: f.milestones?.length
-  })));
 
   const applyFilter = (milestones, filter) => {
     if (!Array.isArray(milestones)) {
