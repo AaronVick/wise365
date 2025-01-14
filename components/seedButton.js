@@ -1,4 +1,4 @@
-// components/ui/seedButton.js
+// components/seedButton.js
 export default function SeedButton() {
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);

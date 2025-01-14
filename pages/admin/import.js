@@ -1,6 +1,6 @@
 import React from 'react';
-import AdminLayout from '@/components/ui/AdminLayout'; // Assuming this is your admin layout component
-import SeedButton from '@/components/ui/seedButton'; // Adjust the path if SeedButton is in a different directory
+import AdminLayout from '@/components/AdminLayout'; // Assuming this is your admin layout component
+import SeedButton from '@/components/seedButton'; // Adjust the path if SeedButton is in a different directory
 
 export default function ImportPage() {
   return (
