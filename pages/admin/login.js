@@ -25,7 +25,6 @@ export default function AdminLogin() {
       
       console.log('Starting admin access check for UID:', user.uid);
       try {
-        // Query users collection where authenticationID matches the user's UID
         const usersRef = collection(db, 'users');
         const q = query(usersRef, where('authenticationID', '==', user.uid));
         const querySnapshot = await getDocs(q);
@@ -39,9 +38,14 @@ export default function AdminLogin() {
 
         const userDoc = querySnapshot.docs[0];
         const userData = userDoc.data();
-        console.log('User document data:', userData);
-        console.log('SystemAdmin value:', userData.SystemAdmin);
-        setDebugInfo(`User data retrieved. SystemAdmin status: ${userData.SystemAdmin}`);
+        
+        // Detailed logging
+        console.log('Document ID:', userDoc.id);
+        console.log('Full User Data:', JSON.stringify(userData, null, 2));
+        console.log('SystemAdmin field:', userData.SystemAdmin);
+        console.log('Available fields:', Object.keys(userData));
+        
+        setDebugInfo(`User data retrieved. Document ID: ${userDoc.id}, SystemAdmin: ${userData.SystemAdmin}, Available fields: ${Object.keys(userData).join(', ')}`);
 
         if (userData.SystemAdmin === true) {
           console.log('User verified as SystemAdmin');
@@ -91,9 +95,14 @@ export default function AdminLogin() {
         throw new Error(errorMsg);
       }
 
-      const userData = querySnapshot.docs[0].data();
-      console.log('User Data:', userData);
-      setDebugInfo(`User data retrieved. SystemAdmin: ${userData.SystemAdmin}`);
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+      
+      // Detailed logging
+      console.log('Document ID:', userDoc.id);
+      console.log('Full User Data:', JSON.stringify(userData, null, 2));
+      console.log('SystemAdmin field:', userData.SystemAdmin);
+      console.log('Available fields:', Object.keys(userData));
 
       if (userData.SystemAdmin === true) {
         const idToken = await userCredential.user.getIdToken();
@@ -116,7 +125,7 @@ export default function AdminLogin() {
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
         <h2 className="text-2xl font-bold text-center">Admin Login</h2>
         {error && <p className="text-red-500 text-sm">{error}</p>}
-        {debugInfo && <p className="text-gray-500 text-xs mt-2">{debugInfo}</p>}
+        {debugInfo && <p className="text-gray-500 text-xs mt-2 whitespace-pre-wrap">{debugInfo}</p>}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium">Email</label>
