@@ -16,7 +16,6 @@ import { Button } from '../ui/button';
 import { Select, SelectItem } from '../ui/select';
 import Checkbox from '../ui/checkbox';
 import { Card } from '../ui/card';
-import { Input } from '../ui/input';
 
 const SuccessWheel = ({ onComplete }) => {
   const { currentUser } = useAuth() || {};
@@ -27,11 +26,9 @@ const SuccessWheel = ({ onComplete }) => {
   const [loading, setLoading] = useState(true);
   const templateName = 'Marketing Success Wheel';
 
-  // Fetch template and previous answers
   useEffect(() => {
     const fetchTemplateAndAnswers = async () => {
       try {
-        // Fetch template from Firestore
         const templateQuery = query(
           collection(db, 'resources'),
           where('templateName', '==', templateName)
@@ -42,7 +39,6 @@ const SuccessWheel = ({ onComplete }) => {
           const templateData = templateSnapshot.docs[0].data();
           setTemplate(templateData);
 
-          // Fetch previous answers
           if (currentUser) {
             const answersQuery = query(
               collection(db, 'resourcesData'),
@@ -110,8 +106,8 @@ const SuccessWheel = ({ onComplete }) => {
       });
 
       alert('Your responses have been saved successfully!');
-      setResponses({}); // Clear the form
-      onComplete(); // Return to main dashboard
+      setResponses({});
+      onComplete();
     } catch (error) {
       console.error('Error saving responses:', error);
       alert('An error occurred while saving your responses. Please try again.');
@@ -158,25 +154,17 @@ const SuccessWheel = ({ onComplete }) => {
               <p className="text-sm text-gray-500 mb-2">{section.definition}</p>
               <p className="text-sm text-gray-500 mb-4">{section.evaluationCriteria}</p>
 
-              {section.gradingScale ? (
-                <Select
-                  value={responses[section.question] || ''}
-                  onValueChange={(value) => handleChange(section.question, value)}
-                >
-                  <SelectItem value="">Select a grade</SelectItem>
-                  {section.gradingScale.map((grade, idx) => (
-                    <SelectItem key={idx} value={grade}>
-                      {grade}
-                    </SelectItem>
-                  ))}
-                </Select>
-              ) : (
-                <Input
-                  value={responses[section.question] || ''}
-                  onChange={(e) => handleChange(section.question, e.target.value)}
-                  placeholder="Enter your answer"
-                />
-              )}
+              <Select
+                value={responses[section.question] || ''}
+                onValueChange={(value) => handleChange(section.question, value)}
+              >
+                <SelectItem value="">Select a grade</SelectItem>
+                {section.gradingScale.map((grade, idx) => (
+                  <SelectItem key={idx} value={grade}>
+                    {grade}
+                  </SelectItem>
+                ))}
+              </Select>
             </div>
           ))}
 
