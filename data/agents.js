@@ -1,7 +1,7 @@
 // data/agents.js
 
 // Agents data
-const agents = {
+export const agents = {
   Administrative: [
     { id: 'shawn', name: 'Shawn', role: 'Tool Guidance Assistant', category: 'Administrative' },
     ...[
