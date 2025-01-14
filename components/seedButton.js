@@ -1,6 +1,6 @@
 // components/seedButton.js
 import React, { useState } from 'react';
-
+import Button from './ui/button'; // Correct import for the Button component
 
 export default function SeedButton() {
   const [status, setStatus] = useState('');
