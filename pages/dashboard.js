@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, collection, getDocs, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -31,6 +31,7 @@ import { useDashboard } from '../contexts/DashboardContext';
 import DashboardContent from '../components/DashboardContent';
 import ChatInterface from '@/components/ChatInterface';
 import ChatWithShawn from '@/components/ChatWithShawn';
+import GoalCreationModal from '@/components/GoalCreationModal';
 import { 
   fetchNestedChats, 
   handleAgentClick as handleAgentClickUtil, 
@@ -48,52 +49,129 @@ const Dashboard = () => {
   const [nestedChats, setNestedChats] = useState({});
   const [currentTool, setCurrentTool] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  const [goals, setGoals] = useState([]);
 
   // Data fetching
   useEffect(() => {
     const fetchData = async () => {
       if (user) {
         try {
-          // Fetch user data
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
-
+  
           if (userDoc.exists()) {
             setUserData(userDoc.data());
             
             // Fetch nested chats for each agent
-            Object.values(agents).flat().forEach(agent => {
-              fetchNestedChats(agent.id, user, setNestedChats, db);
+            const conversationNamesRef = collection(db, 'conversationNames');
+            Object.values(agents).flat().forEach(async (agent) => {
+              const q = query(
+                conversationNamesRef,
+                where('agentId', '==', agent.id),
+                where('userId', '==', user.uid)
+              );
+              
+              try {
+                const querySnapshot = await getDocs(q);
+                const chats = querySnapshot.docs.map(doc => ({
+                  id: doc.id,
+                  ...doc.data()
+                }));
+                
+                setNestedChats(prev => ({
+                  ...prev,
+                  [agent.id]: chats
+                }));
+              } catch (error) {
+                console.error(`Error fetching chats for agent ${agent.id}:`, error);
+              }
             });
-
-            // Fetch projects
-            const projectsRef = collection(db, 'projectNames');
-            const projectsQuery = query(projectsRef, where('userId', '==', user.uid));
-            const projectsSnapshot = await getDocs(projectsQuery);
-            const projectsData = projectsSnapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            }));
-            setProjects(projectsData);
-
-          } else {
-            console.error('No user document found. Redirecting to login...');
-            router.replace('/');
+  
+            // Rest of your existing code...
           }
         } catch (error) {
           console.error('Error fetching data:', error);
-        } finally {
-          setIsLoadingUserData(false);
         }
       }
     };
-
+  
     if (!loading && user) {
       fetchData();
-    } else if (!loading && !user) {
-      router.replace('/');
     }
-  }, [user, loading, router]);
+  }, [user, loading]);
+  
+
+  // fetch goals
+  useEffect(() => {
+    if (!loading && user) {
+      fetchGoals();
+    }
+  }, [user, loading]);
+
+  const fetchGoals = async () => {
+    if (!user?.uid) return;
+    
+    try {
+      const goalsRef = collection(db, 'goals');
+      const q = query(goalsRef, where('userId', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+      const goalsData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setGoals(goalsData);
+    } catch (error) {
+      console.error('Error fetching goals:', error);
+    }
+  };
+  
+  const handleGoalSubmit = async (formData) => {
+    try {
+      await addDoc(collection(db, 'goals'), {
+        ...formData,
+        userId: user.uid,
+        status: 'not_started',
+        createdAt: serverTimestamp()
+      });
+      await fetchGoals(); // Refresh goals
+      setIsGoalModalOpen(false);
+    } catch (error) {
+      console.error('Error creating goal:', error);
+    }
+  };
+  
+  const handleGoalStatusUpdate = async (goalId, newStatus) => {
+    try {
+      const goalRef = doc(db, 'goals', goalId);
+      await updateDoc(goalRef, {
+        status: newStatus,
+        updatedAt: serverTimestamp()
+      });
+      await fetchGoals(); // Refresh goals
+    } catch (error) {
+      console.error('Error updating goal status:', error);
+    }
+  };
+  
+  const handleGoalEdit = async (goalId) => {
+    // Implement goal editing logic
+    console.log('Edit goal:', goalId);
+  };
+  
+  const handleGoalDelete = async (goalId) => {
+    try {
+      const goalRef = doc(db, 'goals', goalId);
+      await deleteDoc(goalRef);
+      await fetchGoals(); // Refresh goals
+    } catch (error) {
+      console.error('Error deleting goal:', error);
+    }
+  };
+
+
+
+  
 
   // Agent handlers
   const handleAgentClick = async (agent) => {
@@ -445,33 +523,60 @@ const Dashboard = () => {
             <div className="space-y-1">
               <div className="flex items-center justify-between px-3 mb-2">
                 <h2 className="text-sm font-semibold text-muted-foreground">Goals</h2>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-gray-400 hover:text-white"
+                  onClick={() => setIsGoalModalOpen(true)}  // Using the shared state
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-white hover:bg-gray-800 px-4"
-                onClick={() => setCurrentTool('goals')}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add New Goal
-              </Button>
-            </div>
-
-            {/* Resources Section */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between px-3 mb-2">
-                <h2 className="text-sm font-semibold text-muted-foreground">Resources</h2>
-              </div>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-white hover:bg-gray-800 px-4"
-                onClick={() => router.push('/resources')}
-              >
-                <BookOpen className="h-4 w-4 mr-2" />
-                View Resources
-              </Button>
+            <div
+              className="space-y-1"
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setIsGoalModalOpen(true);
+              }}
+            >
+              {goals.map((goal) => (
+                <div
+                  key={goal.id}
+                  className="px-4 py-2 hover:bg-gray-800 rounded cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-white">{goal.title}</p>
+                      <p className="text-xs text-gray-400">{goal.status}</p>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="opacity-0 group-hover:opacity-100"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleGoalStatusUpdate(goal.id, 'completed')}>
+                          Mark Complete
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleGoalEdit(goal.id)}>
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-red-600" onClick={() => handleGoalDelete(goal.id)}>
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </ScrollArea>
 
         {/* User Profile Section */}
         <div className="border-t border-gray-700 p-4">
@@ -503,8 +608,8 @@ const Dashboard = () => {
         onMouseDown={handleSidebarResize}
       />
 
-      {/* Main Content Area */}
-        <div className="flex-1 overflow-hidden bg-slate-50">
+     {/* Main Content Area */}
+      <div className="flex-1 overflow-hidden bg-slate-50">
           {currentChat ? (
             currentChat.agentId === 'shawn' ? (
               <ChatWithShawn 
@@ -534,7 +639,7 @@ const Dashboard = () => {
                   </h1>
                 </div>
               </header>
-              <main className="flex-1 overflow-auto">
+              <div className="flex-1 overflow-y-auto">
                 {currentTool === 'buyer-persona' && (
                   <BuyerPersona onComplete={() => setCurrentTool(null)} />
                 )}
@@ -544,22 +649,39 @@ const Dashboard = () => {
                 {currentTool === 'positioning-factors' && (
                   <PositioningFactors onComplete={() => setCurrentTool(null)} />
                 )}
-              </main>
+              </div>
             </div>
           ) : (
-            // Dashboard Welcome View
-            <DashboardContent
-              currentUser={userData}
-              currentTool={currentTool}
-              setCurrentTool={setCurrentTool}
-              onToolComplete={() => setCurrentTool(null)}
-              currentChat={currentChat}
-              setCurrentChat={setCurrentChat}
-            />
+            <div className="h-full flex flex-col">
+              <div className="bg-white border-b px-6 py-4">
+                <h2 className="text-xl font-semibold">Dashboard</h2>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="max-w-5xl mx-auto space-y-6">
+                  <DashboardContent
+                    currentUser={userData}
+                    currentTool={currentTool}
+                    setCurrentTool={setCurrentTool}
+                    onToolComplete={() => setCurrentTool(null)}
+                    currentChat={currentChat}
+                    setCurrentChat={setCurrentChat}
+                    isGoalModalOpen={isGoalModalOpen}           
+                    setIsGoalModalOpen={setIsGoalModalOpen}     
+                  />
+                </div>
+              </div>
+            </div>
           )}
-        </div>
-        </div>
-          );
-        };
 
-export default Dashboard;
+          <GoalCreationModal
+            isOpen={isGoalModalOpen}
+            onClose={() => setIsGoalModalOpen(false)}
+            onSubmit={handleGoalSubmit}
+            agents={Object.values(agents).flat()}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  export default Dashboard;

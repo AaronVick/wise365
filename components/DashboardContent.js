@@ -394,14 +394,22 @@ const DashboardContent = ({
 
           {/* Goals Progress Section */}
           <Card className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-2">
-                <Target className="h-5 w-5 text-blue-500" />
-                <h3 className="text-lg font-semibold">Current Goals</h3>
-              </div>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-2">
+              <Target className="h-5 w-5 text-blue-500" />
+              <h3 className="text-lg font-semibold">Current Goals</h3>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsGoalModalOpen(true)}  // Using the passed down state
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Goal
+            </Button>
+          </div>
 
-            <div className="space-y-4">
+          <div className="space-y-4">
               {goals.length === 0 ? (
                 <div className="text-center text-gray-500 py-4">No goals found</div>
               ) : (
