@@ -10,24 +10,33 @@ const ImportPage = () => {
     setStatus('Starting import...');
 
     try {
+      // Make API call to local endpoint instead of Vercel URL
       const response = await fetch('/api/admin/import', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ action: 'import' })
+          'Content-Type': 'application/json',
+        }
       });
 
+      // Log the raw response for debugging
+      console.log('Raw response:', response);
+
+      // Check if the response is ok
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Import failed');
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const result = await response.json();
-      setStatus(`Success: ${result.message}`);
-      
+      // Parse the JSON response
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      // Update status based on response
+      setStatus(data.message || 'Import completed successfully');
+
     } catch (error) {
-      console.error('Import error details:', error);
+      console.error('Import error:', error);
       setStatus(`Error: ${error.message}`);
     } finally {
       setIsLoading(false);
@@ -35,37 +44,29 @@ const ImportPage = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Import Funnels</h1>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Import Funnels</h1>
       
-      <div className="space-y-4">
-        <button
-          onClick={handleImport}
-          disabled={isLoading}
-          className={`
-            px-4 py-2 rounded-md
-            ${isLoading 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-blue-500 hover:bg-blue-600'
-            }
-            text-white font-medium transition-colors
-          `}
-        >
-          {isLoading ? 'Importing...' : 'Start Import'}
-        </button>
+      <button
+        onClick={handleImport}
+        disabled={isLoading}
+        className={`
+          px-4 py-2 rounded
+          ${isLoading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'}
+          text-white font-medium
+        `}
+      >
+        {isLoading ? 'Importing...' : 'Start Import'}
+      </button>
 
-        {status && (
-          <div className={`
-            p-4 rounded-md
-            ${status.includes('Success') 
-              ? 'bg-green-50 text-green-800 border border-green-200' 
-              : 'bg-red-50 text-red-800 border border-red-200'
-            }
-          `}>
-            {status}
-          </div>
-        )}
-      </div>
+      {status && (
+        <div className={`
+          mt-4 p-4 rounded
+          ${status.includes('Error') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}
+        `}>
+          {status}
+        </div>
+      )}
     </div>
   );
 };
