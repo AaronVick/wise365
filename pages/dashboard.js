@@ -559,35 +559,80 @@ const Dashboard = () => {
           )}
         </div>
 
-            {/* Content */}
-            <main className="flex-1 overflow-auto p-6">
-              {/* Welcome Card */}
-              <Card className="mb-6 bg-white shadow-sm">
-                <CardContent className="flex items-center gap-4 py-6">
-                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Bot className="h-6 w-6 text-blue-700" />
+            {/* Main Content Area */}
+              <div className="flex-1 overflow-hidden bg-slate-50">
+                {currentChat ? (
+                  currentChat.agentId === 'shawn' ? (
+                    <ChatWithShawn 
+                      currentUser={userData} 
+                      isNewUser={currentChat.isNewUser}
+                    />
+                  ) : (
+                    <ChatInterface
+                      chatId={currentChat.id}
+                      agentId={currentChat.agentId}
+                      userId={user.uid}
+                      isDefault={currentChat.isDefault}
+                      title={currentChat.title}
+                      conversationName={currentChat.conversationName}
+                      projectId={currentChat.projectId}
+                      projectName={currentChat.projectName}
+                    />
+                  )
+                ) : currentTool ? (
+                  <div className="h-full flex flex-col">
+                    <header className="border-b bg-white shadow-sm">
+                      <div className="px-6 py-4">
+                        <h1 className="text-2xl font-semibold text-gray-900">
+                          {currentTool === 'buyer-persona' && "Buyer Persona Tool"}
+                          {currentTool === 'success-wheel' && "Marketing Success Wheel"}
+                          {currentTool === 'positioning-factors' && "Positioning Factors"}
+                        </h1>
+                      </div>
+                    </header>
+                    <main className="flex-1 overflow-auto">
+                      {currentTool === 'buyer-persona' && (
+                        <BuyerPersona onComplete={() => setCurrentTool(null)} />
+                      )}
+                      {currentTool === 'success-wheel' && (
+                        <SuccessWheel onComplete={() => setCurrentTool(null)} />
+                      )}
+                      {currentTool === 'positioning-factors' && (
+                        <PositioningFactors onComplete={() => setCurrentTool(null)} />
+                      )}
+                    </main>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-semibold mb-1">Welcome to Business Wise365!</h2>
-                    <p className="text-gray-500">
-                      Connect with our AI team to help grow your business.
-                    </p>
+                ) : (
+                  <div className="flex-1 overflow-auto p-6">
+                    {/* Welcome Card */}
+                    <Card className="mb-6 bg-white shadow-sm">
+                      <CardContent className="flex items-center gap-4 py-6">
+                        <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                          <Bot className="h-6 w-6 text-blue-700" />
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-semibold mb-1">Welcome to Business Wise365!</h2>
+                          <p className="text-gray-500">
+                            Connect with our AI team to help grow your business.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Main Dashboard Content */}
+                    <DashboardContent
+                      currentUser={userData}
+                      currentTool={currentTool}
+                      setCurrentTool={setCurrentTool}
+                      onToolComplete={() => setCurrentTool(null)}
+                      currentChat={currentChat}
+                      setCurrentChat={setCurrentChat}
+                    />
                   </div>
-                </CardContent>
-              </Card>
+                )}
+              </div>
+            </div>
+          );
+        };
 
-             {/* Main Dashboard Content */}
-              <DashboardContent
-                currentUser={userData}
-                currentTool={currentTool}
-                setCurrentTool={setCurrentTool}
-                onToolComplete={() => setCurrentTool(null)}
-                currentChat={currentChat}
-                setCurrentChat={setCurrentChat}
-              />
-              </main>
-              </div> {/* Close the "flex-1 overflow-hidden bg-slate-50" div */}
-              </div> {/* Close the main wrapping "flex h-screen bg-slate-50" div */}
-              );
-
-export default Dashboard;     
+export default Dashboard;
