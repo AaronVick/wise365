@@ -1,5 +1,6 @@
 // pages/admin/login.js
 
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -20,33 +21,30 @@ export default function AdminLogin() {
 
     const checkAdminAccess = async () => {
       if (user) {
+        console.log('Checking admin access for user:', user.uid);
         try {
-          // Fetch user document from Firestore
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
 
           if (!userDoc.exists()) {
-            throw new Error('User document not found');
+            throw new Error('User document not found in Firestore.');
           }
 
           const userData = userDoc.data();
+          console.log('User data retrieved:', userData);
 
-          // Validate if user is a SystemAdmin
           if (userData.SystemAdmin === true) {
             if (isSubscribed) {
               const idToken = await user.getIdToken();
+              console.log('Admin access verified. Redirecting to admin page...');
               localStorage.setItem('auth_token', idToken);
               router.replace('/admin');
             }
           } else {
-            if (isSubscribed) {
-              setError('Not authorized as admin');
-              await auth.signOut();
-              localStorage.removeItem('auth_token');
-            }
+            throw new Error('User is not authorized as an admin.');
           }
         } catch (error) {
-          console.error('Admin verification failed:', error);
+          console.error('Error verifying admin access:', error);
           if (isSubscribed) {
             setError('Error verifying admin access. Please contact support.');
             await auth.signOut();
@@ -73,35 +71,36 @@ export default function AdminLogin() {
     setError('');
 
     try {
+      console.log('Attempting to sign in user:', email);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
-      // Fetch user document from Firestore
       const userDocRef = doc(db, 'users', userCredential.user.uid);
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
-        throw new Error('User document not found');
+        throw new Error('User document not found in Firestore.');
       }
 
       const userData = userDoc.data();
+      console.log('User data retrieved after login:', userData);
 
-      // Validate if user is a SystemAdmin
       if (userData.SystemAdmin === true) {
         const idToken = await userCredential.user.getIdToken();
+        console.log('Admin access verified. Redirecting to admin page...');
         localStorage.setItem('auth_token', idToken);
         router.replace('/admin');
       } else {
-        throw new Error('Not authorized as admin');
+        throw new Error('Not authorized as admin.');
       }
     } catch (error) {
       console.error('Login error:', error);
       const errorMessages = {
-        'auth/invalid-email': 'Invalid email format',
-        'auth/user-disabled': 'This account has been disabled',
-        'auth/user-not-found': 'No account found with this email',
-        'auth/wrong-password': 'Invalid password',
-        'auth/too-many-requests': 'Too many attempts. Please try again later',
-        'auth/network-request-failed': 'Network error. Please check your connection',
+        'auth/invalid-email': 'Invalid email format.',
+        'auth/user-disabled': 'This account has been disabled.',
+        'auth/user-not-found': 'No account found with this email.',
+        'auth/wrong-password': 'Invalid password.',
+        'auth/too-many-requests': 'Too many attempts. Please try again later.',
+        'auth/network-request-failed': 'Network error. Please check your connection.',
       };
       setError(errorMessages[error.code] || error.message || 'Unexpected error. Please try again.');
       localStorage.removeItem('auth_token');
@@ -158,3 +157,4 @@ export default function AdminLogin() {
     </div>
   );
 }
+
