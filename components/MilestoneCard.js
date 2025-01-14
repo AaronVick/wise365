@@ -5,9 +5,10 @@ import { useRouter } from 'next/router';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import MilestoneProgress from './MilestoneProgress';
+import MilestoneValidation from './MilestoneValidation';
 import { ChevronRight } from 'lucide-react';
 
-const MilestoneCard = ({ milestone }) => {
+const MilestoneCard = ({ milestone, currentUser, funnelData }) => {
   const router = useRouter();
   const [isHovered, setIsHovered] = useState(false);
   const [error, setError] = useState(null);
@@ -109,6 +110,13 @@ const MilestoneCard = ({ milestone }) => {
         <MilestoneProgress 
           progress={progress}
           isAnimated={true}
+        />
+
+        {/* Milestone Validation Section */}
+        <MilestoneValidation 
+          milestone={milestone}
+          currentUser={currentUser}
+          funnelData={funnelData}
         />
 
         {/* KPIs Section */}

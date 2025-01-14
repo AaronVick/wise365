@@ -191,12 +191,14 @@ const MilestonesSection = ({ currentUser }) => {
         />
       </div>
       <div className="space-y-4">
-        {filteredMilestones.map((milestone) => (
-          <MilestoneCard 
-            key={`${milestone.funnelName}-${milestone.name}`} 
-            milestone={milestone} 
-          />
-        ))}
+      {filteredMilestones.map((milestone) => (
+        <MilestoneCard 
+          key={`${milestone.funnelName}-${milestone.name}`} 
+          milestone={milestone}
+          currentUser={currentUser}
+          funnelData={userData} 
+        />
+      ))}
         {filteredMilestones.length === 0 && (
           <div className="text-center text-gray-500 py-4">
             No milestones found for the selected filter.
