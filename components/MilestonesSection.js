@@ -24,10 +24,8 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
   const [activeFunnel, setActiveFunnel] = useState(null);
   const [selectedMilestone, setSelectedMilestone] = useState(null);
 
-  const { 
-    analysis: milestoneAnalysis, 
-    loading: analysisLoading 
-  } = useProgressAnalyzer(
+  // Get milestone analysis
+  const { analysis: milestoneAnalysis, loading: analysisLoading } = useProgressAnalyzer(
     currentUser,
     activeFunnel,
     selectedMilestone
@@ -42,6 +40,7 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
     const fetchMilestones = async () => {
       setLoading(true);
       setError(null);
+
       try {
         // Fetch funnels data
         const funnelsRef = collection(db, 'funnels');
@@ -50,7 +49,9 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
           id: doc.id,
           ...doc.data()
         }));
-    
+
+        console.log('Fetched funnels:', funnelsData.map(f => f.name));
+
         // Fetch user's funnel data if it exists
         const funnelDataRef = collection(db, 'funnelData');
         const funnelDataQuery = query(
@@ -60,17 +61,19 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
         const funnelDataSnapshot = await getDocs(funnelDataQuery);
         const userFunnelData = funnelDataSnapshot.docs[0]?.data() || {};
         setUserData(userFunnelData);
-    
+
+        console.log('User funnel data:', userFunnelData);
+
         // Get available funnels
         const { inProgress, ready, completed } = evaluateUserFunnels(
           funnelsData,
           currentUser,
           userFunnelData
         );
-    
+
         // Process all milestones
         let processedMilestones = [];
-    
+
         // First, handle in-progress funnels
         processedMilestones.push(
           ...inProgress.flatMap(f => 
@@ -81,7 +84,7 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
             }))
           )
         );
-    
+
         // Then ready funnels
         processedMilestones.push(
           ...ready.flatMap(f => 
@@ -92,7 +95,7 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
             }))
           )
         );
-    
+
         // Finally completed funnels
         processedMilestones.push(
           ...completed.flatMap(f => 
@@ -103,12 +106,14 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
             }))
           )
         );
-    
+
+        console.log('Processed milestones before status update:', processedMilestones);
+
         // Update milestone status
         processedMilestones = processedMilestones.map(m => 
           updateMilestoneStatus(m, userFunnelData)
         );
-    
+
         // Sort milestones
         processedMilestones.sort((a, b) => {
           if (a.priority !== b.priority) {
@@ -122,16 +127,19 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
           }
           return 0;
         });
-    
+
+        console.log('Final processed milestones:', processedMilestones);
+
         // Set initial selected milestone for new users
         if (!selectedMilestone && processedMilestones.length > 0) {
           const firstMilestone = processedMilestones[0];
           setSelectedMilestone(firstMilestone);
           setActiveFunnel(inProgress[0] || ready[0]);
         }
-    
+
         setMilestones(processedMilestones);
         applyFilter(processedMilestones, activeFilter);
+
       } catch (error) {
         console.error('Error fetching milestones:', error);
         setError(error.message || 'Failed to load milestones');
@@ -139,6 +147,9 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
         setLoading(false);
       }
     };
+
+    fetchMilestones();
+  }, [currentUser?.uid, selectedMilestone]);
 
   const applyFilter = (milestones, filter) => {
     if (!Array.isArray(milestones)) {
@@ -219,7 +230,6 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
 
   return (
     <div className="space-y-6">
-      {/* Milestones Overview */}
       <Card className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Milestones</h2>
@@ -239,6 +249,7 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
                   funnelData={userData}
                   onClick={() => handleMilestoneClick(milestone)}
                   isSelected={selectedMilestone?.name === milestone.name}
+                  setCurrentChat={setCurrentChat}
                 />
               ))
             ) : (
@@ -252,7 +263,6 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
         </ScrollArea>
       </Card>
 
-      {/* Active Funnel Interface */}
       {selectedMilestone && activeFunnel && (
         <Card className="p-6">
           <FunnelActionInterface
