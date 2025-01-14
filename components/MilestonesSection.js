@@ -136,6 +136,12 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
     fetchMilestones();
   }, [currentUser?.uid]);
 
+  console.log('Fetched funnels from Firestore:', funnelsData.map(f => ({
+    name: f.name,
+    hasMilestones: Array.isArray(f.milestones),
+    milestonesCount: f.milestones?.length
+  })));
+
   const applyFilter = (milestones, filter) => {
     if (!Array.isArray(milestones)) {
       setFilteredMilestones([]);
