@@ -1,6 +1,6 @@
 // /pages/api/seed.js
-import { db } from '@/lib/firebaseAdmin';
-import { getAuth } from 'firebase-admin/auth';
+import { db } from '@/lib/firebaseAdmin'; // Use the existing export from firebaseAdmin.js
+import { firebaseConfig } from '@/lib/firebase'; // Use the existing export from firebase.js
 import fs from 'fs';
 import path from 'path';
 
