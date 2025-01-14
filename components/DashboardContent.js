@@ -97,11 +97,11 @@ const DashboardContent = ({
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
 
   const { 
-    goals = [],
+    goals,
     setGoals,
-    recentActivity = [],
-    isLoading = false
-  } = useDashboard() || {};
+    recentActivity,
+    isLoading
+  } = useDashboard();
 
   const loadConversationMessages = async (conversationId) => {
     try {

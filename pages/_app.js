@@ -1,3 +1,5 @@
+// pages/_app.js
+
 import '../styles/globals.css';
 import { Inter } from 'next/font/google';
 import { DashboardProvider } from '../contexts/DashboardContext';
