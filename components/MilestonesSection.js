@@ -204,6 +204,28 @@ const MilestonesSection = ({
     );
   }
 
+
+  if (processedMilestones.length === 0) {
+    console.log('No processed milestones, checking onboarding');
+    const onboardingFunnel = funnelsData.find(funnel => 
+      funnel.name === 'Onboarding Funnel' && 
+      Array.isArray(funnel.milestones)
+    );
+  
+    if (onboardingFunnel) {
+      console.log('Found onboarding funnel:', onboardingFunnel);
+      processedMilestones = onboardingFunnel.milestones.map(milestone => ({
+        ...milestone,
+        funnelName: onboardingFunnel.name,
+        progress: 0,
+        status: 'ready',
+        priority: onboardingFunnel.priority || 1,
+        conversationId: milestone.conversationId || `milestone-${milestone.name}`
+      }));
+      console.log('Processed onboarding milestones:', processedMilestones);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Milestones Overview */}
@@ -217,26 +239,24 @@ const MilestonesSection = ({
         </div>
         <ScrollArea className="h-[300px]">
           <div className="space-y-4">
-            {filteredMilestones.length > 0 ? (
-              filteredMilestones.map((milestone) => (
-                <MilestoneCard 
-                  key={`${milestone.funnelName}-${milestone.name}`} 
-                  milestone={milestone}
-                  currentUser={currentUser}
-                  funnelData={userData}
-                  onClick={() => handleMilestoneClick(milestone)}
-                  isSelected={selectedMilestone?.name === milestone.name}
-                />
-              ))
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">
-                  {activeFilter === 'all' 
-                    ? 'Loading onboarding milestones...'
-                    : `No ${activeFilter} milestones found.`}
-                </p>
-              </div>
-            )}
+          {filteredMilestones.length > 0 ? (
+            filteredMilestones.map((milestone) => (
+              <MilestoneCard 
+                key={`${milestone.funnelName}-${milestone.name}`} 
+                milestone={milestone}
+                currentUser={currentUser}
+                funnelData={userData}
+                onClick={() => handleMilestoneClick(milestone)}
+                isSelected={selectedMilestone?.name === milestone.name}
+              />
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">
+                No milestones available at this time.
+              </p>
+            </div>
+          )}
           </div>
         </ScrollArea>
       </Card>
