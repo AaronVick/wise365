@@ -1,323 +1,167 @@
 // Full JSON data for seeding
 const funnels = 
 [
-    {
-        "name": "Onboarding Funnel",
-        "description": "Collect foundational business data, validate user objectives, and guide them into relevant funnels.",
+  {
+    "name": "Sales Enablement Funnel",
+    "description": "Build and optimize strategies to close deals effectively and improve sales outcomes using personalized approaches.",
+    "priority": 4,
+    "level": 3,
+    "dependencies": ["Lead Generation Funnel"],
+    "entryCriteria": {
+      "mswScore": null,
+      "reportedChallenges": ["Low close rates", "Sales process inefficiencies"]
+    },
+    "responsibleAgents": {
+      "lead": "Jen (CloseMaster AI)",
+      "supporting": ["Aaron (TINB Builder)", "JR (Audience Gap Genius)"]
+    },
+    "formsNeeded": ["Sales Pipeline Assessment Form"],
+    "milestones": [
+      {
+        "name": "Evaluate Sales Pipeline",
+        "description": "Identify weak points in the sales pipeline and propose solutions.",
+        "dataSource": "conversationId",
+        "dataPath": "userData.salesPipeline",
+        "validationLogic": "Check if salesPipeline includes bottleneck details.",
+        "conversationId": "salesPipelineConversation",
+        "projectName": "Sales Pipeline Evaluation",
         "priority": 1,
-        "level": 1,
-        "dependencies": [],
-        "entryCriteria": {
-            "mswScore": null,
-            "reportedChallenges": []
-        },
-        "responsibleAgents": {
-            "lead": "Shawn (Tool Guidance Assistant)",
-            "supporting": [
-                "Caner (InsightPulse AI)",
-                "Ally (Positioning Factors Accelerator)"
-            ]
-        },
-        "formsNeeded": [
-            "Marketing Success Wheel"
-        ],
-        "milestones": [
-            {
-                "name": "Collect Basic Info",
-                "description": "Gather essential business data like name, website, and goals.",
-                "dataSource": "conversationId",
-                "dataPath": "userData.basicInfo",
-                "validationLogic": "Check if basicInfo includes name, website, and goals.",
-                "conversationId": "basicInfoConversation",
-                "projectName": "Basic Information Collection",
-                "priority": 1,
-                "kpis": [
-                    "% of users completing onboarding"
-                ]
-            },
-            {
-                "name": "Validate Website Findings",
-                "description": "Analyze website insights and validate with the user.",
-                "dataSource": "conversationId",
-                "dataPath": "userData.websiteInsights",
-                "validationLogic": "Ensure websiteInsights includes validated data.",
-                "conversationId": "websiteInsightsConversation",
-                "projectName": "Website Analysis Validation",
-                "priority": 2,
-                "kpis": [
-                    "Accuracy of funnel recommendations"
-                ]
-            }
-        ]
-    },
-    {
-        "name": "Customer Ladder Funnel",
-        "description": "Move customers from buyers to advocates.",
-        "priority": 3,
-        "level": 3,
-        "dependencies": [
-            "Lead Generation Funnel"
-        ],
-        "entryCriteria": {
-            "mswScore": "1-3",
-            "reportedChallenges": [
-                "Retention challenges"
-            ]
-        },
-        "responsibleAgents": {
-            "lead": "Troy (CrossSell Catalyst)",
-            "supporting": [
-                "Sylvester (MSW Optimizer)",
-                "Aaron (TINB Builder)"
-            ]
-        },
-        "formsNeeded": [
-            "Marketing Success Wheel"
-        ],
-        "milestones": [
-            {
-                "name": "Identify Customer Segments",
-                "description": "Focus on key segments for upselling and cross-selling.",
-                "dataSource": "conversationId",
-                "dataPath": "userData.customerSegments",
-                "validationLogic": "Check if customerSegments includes segment definitions.",
-                "conversationId": "customerSegmentsConversation",
-                "projectName": "Customer Segment Identification",
-                "priority": 2,
-                "kpis": [
-                    "Upsell opportunities"
-                ]
-            },
-            {
-                "name": "Develop Loyalty Initiatives",
-                "description": "Launch loyalty programs or cross-sell campaigns.",
-                "dataSource": "conversationId",
-                "dataPath": "userData.loyaltyInitiatives",
-                "validationLogic": "Ensure loyaltyInitiatives includes program details.",
-                "conversationId": "loyaltyInitiativesConversation",
-                "projectName": "Loyalty Initiative Development",
-                "priority": 3,
-                "kpis": [
-                    "Repeat purchases"
-                ]
-            }
-        ]
-    },
-    {
-        "name": "Awareness Funnel",
-        "description": "Increase visibility and attract a broader audience.",
+        "kpis": ["Close rate improvements"]
+      },
+      {
+        "name": "Personalize Sales Scripts",
+        "description": "Implement personalized sales scripts for top customer segments.",
+        "dataSource": "conversationId",
+        "dataPath": "userData.salesScripts",
+        "validationLogic": "Ensure salesScripts includes tailored messaging.",
+        "conversationId": "salesScriptsConversation",
+        "projectName": "Sales Script Personalization",
         "priority": 2,
-        "level": 2,
-        "dependencies": [
-            "Onboarding Funnel"
-        ],
-        "entryCriteria": {
-            "mswScore": "1-3",
-            "reportedChallenges": [
-                "Low visibility"
-            ]
-        },
-        "responsibleAgents": {
-            "lead": "Mike (Marketing Strategist)",
-            "supporting": [
-                "Gabriel (Blog Blueprint)",
-                "Lisa (Instagram Marketing Maestro)"
-            ]
-        },
-        "formsNeeded": [
-            "Marketing Success Wheel"
-        ],
-        "milestones": [
-            {
-                "name": "Analyze Visibility",
-                "description": "Assess current visibility efforts and identify gaps.",
-                "dataSource": "conversationId",
-                "dataPath": "userData.visibilityAnalysis",
-                "validationLogic": "Check if visibilityAnalysis includes detailed gaps.",
-                "conversationId": "visibilityAnalysisConversation",
-                "projectName": "Visibility Analysis",
-                "priority": 2,
-                "kpis": [
-                    "Website traffic growth"
-                ]
-            },
-            {
-                "name": "Develop Multi-Channel Strategy",
-                "description": "Create a strategy for visibility improvement across platforms.",
-                "dataSource": "conversationId",
-                "dataPath": "userData.multiChannelStrategy",
-                "validationLogic": "Ensure multiChannelStrategy outlines steps for improvement.",
-                "conversationId": "multiChannelStrategyConversation",
-                "projectName": "Multi-Channel Strategy Development",
-                "priority": 3,
-                "kpis": [
-                    "Campaign impressions",
-                    "Brand mentions"
-                ]
-            }
-        ]
+        "kpis": ["Average deal size increases"]
+      }
+    ]
+  },
+  {
+    "name": "Advanced Messaging Funnel",
+    "description": "Refine messaging and positioning to target segmented audiences more effectively.",
+    "priority": 4,
+    "level": 3,
+    "dependencies": ["Positioning Funnel (TINB + Positioning Factors)"],
+    "entryCriteria": {
+      "mswScore": null,
+      "reportedChallenges": ["Messaging misalignment"]
     },
-    {
-        "name": "Lead Generation Funnel",
-        "description": "Build a pipeline of qualified leads.",
-        "priority": 3,
-        "level": 3,
-        "dependencies": [
-            "Awareness Funnel"
-        ],
-        "entryCriteria": {
-            "mswScore": "1-3",
-            "reportedChallenges": [
-                "Low lead volume"
-            ]
-        },
-        "responsibleAgents": {
-            "lead": "Orion (Lead Magnet Maker)",
-            "supporting": [
-                "Gabriel (Blog Blueprint)",
-                "Ally (Positioning Factors Accelerator)"
-            ]
-        },
-        "formsNeeded": [
-            "Marketing Success Wheel"
-        ],
-        "milestones": [
-            {
-                "name": "Develop Lead Magnet",
-                "description": "Create high-value lead magnets for potential customers.",
-                "dataSource": "conversationId",
-                "dataPath": "userData.leadMagnets",
-                "validationLogic": "Ensure leadMagnets includes at least 1 resource.",
-                "conversationId": "leadMagnetConversation",
-                "projectName": "Lead Magnet Development",
-                "priority": 2,
-                "kpis": [
-                    "Total leads generated"
-                ]
-            },
-            {
-                "name": "Optimize Landing Pages",
-                "description": "Enhance landing pages to increase conversions.",
-                "dataSource": "conversationId",
-                "dataPath": "userData.landingPageOptimization",
-                "validationLogic": "Check if landingPageOptimization includes actionable updates.",
-                "conversationId": "landingPageConversation",
-                "projectName": "Landing Page Optimization",
-                "priority": 3,
-                "kpis": [
-                    "Lead-to-conversion ratios"
-                ]
-            }
-        ]
+    "responsibleAgents": {
+      "lead": "Claire (LinkedIn Messaging Maestro)",
+      "supporting": ["Lisa (Instagram Marketing Maestro)", "Gabriel (Blog Blueprint)"]
     },
-    {
-        "name": "Engagement Funnel",
-        "description": "Strengthen interactions between the business and its audience.",
-        "priority": 4,
-        "level": 3,
-        "dependencies": [
-            "Awareness Funnel"
-        ],
-        "entryCriteria": {
-            "mswScore": "1-3",
-            "reportedChallenges": [
-                "Low engagement metrics"
-            ]
-        },
-        "responsibleAgents": {
-            "lead": "Sylvester (MSW Optimizer)",
-            "supporting": [
-                "Jesse (Email Marketing Maestro)",
-                "Lisa (Instagram Marketing Maestro)"
-            ]
-        },
-        "formsNeeded": [
-            "Marketing Success Wheel"
-        ],
-        "milestones": [
-            {
-                "name": "Launch Interactive Content",
-                "description": "Create and deploy interactive content like quizzes or polls.",
-                "dataSource": "conversationId",
-                "dataPath": "userData.interactiveContent",
-                "validationLogic": "Check if interactiveContent includes deployment details.",
-                "conversationId": "interactiveContentConversation",
-                "projectName": "Interactive Content Launch",
-                "priority": 2,
-                "kpis": [
-                    "Engagement rates",
-                    "Time spent on site"
-                ]
-            },
-            {
-                "name": "Improve Email Open Rates",
-                "description": "Enhance email content to increase open and click-through rates.",
-                "dataSource": "conversationId",
-                "dataPath": "userData.emailCampaigns",
-                "validationLogic": "Ensure emailCampaigns includes updated messaging.",
-                "conversationId": "emailCampaignsConversation",
-                "projectName": "Email Campaign Optimization",
-                "priority": 3,
-                "kpis": [
-                    "Email open rates",
-                    "Click-through rates"
-                ]
-            }
-        ]
+    "formsNeeded": ["Messaging Alignment Worksheet"],
+    "milestones": [
+      {
+        "name": "Develop Segmented Messaging",
+        "description": "Create messaging for 2–3 audience segments based on personas.",
+        "dataSource": "conversationId",
+        "dataPath": "userData.segmentedMessaging",
+        "validationLogic": "Ensure segmentedMessaging includes audience-specific details.",
+        "conversationId": "segmentedMessagingConversation",
+        "projectName": "Segmented Messaging Development",
+        "priority": 1,
+        "kpis": ["Messaging alignment score"]
+      },
+      {
+        "name": "Launch Segmented Campaigns",
+        "description": "Run targeted campaigns using the developed messaging.",
+        "dataSource": "conversationId",
+        "dataPath": "userData.segmentedCampaigns",
+        "validationLogic": "Check if segmentedCampaigns includes results.",
+        "conversationId": "segmentedCampaignsConversation",
+        "projectName": "Segmented Campaigns Launch",
+        "priority": 2,
+        "kpis": ["Engagement growth by platform"]
+      }
+    ]
+  },
+  {
+    "name": "Social Media Growth Funnel",
+    "description": "Scale social media efforts to increase reach, engagement, and lead conversions.",
+    "priority": 4,
+    "level": 3,
+    "dependencies": ["Awareness Funnel"],
+    "entryCriteria": {
+      "mswScore": null,
+      "reportedChallenges": ["Low social media reach"]
     },
-    {
-        "name": "Retention & Referrals Funnel",
-        "description": "Turn satisfied customers into advocates.",
-        "priority": 4,
-        "level": 4,
-        "dependencies": [
-            "Customer Ladder Funnel"
-        ],
-        "entryCriteria": {
-            "mswScore": "1-3",
-            "reportedChallenges": [
-                "Low retention or referral rates"
-            ]
-        },
-        "responsibleAgents": {
-            "lead": "Daniela (Reputation Builder AI)",
-            "supporting": [
-                "Troy (CrossSell Catalyst)",
-                "Jesse (Email Marketing Maestro)"
-            ]
-        },
-        "formsNeeded": [
-            "Marketing Success Wheel"
-        ],
-        "milestones": [
-            {
-                "name": "Launch Referral Program",
-                "description": "Design and implement a referral program.",
-                "dataSource": "conversationId",
-                "dataPath": "userData.referralProgram",
-                "validationLogic": "Ensure referralProgram includes incentive structures.",
-                "conversationId": "referralProgramConversation",
-                "projectName": "Referral Program Launch",
-                "priority": 2,
-                "kpis": [
-                    "Referral conversions"
-                ]
-            },
-            {
-                "name": "Gather Testimonials",
-                "description": "Collect high-quality testimonials from satisfied customers.",
-                "dataSource": "conversationId",
-                "dataPath": "userData.testimonials",
-                "validationLogic": "Check if testimonials includes 10+ entries.",
-                "conversationId": "testimonialsConversation",
-                "projectName": "Testimonial Collection",
-                "priority": 3,
-                "kpis": [
-                    "Testimonial volume"
-                ]
-            }
-        ]
-    }
-];
+    "responsibleAgents": {
+      "lead": "Deborah (Facebook Marketing Maestro)",
+      "supporting": ["EJ (TikTok Marketing Maestro)", "Lisa (Instagram Marketing Maestro)"]
+    },
+    "formsNeeded": ["Social Media Growth Audit Form"],
+    "milestones": [
+      {
+        "name": "Optimize Social Content",
+        "description": "Optimize content for 3 social platforms to increase engagement.",
+        "dataSource": "conversationId",
+        "dataPath": "userData.socialContent",
+        "validationLogic": "Ensure socialContent includes platform-specific strategies.",
+        "conversationId": "socialContentConversation",
+        "projectName": "Social Content Optimization",
+        "priority": 1,
+        "kpis": ["Follower growth by platform"]
+      },
+      {
+        "name": "Launch Viral Campaigns",
+        "description": "Design and execute viral content strategies targeting key audiences.",
+        "dataSource": "conversationId",
+        "dataPath": "userData.viralCampaigns",
+        "validationLogic": "Check if viralCampaigns includes performance results.",
+        "conversationId": "viralCampaignsConversation",
+        "projectName": "Viral Campaign Execution",
+        "priority": 2,
+        "kpis": ["Engagement rates (likes, shares)"]
+      }
+    ]
+  },
+  {
+    "name": "Reputation Management Funnel",
+    "description": "Build and maintain a strong online reputation through reviews, testimonials, and PR strategies.",
+    "priority": 5,
+    "level": 4,
+    "dependencies": ["WOW Funnel"],
+    "entryCriteria": {
+      "mswScore": null,
+      "reportedChallenges": ["Negative reviews", "Low testimonials"]
+    },
+    "responsibleAgents": {
+      "lead": "Daniela (Reputation Builder AI)",
+      "supporting": ["Caner (InsightPulse AI)", "Sylvester (MSW Optimizer)"]
+    },
+    "formsNeeded": ["Reputation Audit Form"],
+    "milestones": [
+      {
+        "name": "Collect Testimonials",
+        "description": "Develop a testimonial collection strategy to improve social proof.",
+        "dataSource": "conversationId",
+        "dataPath": "userData.testimonialStrategy",
+        "validationLogic": "Ensure testimonialStrategy includes actionable plans.",
+        "conversationId": "testimonialStrategyConversation",
+        "projectName": "Testimonial Strategy Development",
+        "priority": 1,
+        "kpis": ["Testimonial volume increase"]
+      },
+      {
+        "name": "Handle Negative Feedback",
+        "description": "Implement a plan to address and mitigate negative feedback online.",
+        "dataSource": "conversationId",
+        "dataPath": "userData.feedbackPlan",
+        "validationLogic": "Ensure feedbackPlan includes response strategies.",
+        "conversationId": "feedbackPlanConversation",
+        "projectName": "Feedback Management",
+        "priority": 2,
+        "kpis": ["Sentiment analysis score"]
+      }
+    ]
+  }
+]
+;
 
 export default funnels;
