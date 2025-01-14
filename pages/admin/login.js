@@ -21,7 +21,7 @@ export default function AdminLogin() {
     const checkAdminAccess = async () => {
       if (user) {
         try {
-          // Check Firestore for admin status
+          // Fetch user document from Firestore
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
 
@@ -30,7 +30,8 @@ export default function AdminLogin() {
           }
 
           const userData = userDoc.data();
-          
+
+          // Validate if user is a SystemAdmin
           if (userData.SystemAdmin === true) {
             if (isSubscribed) {
               const idToken = await user.getIdToken();
@@ -47,7 +48,7 @@ export default function AdminLogin() {
         } catch (error) {
           console.error('Admin verification failed:', error);
           if (isSubscribed) {
-            setError('Error verifying admin access');
+            setError('Error verifying admin access. Please contact support.');
             await auth.signOut();
             localStorage.removeItem('auth_token');
           }
@@ -73,8 +74,8 @@ export default function AdminLogin() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
-      // Check Firestore for admin status
+
+      // Fetch user document from Firestore
       const userDocRef = doc(db, 'users', userCredential.user.uid);
       const userDoc = await getDoc(userDocRef);
 
@@ -83,7 +84,8 @@ export default function AdminLogin() {
       }
 
       const userData = userDoc.data();
-      
+
+      // Validate if user is a SystemAdmin
       if (userData.SystemAdmin === true) {
         const idToken = await userCredential.user.getIdToken();
         localStorage.setItem('auth_token', idToken);
