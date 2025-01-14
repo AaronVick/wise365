@@ -1,8 +1,10 @@
 // /pages/api/seed.js
-import { db } from '@/lib/firebaseAdmin'; // Use the existing export from firebaseAdmin.js
-import { firebaseConfig } from '@/lib/firebase'; // Use the existing export from firebase.js
-import fs from 'fs';
-import path from 'path';
+
+import { initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
+import { firebaseAdminConfig } from '../../lib/firebaseAdmin';
+import { firebaseClientConfig } from '../../lib/firebase';
 
 export const config = {
   api: {
@@ -14,6 +16,14 @@ export const config = {
 };
 
 export default async function handler(req, res) {
+  // Initialize Firebase Admin if not already initialized
+  if (!firebaseAdminConfig.apps.length) {
+    initializeApp(firebaseAdminConfig);
+  }
+
+  const db = getFirestore();
+  const auth = getAuth();
+
   if (req.method !== 'GET') {
     console.error('Invalid request method:', req.method);
     return res.status(405).json({ success: false, message: 'Method not allowed' });
@@ -21,11 +31,11 @@ export default async function handler(req, res) {
 
   const { collection, file } = req.query;
 
-  // Validate query parameters
   if (!collection || !file) {
     console.error('Missing query parameters:', { collection, file });
     return res.status(400).json({ success: false, message: 'Missing collection or file parameter' });
   }
+
 
   // Validate file exists in the `data` folder
   const dataFolder = path.resolve('./data');
