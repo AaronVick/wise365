@@ -159,7 +159,6 @@ const Dashboard = () => {
           isNewUser: isNewUser
         });
 
-        router.push(`/chat/shawn`);
         return;
       } catch (error) {
         console.error('Error initializing Shawn chat:', error);
@@ -170,7 +169,6 @@ const Dashboard = () => {
     // Regular agent handling using utility
     try {
       await handleAgentClickUtil(agent, user, db, setCurrentChat);
-      router.push(`/chat/${agent.id}`);
     } catch (error) {
       console.error('Error handling agent click:', error);
     }
@@ -506,36 +504,60 @@ const Dashboard = () => {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-hidden bg-slate-50">
-        {currentChat ? (
-          currentChat.agentId === 'shawn' ? (
-            // Use ChatWithShawn for Shawn
-            <ChatWithShawn 
-              currentUser={userData} 
-              isNewUser={currentChat.isNewUser}
-            />
+        <div className="flex-1 overflow-hidden bg-slate-50">
+          {currentChat ? (
+            currentChat.agentId === 'shawn' ? (
+              <ChatWithShawn 
+                currentUser={userData} 
+                isNewUser={currentChat.isNewUser}
+              />
+            ) : (
+              <ChatInterface
+                chatId={currentChat.id}
+                agentId={currentChat.agentId}
+                userId={user.uid}
+                isDefault={currentChat.isDefault}
+                title={currentChat.title}
+                conversationName={currentChat.conversationName}
+                projectId={currentChat.projectId}
+                projectName={currentChat.projectName}
+              />
+            )
+          ) : currentTool ? (
+            <div className="h-full flex flex-col">
+              <header className="border-b bg-white shadow-sm">
+                <div className="px-6 py-4">
+                  <h1 className="text-2xl font-semibold text-gray-900">
+                    {currentTool === 'buyer-persona' && "Buyer Persona Tool"}
+                    {currentTool === 'success-wheel' && "Marketing Success Wheel"}
+                    {currentTool === 'positioning-factors' && "Positioning Factors"}
+                  </h1>
+                </div>
+              </header>
+              <main className="flex-1 overflow-auto">
+                {currentTool === 'buyer-persona' && (
+                  <BuyerPersona onComplete={() => setCurrentTool(null)} />
+                )}
+                {currentTool === 'success-wheel' && (
+                  <SuccessWheel onComplete={() => setCurrentTool(null)} />
+                )}
+                {currentTool === 'positioning-factors' && (
+                  <PositioningFactors onComplete={() => setCurrentTool(null)} />
+                )}
+              </main>
+            </div>
           ) : (
-            // Use regular ChatInterface for other agents
-            <ChatInterface
-              chatId={currentChat.id}
-              agentId={currentChat.agentId}
-              userId={user.uid}
-              isDefault={currentChat.isDefault}
-              title={currentChat.title}
-              conversationName={currentChat.conversationName}
-              projectId={currentChat.projectId}
-              projectName={currentChat.projectName}
+            // Dashboard Welcome View
+            <DashboardContent
+              currentUser={userData}
+              currentTool={currentTool}
+              setCurrentTool={setCurrentTool}
+              onToolComplete={() => setCurrentTool(null)}
+              currentChat={currentChat}
+              setCurrentChat={setCurrentChat}
             />
-          )
-        ) : (
-          // Dashboard Welcome View
-          <div className="h-full flex flex-col">
-            {/* Header */}
-            <header className="border-b bg-white shadow-sm">
-              <div className="px-6 py-4">
-                <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-              </div>
-            </header>
+          )}
+        </div>
 
             {/* Content */}
             <main className="flex-1 overflow-auto p-6">
@@ -551,18 +573,6 @@ const Dashboard = () => {
                       Connect with our AI team to help grow your business.
                     </p>
                   </div>
-                  <Button 
-                    className="ml-auto bg-blue-600 hover:bg-blue-700 text-white"
-                    onClick={() => {
-                      const adminAgents = agents['Administrative'] || [];
-                      const shawn = adminAgents.find(a => a.id === 'shawn');
-                      if (shawn) {
-                        handleAgentClick(shawn);
-                      }
-                    }}
-                  >
-                    Chat with AI Team
-                  </Button>
                 </CardContent>
               </Card>
 

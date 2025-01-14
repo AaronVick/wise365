@@ -240,54 +240,83 @@ const DashboardContent = ({
 
 
           {/* Welcome Card */}
-          {!hasShawnChat && (
-            <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                  <span className="text-blue-600 font-semibold">S</span>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Welcome to Business Wise365!</h3>
-                  <p className="text-gray-600 mb-4">
-                    Hi, I'm Shawn, your personal guide to our AI team. I'll help you navigate our
-                    platform and connect you with the right experts for your business needs.
-                  </p>
-                  <Button 
-                  onClick={() => router.push('/chat/shawn')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Chat with Shawn
-                </Button>
-                </div>
-              </div>
-            </Card>
-          )}
+            {!hasShawnChat && (
+              <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
+                <div className="flex items-start space-x-4">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                    <span className="text-blue-600 font-semibold">S</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Welcome to Business Wise365!</h3>
+                    <p className="text-gray-600 mb-4">
+                      Hi, I'm Shawn, your personal guide to our AI team. I'll help you navigate our
+                      platform and connect you with the right experts for your business needs.
+                    </p>
+                    <Button 
+                      onClick={async () => {
+                        try {
+                          const namesRef = collection(db, 'conversationNames');
+                          const defaultNameQuery = query(
+                            namesRef,
+                            where('agentId', '==', 'shawn'),
+                            where('userId', '==', currentUser.uid),
+                            where('isDefault', '==', true)
+                          );
+                          
+                          const querySnapshot = await getDocs(defaultNameQuery);
+                          let chatId;
 
-          {/* Existing Conversation (if any) */}
-            {currentChat?.id && messages && messages.length > 0 && (
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Conversation History</h3>
-                <div className="space-y-4">
-                  {messages.map((msg, index) => (
-                    <div key={index} className="p-4 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
-                      <div className="flex items-center">
-                        <div className="text-sm text-gray-500">
-                          {msg.role === currentUser?.uid ? 'You' : 'Agent'}:
-                        </div>
-                        <p className="text-gray-700 ml-2">{msg.content}</p>
-                      </div>
-                    </div>
-                  ))}
+                          if (querySnapshot.empty) {
+                            // Only create new chat if one doesn't exist
+                            const nameDoc = await addDoc(namesRef, {
+                              agentId: 'shawn',
+                              conversationName: 'Chat with Shawn',
+                              userId: currentUser.uid,
+                              isDefault: true,
+                              projectName: '',
+                              timestamp: serverTimestamp()
+                            });
+
+                            chatId = nameDoc.id;
+
+                            // Create initial welcome message
+                            await addDoc(collection(db, 'conversations'), {
+                              agentId: 'shawn',
+                              content: "Hi! I'm Shawn, your personal guide to Business Wise365. I'll help you navigate our platform and connect you with the right experts for your business needs. Are you ready to get started?",
+                              conversationName: chatId,
+                              from: 'shawn',
+                              isDefault: true,
+                              timestamp: serverTimestamp(),
+                              type: 'agent'
+                            });
+                          } else {
+                            // Use existing chat
+                            chatId = querySnapshot.docs[0].id;
+                          }
+
+                          // Set the current chat in either case
+                          setCurrentChat({
+                            id: chatId,
+                            agentId: 'shawn',
+                            title: 'Chat with Shawn',
+                            participants: [currentUser.uid, 'shawn'],
+                            isDefault: true,
+                            conversationName: chatId
+                          });
+                        } catch (error) {
+                          console.error('Error handling Shawn chat:', error);
+                        }
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Chat with Shawn
+                    </Button>
+                  </div>
                 </div>
-                <Button 
-                  variant="link"
-                  onClick={() => currentChat?.id && sendMessage("I'm ready to take the next step!")}
-                  disabled={!currentChat?.id}
-                >
-                  Send New Message
-                </Button>
               </Card>
             )}
+
+
 
           {/* Quick Stats - with null checks */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -449,24 +478,10 @@ const DashboardContent = ({
                   <div className="text-center py-4">Loading resources...</div>
                 ) : (
                   <div className="space-y-4">
-                    <Button
+                                      <Button
                       variant="ghost"
-                      onClick={async () => {
-                        try {
-                          const resourcesRef = collection(db, 'resources');
-                          const q = query(
-                            resourcesRef,
-                            where('templateName', '==', "World's Best Buyer Persona")
-                          );
-                          const querySnapshot = await getDocs(q);
-                          if (querySnapshot.empty) {
-                            alert('Template is being set up. Please try again in a moment.');
-                            return;
-                          }
-                          setCurrentTool('buyer-persona');
-                        } catch (error) {
-                          console.error('Error checking template:', error);
-                        }
+                      onClick={() => {
+                        setCurrentTool('buyer-persona');
                       }}
                       className="w-full justify-between text-left hover:bg-gray-100"
                     >
@@ -479,22 +494,8 @@ const DashboardContent = ({
 
                     <Button
                       variant="ghost"
-                      onClick={async () => {
-                        try {
-                          const resourcesRef = collection(db, 'resources');
-                          const q = query(
-                            resourcesRef,
-                            where('templateName', '==', "Marketing Success Wheel")
-                          );
-                          const querySnapshot = await getDocs(q);
-                          if (querySnapshot.empty) {
-                            alert('Template is being set up. Please try again in a moment.');
-                            return;
-                          }
-                          setCurrentTool('success-wheel');
-                        } catch (error) {
-                          console.error('Error checking template:', error);
-                        }
+                      onClick={() => {
+                        setCurrentTool('success-wheel');
                       }}
                       className="w-full justify-between text-left hover:bg-gray-100"
                     >
@@ -507,22 +508,8 @@ const DashboardContent = ({
 
                     <Button
                       variant="ghost"
-                      onClick={async () => {
-                        try {
-                          const resourcesRef = collection(db, 'resources');
-                          const q = query(
-                            resourcesRef,
-                            where('templateName', '==', "Positioning Factor Worksheet")
-                          );
-                          const querySnapshot = await getDocs(q);
-                          if (querySnapshot.empty) {
-                            alert('Template is being set up. Please try again in a moment.');
-                            return;
-                          }
-                          setCurrentTool('positioning-factors');
-                        } catch (error) {
-                          console.error('Error checking template:', error);
-                        }
+                      onClick={() => {
+                        setCurrentTool('positioning-factors');
                       }}
                       className="w-full justify-between text-left hover:bg-gray-100"
                     >
