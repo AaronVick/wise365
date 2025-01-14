@@ -1,57 +1,36 @@
-import React, { useState } from 'react';
-import seedData from '../../data/funnels';
+import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp, cert, apps } from 'firebase-admin/app';
+import funnels from '../../data/funnels';
 
-export default function ImportPage() {
-  const [status, setStatus] = useState('');
-  const [error, setError] = useState(null);
+const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_SDK || '{}');
 
-  const handleImport = async () => {
-    setStatus('Importing data...');
-    setError(null);
+// Initialize Firebase Admin SDK if not already initialized
+if (!apps.length) {
+  initializeApp({
+    credential: cert(serviceAccount),
+  });
+}
 
-    try {
-      const response = await fetch('/api/admin/import', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(seedData),
-      });
+const db = getFirestore();
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).json({ success: false, message: 'Method Not Allowed' });
+  }
 
-      const result = await response.json();
-      setStatus('Import completed successfully!');
-      console.log('Import result:', result);
-    } catch (err) {
-      setStatus('');
-      setError(`Import failed: ${err.message}`);
-      console.error('Import error:', err);
-    }
-  };
+  try {
+    const batch = db.batch();
+    funnels.forEach((record) => {
+      const docRef = db.collection('funnels').doc();
+      batch.set(docRef, record);
+    });
 
-  return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>Import Funnel Data</h1>
-      <p>Click the button below to import funnel data into the database.</p>
-      <button
-        onClick={handleImport}
-        style={{
-          padding: '10px 20px',
-          backgroundColor: '#0070f3',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '5px',
-          cursor: 'pointer',
-        }}
-      >
-        Import Data
-      </button>
+    await batch.commit();
 
-      {status && <p style={{ marginTop: '20px', color: 'green' }}>{status}</p>}
-      {error && <p style={{ marginTop: '20px', color: 'red' }}>{error}</p>}
-    </div>
-  );
+    return res.status(200).json({ success: true, message: 'Data successfully imported!' });
+  } catch (error) {
+    console.error('Error importing data:', error);
+    return res.status(500).json({ success: false, message: 'Failed to import data.', error: error.message });
+  }
 }
