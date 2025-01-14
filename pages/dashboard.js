@@ -576,7 +576,7 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* Main Dashboard Content */}
+             {/* Main Dashboard Content */}
               <DashboardContent
                 currentUser={userData}
                 currentTool={currentTool}
@@ -585,13 +585,10 @@ const Dashboard = () => {
                 currentChat={currentChat}
                 setCurrentChat={setCurrentChat}
               />
-            </main>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+            </div> {/* Close the "flex-1 overflow-hidden bg-slate-50" div */}
+        </div> {/* Close the main wrapping "flex h-screen bg-slate-50" div */}
+    </div> {/* Ensure all outer wrapping divs are properly closed */}
+);
 };
 
-export default Dashboard
-
+export default Dashboard;     
