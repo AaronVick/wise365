@@ -1,4 +1,6 @@
 // components/toolComponents/success-wheel.js
+
+
 import React, { useEffect, useState } from 'react';
 import {
   collection,
@@ -7,6 +9,7 @@ import {
   getDocs,
   addDoc,
   serverTimestamp,
+  orderBy,
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,43 +22,44 @@ const SuccessWheel = ({ onComplete }) => {
   const { currentUser } = useAuth() || {};
   const [template, setTemplate] = useState(null);
   const [responses, setResponses] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastSubmissionDate, setLastSubmissionDate] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [shared, setShared] = useState(false);
   const [loading, setLoading] = useState(true);
+  const templateName = 'Marketing Success Wheel';
 
+  // Fetch template and previous answers
   useEffect(() => {
-    const fetchTemplate = async () => {
-      if (!currentUser) return;
-
+    const fetchTemplateAndAnswers = async () => {
       try {
-        const resourcesRef = collection(db, 'resources');
-        const q = query(resourcesRef, where('templateName', '==', 'Marketing Success Wheel'));
-        const querySnapshot = await getDocs(q);
+        // Fetch template from Firestore
+        const templateQuery = query(
+          collection(db, 'resources'),
+          where('templateName', '==', templateName)
+        );
+        const templateSnapshot = await getDocs(templateQuery);
 
-        if (!querySnapshot.empty) {
-          const docData = querySnapshot.docs[0].data();
-          setTemplate(docData);
+        if (!templateSnapshot.empty) {
+          const templateData = templateSnapshot.docs[0].data();
+          setTemplate(templateData);
 
           // Fetch previous answers
-          const resourcesDataRef = collection(db, 'resourcesData');
-          const dataQuery = query(
-            resourcesDataRef,
-            where('templateName', '==', 'Marketing Success Wheel'),
-            where('userId', '==', currentUser.uid)
-          );
-          const dataSnapshot = await getDocs(dataQuery);
-
-          if (!dataSnapshot.empty) {
-            const lastSubmission = dataSnapshot.docs[0].data();
-            setResponses(
-              lastSubmission.responses.reduce((acc, item) => {
-                acc[item.question] = item.answer;
-                return acc;
-              }, {})
+          if (currentUser) {
+            const answersQuery = query(
+              collection(db, 'resourcesData'),
+              where('templateName', '==', templateName),
+              where('userId', '==', currentUser.uid),
+              orderBy('timestamp', 'desc')
             );
-            setLastSubmissionDate(lastSubmission.timestamp?.toDate());
+            const answersSnapshot = await getDocs(answersQuery);
+
+            if (!answersSnapshot.empty) {
+              const lastSubmission = answersSnapshot.docs[0].data();
+              setResponses(lastSubmission.answers || {});
+              setLastUpdated(lastSubmission.timestamp?.toDate());
+            }
           }
+        } else {
+          console.warn('Template not found in Firestore');
         }
       } catch (error) {
         console.error('Error fetching template or prior responses:', error);
@@ -64,26 +68,29 @@ const SuccessWheel = ({ onComplete }) => {
       }
     };
 
-    if (currentUser) {
-      fetchTemplate();
-    }
+    fetchTemplateAndAnswers();
   }, [currentUser]);
 
   const handleChange = (question, answer) => {
-    setResponses({ ...responses, [question]: answer });
+    setResponses((prev) => ({
+      ...prev,
+      [question]: answer,
+    }));
   };
 
   const handleSubmit = async () => {
     if (!template || !currentUser) return;
 
-    if (Object.keys(responses).length !== template.sections.length) {
+    const allQuestionsAnswered = template.sections.every(
+      (section) => responses[section.question]?.trim()
+    );
+
+    if (!allQuestionsAnswered) {
       alert('Please answer all questions before submitting.');
       return;
     }
 
-    setIsSubmitting(true);
     try {
-      const resourcesDataRef = collection(db, 'resourcesData');
       const formattedResponses = template.sections.map((section) => ({
         question: section.question,
         answer: responses[section.question],
@@ -91,12 +98,12 @@ const SuccessWheel = ({ onComplete }) => {
         evaluationCriteria: section.evaluationCriteria,
       }));
 
-      await addDoc(resourcesDataRef, {
+      await addDoc(collection(db, 'resourcesData'), {
         templateName: template.templateName,
         userId: currentUser.uid,
-        teamId: currentUser.teamId || null,
+        teamId: currentUser.teamId || '',
         shared,
-        responses: formattedResponses,
+        answers: formattedResponses,
         timestamp: serverTimestamp(),
       });
 
@@ -106,16 +113,13 @@ const SuccessWheel = ({ onComplete }) => {
     } catch (error) {
       console.error('Error saving responses:', error);
       alert('An error occurred while saving your responses. Please try again.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-        <p className="ml-4 text-gray-600">Loading template...</p>
+        <p>Loading form...</p>
       </div>
     );
   }
@@ -123,7 +127,7 @@ const SuccessWheel = ({ onComplete }) => {
   if (!template) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-600">Template not found</p>
+        <p>The required template was not found. Please contact support.</p>
       </div>
     );
   }
@@ -134,53 +138,54 @@ const SuccessWheel = ({ onComplete }) => {
         <h1 className="text-2xl font-bold mb-4">{template.templateName}</h1>
         <p className="text-gray-600 mb-6">{template.description}</p>
 
-        {lastSubmissionDate ? (
-          <div className="mb-6 text-sm text-gray-500">
-            Last submitted on: {lastSubmissionDate.toLocaleDateString()}{' '}
-            {lastSubmissionDate.toLocaleTimeString()}
-          </div>
+        {lastUpdated ? (
+          <p className="mb-6 text-sm text-gray-500">
+            Last updated: {lastUpdated.toLocaleDateString()}{' '}
+            {lastUpdated.toLocaleTimeString()}
+          </p>
         ) : (
-          <div className="mb-6 text-sm text-gray-500">
+          <p className="mb-6 text-sm text-gray-500">
             This is your first time completing this form.
-          </div>
+          </p>
         )}
 
-        {template.sections.map((section, index) => (
-          <div key={index} className="mb-6">
-            <h2 className="text-lg font-semibold mb-2">{section.question}</h2>
-            <p className="text-sm text-gray-500 mb-2">{section.definition}</p>
-            <p className="text-sm text-gray-500 mb-4">{section.evaluationCriteria}</p>
+        <form className="space-y-6">
+          {template.sections.map((section, index) => (
+            <div key={index} className="mb-6">
+              <h2 className="text-lg font-semibold mb-2">{section.question}</h2>
+              <p className="text-sm text-gray-500 mb-2">{section.definition}</p>
+              <p className="text-sm text-gray-500 mb-4">{section.evaluationCriteria}</p>
 
-            <Select
-              value={responses[section.question] || ''}
-              onValueChange={(value) => handleChange(section.question, value)}
-            >
-              <SelectItem value="">Select a grade</SelectItem>
-              {section.gradingScale.map((grade, idx) => (
-                <SelectItem key={idx} value={grade}>
-                  {grade}
-                </SelectItem>
-              ))}
-            </Select>
+              <Select
+                value={responses[section.question] || ''}
+                onValueChange={(value) => handleChange(section.question, value)}
+              >
+                <SelectItem value="">Select a grade</SelectItem>
+                {section.gradingScale.map((grade, idx) => (
+                  <SelectItem key={idx} value={grade}>
+                    {grade}
+                  </SelectItem>
+                ))}
+              </Select>
+            </div>
+          ))}
+
+          <div className="flex items-center mb-6">
+            <Checkbox
+              id="shared"
+              checked={shared}
+              onCheckedChange={(checked) => setShared(checked)}
+              label="Share responses with my team"
+            />
           </div>
-        ))}
 
-        <div className="flex items-center mb-6">
-          <Checkbox
-            id="shared"
-            checked={shared}
-            onCheckedChange={(checked) => setShared(checked)}
-            label="Share responses with my team"
-          />
-        </div>
-
-        <Button
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-          className="bg-blue-600 hover:bg-blue-700 text-white w-full py-2"
-        >
-          {isSubmitting ? 'Saving...' : 'Save Responses'}
-        </Button>
+          <Button
+            onClick={handleSubmit}
+            className="bg-blue-600 hover:bg-blue-700 text-white w-full py-2"
+          >
+            Save Responses
+          </Button>
+        </form>
       </Card>
     </div>
   );

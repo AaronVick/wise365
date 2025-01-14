@@ -1,4 +1,5 @@
 // components/toolComponents/positioning-factors.js
+
 import React, { useState, useEffect } from "react";
 import {
   collection,
@@ -7,49 +8,73 @@ import {
   getDocs,
   addDoc,
   serverTimestamp,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import Checkbox from "../ui/checkbox";
+import Textarea from "../ui/textarea";
+import { Input } from "../ui/input";
+import { Select, SelectItem } from "../ui/select";
 
 const PositioningFactors = ({ onComplete }) => {
   const { currentUser } = useAuth() || {};
+  const [template, setTemplate] = useState(null);
   const [formData, setFormData] = useState({});
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [shared, setShared] = useState(false);
-  const [previousAnswers, setPreviousAnswers] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const templateName = "Positioning Factor Worksheet";
 
+  // Fetch template and previous answers
   useEffect(() => {
-    const fetchPreviousAnswers = async () => {
-      if (!currentUser || !currentUser.uid) {
-        setLoading(false);
-        return;
-      }
-
+    const fetchTemplate = async () => {
       try {
         const q = query(
-          collection(db, "resourcesData"),
-          where("userId", "==", currentUser.uid),
+          collection(db, "resources"),
           where("templateName", "==", templateName)
         );
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
-          const latestDoc = querySnapshot.docs[0].data();
-          setPreviousAnswers(latestDoc);
-          setFormData(latestDoc.answers || {});
+          const templateData = querySnapshot.docs[0].data();
+          setTemplate(templateData);
+        } else {
+          console.warn("Template not found in Firestore");
         }
       } catch (error) {
-        console.error("Error fetching previous answers:", error);
+        console.error("Error fetching template:", error);
       } finally {
         setLoading(false);
       }
     };
 
+    const fetchPreviousAnswers = async () => {
+      if (!currentUser || !currentUser.uid) return;
+
+      try {
+        const q = query(
+          collection(db, "resourcesData"),
+          where("userId", "==", currentUser.uid),
+          where("templateName", "==", templateName),
+          orderBy("timestamp", "desc")
+        );
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          const lastAnswer = querySnapshot.docs[0].data();
+          setFormData(lastAnswer.answers || {});
+          setLastUpdated(lastAnswer.timestamp?.toDate());
+        }
+      } catch (error) {
+        console.error("Error fetching previous answers:", error);
+      }
+    };
+
+    fetchTemplate();
     fetchPreviousAnswers();
   }, [currentUser]);
 
@@ -61,27 +86,28 @@ const PositioningFactors = ({ onComplete }) => {
   };
 
   const handleSubmit = async () => {
-    const allQuestionsAnswered = Object.entries(formData).every(
-      ([key, value]) => value && value.trim() !== ""
+    if (!template || !currentUser) return;
+
+    const allQuestionsAnswered = template.sections.every((section) =>
+      section.subQuestions
+        ? section.subQuestions.every(
+            (subQ) => formData[subQ.question]?.trim()
+          )
+        : formData[section.question]?.trim()
     );
 
     if (!allQuestionsAnswered) {
-      alert("Please answer all questions before submitting.");
-      return;
-    }
-
-    if (!currentUser || !currentUser.uid) {
-      alert("User must be logged in to submit the form.");
+      alert("Please answer all questions before saving.");
       return;
     }
 
     try {
       await addDoc(collection(db, "resourcesData"), {
         userId: currentUser.uid,
-        teamId: currentUser.teamId || null,
-        shared,
+        teamId: currentUser.teamId || "",
         templateName,
         answers: formData,
+        shared,
         timestamp: serverTimestamp(),
       });
 
@@ -102,89 +128,73 @@ const PositioningFactors = ({ onComplete }) => {
     );
   }
 
+  if (!template) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p>The required template was not found. Please contact support.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-6">
       <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">{templateName}</h2>
+        <h2 className="text-xl font-semibold mb-4">{template.templateName}</h2>
         <p className="text-gray-600 mb-6">
-          {previousAnswers
-            ? `You last submitted this form on ${
-                previousAnswers?.timestamp?.seconds
-                  ? new Date(
-                      previousAnswers.timestamp.seconds * 1000
-                    ).toLocaleDateString()
-                  : "No prior submission date available."
-              }. You can update your answers below.`
+          {lastUpdated
+            ? `Last updated on: ${new Date(lastUpdated).toLocaleString()}`
             : "Please complete the form below to define your positioning factors."}
         </p>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block font-medium mb-1">Website URL</label>
-            <input
-              type="url"
-              value={formData["Website URL"] || ""}
-              onChange={(e) => handleInputChange("Website URL", e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
+        <form className="space-y-6">
+          {template.sections.map((section, index) => (
+            <div key={index} className="space-y-2">
+              <h3 className="font-medium">{section.question}</h3>
+              {section.definition && (
+                <p className="text-sm text-gray-500">{section.definition}</p>
+              )}
 
-          {[
-            "Step 1: Reflect on Your Strengths",
-            "Step 2: Identify Unique Attributes",
-            "Step 3: Highlight Recognitions and Achievements",
-            "Step 4: Focus on Guarantees and Warranties",
-            "Step 5: Define Your Market and Industry Focus",
-            "Step 6: Highlight Customer Success Stories",
-          ].map((section, index) => (
-            <div key={index}>
-              <h3 className="font-medium mb-2">{section}</h3>
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="mb-3">
-                  <label className="block text-sm font-medium mb-1">
-                    {section} {i}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData[`${section} ${i}`] || ""}
-                    onChange={(e) =>
-                      handleInputChange(`${section} ${i}`, e.target.value)
-                    }
-                    className="w-full border rounded px-3 py-2"
-                  />
-                </div>
-              ))}
+              {section.subQuestions
+                ? section.subQuestions.map((subQ, subIndex) => (
+                    <div key={subIndex} className="mb-4">
+                      <label className="block font-medium text-sm">
+                        {subQ.question}
+                      </label>
+                      <Input
+                        value={formData[subQ.question] || ""}
+                        onChange={(e) =>
+                          handleInputChange(subQ.question, e.target.value)
+                        }
+                      />
+                    </div>
+                  ))
+                : section.options ? (
+                    <Select
+                      value={formData[section.question] || ""}
+                      onValueChange={(value) =>
+                        handleInputChange(section.question, value)
+                      }
+                    >
+                      <SelectItem value="">Select an option</SelectItem>
+                      {section.options.map((option, optIndex) => (
+                        <SelectItem key={optIndex} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Textarea
+                      value={formData[section.question] || ""}
+                      onChange={(e) =>
+                        handleInputChange(section.question, e.target.value)
+                      }
+                      placeholder="Your answer"
+                    />
+                  )}
             </div>
           ))}
 
-          <div>
-            <label className="block font-medium mb-1">
-              Which of Maslow's Needs must be met for the persona to realize
-              you are their T.I.N.B?
-            </label>
-            <select
-              value={formData["Maslow's Needs"] || ""}
-              onChange={(e) =>
-                handleInputChange("Maslow's Needs", e.target.value)
-              }
-              className="w-full border rounded px-3 py-2"
-            >
-              <option value="">Select an option</option>
-              {[
-                "Physiological",
-                "Safety",
-                "Love & Belonging",
-                "Esteem",
-                "Self-Actualization",
-              ].map((need, index) => (
-                <option key={index} value={need}>
-                  {need}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-center mt-4">
+          <div className="flex items-center space-x-2">
             <Checkbox
               id="shared"
               checked={shared}
@@ -194,15 +204,16 @@ const PositioningFactors = ({ onComplete }) => {
           </div>
 
           <Button
+            type="button"
             onClick={handleSubmit}
-            className="mt-6 w-full bg-blue-600 text-white"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             Submit
           </Button>
-        </div>
+        </form>
       </Card>
     </div>
   );
 };
 
-export default PositioningFactors; 
+export default PositioningFactors;

@@ -26,6 +26,7 @@ const BuyerPersona = ({ onComplete }) => {
   const [shared, setShared] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Fetch the template and previous answers
   useEffect(() => {
     const fetchTemplate = async () => {
       try {
@@ -34,9 +35,12 @@ const BuyerPersona = ({ onComplete }) => {
           where('templateName', '==', "World's Best Buyer Persona")
         );
         const querySnapshot = await getDocs(q);
+
         if (!querySnapshot.empty) {
           const templateData = querySnapshot.docs[0].data();
           setTemplate(templateData);
+        } else {
+          console.warn('Template not found in Firestore');
         }
       } catch (error) {
         console.error('Error fetching template:', error);
@@ -47,7 +51,7 @@ const BuyerPersona = ({ onComplete }) => {
 
     const fetchPreviousAnswers = async () => {
       if (!currentUser?.uid) return;
-      
+
       try {
         const q = query(
           collection(db, 'resourcesData'),
@@ -58,7 +62,7 @@ const BuyerPersona = ({ onComplete }) => {
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
           const lastAnswer = querySnapshot.docs[0].data();
-          setFormData(lastAnswer.answers);
+          setFormData(lastAnswer.answers || {});
           setLastUpdated(lastAnswer.timestamp?.toDate());
         }
       } catch (error) {
@@ -100,7 +104,7 @@ const BuyerPersona = ({ onComplete }) => {
         shared,
         timestamp: serverTimestamp(),
       });
-      
+
       alert('Form saved successfully!');
       setFormData({}); // Clear the form
       onComplete(); // Return to main dashboard
@@ -121,7 +125,7 @@ const BuyerPersona = ({ onComplete }) => {
   if (!template) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p>Template not found</p>
+        <p>The required template was not found. Please contact support.</p>
       </div>
     );
   }
