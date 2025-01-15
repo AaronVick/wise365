@@ -38,27 +38,39 @@ export default function Prompts() {
 
   const fetchAgentDefinition = async (agentId) => {
     try {
-      console.log(`Fetching agent definition for agentId: ${agentId}`);
-      
-      // Get the specific document from agentsDefined collection
-      const docRef = doc(db, 'agentsDefined', agentId);
-      const docSnap = await getDoc(docRef);
-      
-      console.log('Document exists:', docSnap.exists()); // Debug log
-      
-      if (!docSnap.exists()) {
-        console.warn(`No document found for ID: ${agentId}`);
+      // First get the agent record to get the agentId field
+      const agent = agents.find(a => a.id === agentId);
+      if (!agent || !agent.agentId) {
+        console.warn('Agent not found or missing agentId:', agentId);
         return null;
       }
 
+      console.log('Looking up agent definition for agentId:', agent.agentId);
+      
+      // Query agentsDefined collection where agentId matches
+      const q = query(
+        collection(db, 'agentsDefined'),
+        where('agentId', '==', agent.agentId.toLowerCase()) // Convert to lowercase for consistency
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        console.warn(`No matching record found for agentId: ${agent.agentId}`);
+        return null;
+      }
+
+      // Get the first matching document
+      const docSnap = querySnapshot.docs[0];
       const data = docSnap.data();
-      console.log('Raw document data:', data); // Debug log
-      console.log('Prompt field:', data.prompt); // Debug log
+      
+      console.log('Found agent definition:', data);
+      console.log('Prompts data:', data.prompt);
 
       return {
         id: docSnap.id,
         ...data,
-        prompt: data.prompt || {},
+        prompt: data.prompt || {}
       };
     } catch (err) {
       console.error(`Error fetching agent definition:`, err);
@@ -67,23 +79,19 @@ export default function Prompts() {
   };
 
   const handleAgentSelection = async (agentId) => {
-    console.log('Selected agent ID:', agentId); // Debug log
+    console.log('Selected agent record ID:', agentId);
     setSelectedAgent(agentId);
     setLoading(true);
     setError(null);
 
     try {
       const agentDefinition = await fetchAgentDefinition(agentId);
-      console.log('Fetched agent definition:', agentDefinition); // Debug log
+      console.log('Fetched agent definition:', agentDefinition);
 
       if (agentDefinition && agentDefinition.prompt) {
-        console.log('Raw prompts data:', agentDefinition.prompt); // Debug log
-        
-        // Directly use the prompt object as is
+        console.log('Setting prompts:', agentDefinition.prompt);
         setPrompts(agentDefinition.prompt);
-        console.log('Setting prompts state to:', agentDefinition.prompt); // Debug log
       } else {
-        console.log('No prompts found, setting empty object'); // Debug log
         setPrompts({});
       }
     } catch (err) {
