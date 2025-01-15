@@ -206,11 +206,12 @@ export default function Prompts() {
     return <div>Loading...</div>;
   }
 
+  
   return (
     <div className="p-6">
       <h2 className="text-xl font-bold mb-4">Manage Prompts</h2>
       {error && <div className="text-red-500">{error}</div>}
-
+  
       <select
         className="p-2 border rounded w-full mb-4"
         value={selectedAgent || ''}
@@ -223,7 +224,7 @@ export default function Prompts() {
           </option>
         ))}
       </select>
-
+  
       <select
         className="p-2 border rounded w-full mb-4"
         value={selectedLLM}
@@ -234,7 +235,7 @@ export default function Prompts() {
         <option value="Anthropic">Anthropic (Claude)</option>
         <option value="OpenAI">OpenAI (ChatGPT)</option>
       </select>
-
+  
       <div className="mb-8 bg-white shadow rounded p-6">
         <h3 className="text-xl font-semibold mb-4">Prompt Management</h3>
         <div className="grid grid-cols-1 gap-4">
@@ -247,7 +248,7 @@ export default function Prompts() {
               {generatingPrompt ? 'Generating...' : 'Generate New Prompt'}
             </button>
           </div>
-
+  
           {generatedPrompt && (
             <div className="mt-4">
               <h4 className="font-medium mb-2">Generated Prompt:</h4>
@@ -264,32 +265,29 @@ export default function Prompts() {
           )}
         </div>
       </div>
-
+  
       {selectedAgent && prompts && (
-          <div className="mt-8 bg-white shadow rounded p-6">
-            <h3 className="text-lg font-semibold mb-4">
-              Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
-            </h3>
-            {Object.entries(prompts).length > 0 ? (
-              Object.entries(prompts).map(([llmType, promptData]) => (
-                <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
-                  <h4 className="font-bold text-lg">{llmType} ({promptData.version})</h4>
-                  <textarea
-                    className="w-full p-2 border rounded mt-2"
-                    rows="6"
-                    value={promptData.description}
-                    readOnly
-                  />
-                </div>
-              ))
-            ) : (
-              <div className="text-gray-500">No prompts available for this agent.</div>
-            )}
-          </div>
-        )}
-
+        <div className="mt-8 bg-white shadow rounded p-6">
+          <h3 className="text-lg font-semibold mb-4">
+            Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
+          </h3>
+          {Object.entries(prompts).length > 0 ? (
+            Object.entries(prompts).map(([llmType, promptData]) => (
+              <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
+                <h4 className="font-bold text-lg">{llmType} ({promptData.version})</h4>
+                <textarea
+                  className="w-full p-2 border rounded mt-2"
+                  rows="6"
+                  value={promptData.description}
+                  readOnly
+                />
+              </div>
+            ))
+          ) : (
+            <div className="text-gray-500">No prompts available for this agent.</div>
+          )}
         </div>
       )}
     </div>
   );
-}
+  
