@@ -130,14 +130,12 @@ useEffect(() => {
 // Section 3: Agent Selection and Training Data Fetch
 const handleAgentSelection = async (agentId) => {
   if (!agentId) return;
-  
+
   setSelectedAgent(agentId);
   setLoading(true);
   setError(null);
-  setSelectedLLM(''); // Reset LLM selection when agent changes
 
   try {
-    // Fetch training data for the selected agent from agentData table
     const response = await fetch(`/api/admin/training/${agentId}`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -150,32 +148,27 @@ const handleAgentSelection = async (agentId) => {
     }
 
     const trainingData = await response.json();
-    
+
     if (!Array.isArray(trainingData?.records)) {
       throw new Error('Invalid training data format');
     }
 
-    // Generate data type options for the form
-    const dynamicOptions = generateDataTypeOptions(trainingData.records);
-    setDataTypeOptions(dynamicOptions);
-
-    // Aggregate data by type for display
+    // Aggregate data and update state
     const aggregatedData = aggregateDataByType(trainingData.records);
     setData(aggregatedData);
 
-    // If this agent has no training data, show a message
     if (Object.keys(aggregatedData).length === 0) {
-      setError('No training data available for this agent. Use the LLM generator to create initial training data.');
+      setError('No training data available for this agent.');
     }
-
   } catch (error) {
     console.error('Error fetching training data:', error);
-    setError('Failed to load training data. Please try again.');
+    setError('Failed to load training data.');
     setData({});
   } finally {
     setLoading(false);
   }
 };
+
 
 const generateDataTypeOptions = (records) => {
   const dataTypes = new Set();
@@ -259,61 +252,34 @@ const handleGenerateContent = async () => {
 
 const renderAgentSelection = () => {
   return (
-    <div className="grid gap-6 mb-6 md:grid-cols-2">
-      {/* Agent Selection */}
-      <div className="w-full">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Select Agent
-        </label>
-        <select
-          value={selectedAgent || ''}
-          onChange={(e) => handleAgentSelection(e.target.value)}
-          className="w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          disabled={loading || agents.length === 0}
-        >
-          <option value="" disabled>
-            {agents.length === 0 ? 'Loading agents...' : 'Select an Agent'}
+    <div className="mb-6">
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        Select Agent
+      </label>
+      <select
+        value={selectedAgent || ''}
+        onChange={(e) => handleAgentSelection(e.target.value)}
+        className="w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        disabled={loading || agents.length === 0}
+      >
+        <option value="" disabled>
+          {agents.length === 0 ? 'Loading agents...' : 'Select an Agent'}
+        </option>
+        {agents.map((agent) => (
+          <option key={agent.agentId} value={agent.agentId}>
+            {agent.agentName}: {agent.role}
           </option>
-          {agents.map((agent) => (
-            <option key={agent.agentId} value={agent.agentId}>
-              {agent.agentName}: {agent.role}
-            </option>
-          ))}
-        </select>
-        {!selectedAgent && (
-          <p className="mt-2 text-sm text-gray-500">
-            Select an agent to view and manage their training data
-          </p>
-        )}
-      </div>
-
-      {/* LLM Selection */}
-      <div className="w-full">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Select LLM for Generation
-        </label>
-        <select
-          value={selectedLLM}
-          onChange={(e) => setSelectedLLM(e.target.value)}
-          className="w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          disabled={!selectedAgent}
-        >
-          <option value="" disabled>
-            Select an LLM
-          </option>
-          {LLM_OPTIONS.map((llm) => (
-            <option key={llm.value} value={llm.value}>
-              {llm.label}
-            </option>
-          ))}
-        </select>
+        ))}
+      </select>
+      {!selectedAgent && (
         <p className="mt-2 text-sm text-gray-500">
-          Choose an LLM to generate training content
+          Select an agent to view and manage their training data
         </p>
-      </div>
+      )}
     </div>
   );
 };
+
 
 
 const renderAggregatedData = () => {
@@ -668,15 +634,7 @@ return (
   <div className="p-6">
     <div className="flex justify-between items-center mb-6">
       <h2 className="text-2xl font-bold">Agent Training Data</h2>
-      {selectedAgent && (
-        <Button
-          onClick={() => handleGenerateContent()}
-          disabled={!selectedLLM || loading}
-          className="bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
-        >
-          Generate Training Content
-        </Button>
-      )}
+      
     </div>
 
     {error && (
