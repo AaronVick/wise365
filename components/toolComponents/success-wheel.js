@@ -17,19 +17,19 @@ import { Select, SelectItem } from '../ui/select';
 import { Checkbox } from '../ui/checkbox';
 import { Card } from '../ui/card';
 import FormChat from './FormChat';
-import FormChatButton from './FormChatButton';
+
+const TEMPLATE_NAME = "Marketing Success Wheel";
 
 const SuccessWheel = ({ onComplete }) => {
   const auth = useAuth();
   const currentUser = auth?.currentUser;
 
   const [template, setTemplate] = useState(null);
-  const [responses, setResponses] = useState({});
+  const [formData, setFormData] = useState({});
   const [lastUpdated, setLastUpdated] = useState(null);
   const [shared, setShared] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [formId] = useState(() => `sw_${Date.now()}`); // Unique ID for this form instance
-  const templateName = 'Marketing Success Wheel';
+  const [formId] = useState(() => `sw_${Date.now()}`);
 
   useEffect(() => {
     const fetchTemplateAndAnswers = async () => {
@@ -37,7 +37,7 @@ const SuccessWheel = ({ onComplete }) => {
         // Fetch template
         const templateQuery = query(
           collection(db, 'resources'),
-          where('templateName', '==', templateName)
+          where('templateName', '==', TEMPLATE_NAME)
         );
         const templateSnapshot = await getDocs(templateQuery);
 
@@ -49,7 +49,7 @@ const SuccessWheel = ({ onComplete }) => {
           if (currentUser) {
             const answersQuery = query(
               collection(db, 'resourcesData'),
-              where('templateName', '==', templateName),
+              where('templateName', '==', TEMPLATE_NAME),
               where('userId', '==', currentUser.uid),
               orderBy('timestamp', 'desc')
             );
@@ -57,7 +57,7 @@ const SuccessWheel = ({ onComplete }) => {
 
             if (!answersSnapshot.empty) {
               const lastSubmission = answersSnapshot.docs[0].data();
-              setResponses(lastSubmission.answers || {});
+              setFormData(lastSubmission.answers || {});
               setLastUpdated(lastSubmission.timestamp?.toDate());
             }
           }
@@ -74,10 +74,10 @@ const SuccessWheel = ({ onComplete }) => {
     fetchTemplateAndAnswers();
   }, [currentUser]);
 
-  const handleChange = (question, answer) => {
-    setResponses(prev => ({
+  const handleInputChange = (question, value) => {
+    setFormData(prev => ({
       ...prev,
-      [question]: answer,
+      [question]: value,
     }));
   };
 
@@ -85,7 +85,7 @@ const SuccessWheel = ({ onComplete }) => {
     if (!template || !currentUser) return;
 
     const allQuestionsAnswered = template.sections.every(
-      section => responses[section.question]?.trim()
+      section => formData[section.question]?.trim()
     );
 
     if (!allQuestionsAnswered) {
@@ -96,13 +96,13 @@ const SuccessWheel = ({ onComplete }) => {
     try {
       const formattedResponses = template.sections.map(section => ({
         question: section.question,
-        answer: responses[section.question],
+        answer: formData[section.question],
         definition: section.definition,
         evaluationCriteria: section.evaluationCriteria,
       }));
 
       await addDoc(collection(db, 'resourcesData'), {
-        templateName: template.templateName,
+        templateName: TEMPLATE_NAME,
         userId: currentUser.uid,
         teamId: currentUser.teamId || '',
         shared,
@@ -111,7 +111,7 @@ const SuccessWheel = ({ onComplete }) => {
       });
 
       alert('Your responses have been saved successfully!');
-      setResponses({});
+      setFormData({});
       onComplete();
     } catch (error) {
       console.error('Error saving responses:', error);
@@ -129,7 +129,7 @@ const SuccessWheel = ({ onComplete }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center h-screen">
         <p>Loading form...</p>
       </div>
     );
@@ -137,7 +137,7 @@ const SuccessWheel = ({ onComplete }) => {
 
   if (!template) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center h-screen">
         <p>The required template was not found. Please contact support.</p>
       </div>
     );
@@ -151,8 +151,7 @@ const SuccessWheel = ({ onComplete }) => {
 
         {lastUpdated && (
           <p className="text-sm text-gray-500 mb-4">
-            Last updated: {lastUpdated.toLocaleDateString()}{' '}
-            {lastUpdated.toLocaleTimeString()}
+            Last updated: {new Date(lastUpdated).toLocaleString()}
           </p>
         )}
 
@@ -166,11 +165,11 @@ const SuccessWheel = ({ onComplete }) => {
               </p>
 
               <Select
-                value={responses[section.question] || ''}
-                onValueChange={(value) => handleChange(section.question, value)}
+                value={formData[section.question] || ''}
+                onValueChange={(value) => handleInputChange(section.question, value)}
               >
                 <SelectItem value="">Select a grade</SelectItem>
-                {section.gradingScale.map((grade, idx) => (
+                {section.gradingScale?.map((grade, idx) => (
                   <SelectItem key={idx} value={grade}>
                     {grade}
                   </SelectItem>
@@ -203,7 +202,7 @@ const SuccessWheel = ({ onComplete }) => {
 
   return (
     <FormChat
-      formName={templateName}
+      formName={TEMPLATE_NAME}
       formId={formId}
       projectId={currentUser?.teamId}
       projectName={template.templateName}

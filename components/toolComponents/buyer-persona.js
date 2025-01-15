@@ -19,7 +19,7 @@ import { Select, SelectItem } from '../ui/select';
 import { Card } from '../ui/card';
 import FormChat from './FormChat';
 
-const TEMPLATE_NAME = "Worlds Best Buyer Persona"; // Match exactly what's in Firebase
+const TEMPLATE_NAME = "Worlds Best Buyer Persona";
 
 const BuyerPersona = ({ onComplete }) => {
   const auth = useAuth();
@@ -32,101 +32,65 @@ const BuyerPersona = ({ onComplete }) => {
   const [loading, setLoading] = useState(true);
   const [formId] = useState(() => `bp_${Date.now()}`);
 
-  // Fetch the template and previous answers
   useEffect(() => {
-    const fetchTemplate = async () => {
+    const fetchTemplateAndAnswers = async () => {
       try {
-        const q = query(
+        // Fetch template
+        const templateQuery = query(
           collection(db, 'resources'),
           where('templateName', '==', TEMPLATE_NAME)
         );
-        const querySnapshot = await getDocs(q);
+        const templateSnapshot = await getDocs(templateQuery);
 
-        if (!querySnapshot.empty) {
-          const templateData = querySnapshot.docs[0].data();
+        if (!templateSnapshot.empty) {
+          const templateData = templateSnapshot.docs[0].data();
           setTemplate(templateData);
+
+          // Fetch previous answers if user exists
+          if (currentUser) {
+            const answersQuery = query(
+              collection(db, 'resourcesData'),
+              where('templateName', '==', TEMPLATE_NAME),
+              where('userId', '==', currentUser.uid),
+              orderBy('timestamp', 'desc')
+            );
+            const answersSnapshot = await getDocs(answersQuery);
+
+            if (!answersSnapshot.empty) {
+              const lastSubmission = answersSnapshot.docs[0].data();
+              setFormData(lastSubmission.answers || {});
+              setLastUpdated(lastSubmission.timestamp?.toDate());
+            }
+          }
         } else {
           console.warn('Template not found in Firestore');
         }
       } catch (error) {
-        console.error('Error fetching template:', error);
+        console.error('Error fetching template or prior responses:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    const fetchPreviousAnswers = async () => {
-      if (!currentUser?.uid) return;
-
-      try {
-        const q = query(
-          collection(db, 'resourcesData'),
-          where('userId', '==', currentUser.uid),
-          where('templateName', '==', TEMPLATE_NAME),
-          orderBy('timestamp', 'desc')
-        );
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          const lastAnswer = querySnapshot.docs[0].data();
-          setFormData(lastAnswer.answers || {});
-          setLastUpdated(lastAnswer.timestamp?.toDate());
-        }
-      } catch (error) {
-        console.error('Error fetching previous answers:', error);
-      }
-    };
-
-    fetchTemplate();
-    if (currentUser) {
-      fetchPreviousAnswers();
-    }
+    fetchTemplateAndAnswers();
   }, [currentUser]);
 
   const handleInputChange = (question, value) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       [question]: value,
     }));
   };
 
-  const validateInput = (section, value) => {
-    if (!value?.trim()) return false;
-
-    // Add specific validation based on question type
-    if (section.question.toLowerCase().includes('url')) {
-      try {
-        new URL(value);
-        return true;
-      } catch {
-        return false;
-      }
-    }
-
-    // Age validation
-    if (section.question.includes('old is your persona')) {
-      const age = parseInt(value);
-      return !isNaN(age) && age > 0 && age < 120;
-    }
-
-    // Income validation
-    if (section.question.includes('annual income')) {
-      const income = parseFloat(value.replace(/[^0-9.]/g, ''));
-      return !isNaN(income) && income >= 0;
-    }
-
-    return true;
-  };
-
   const handleSubmit = async () => {
     if (!template || !currentUser) return;
 
-    // Validate all answers
-    const invalidQuestions = template.sections
-      .filter(section => !validateInput(section, formData[section.question]))
-      .map(section => section.question);
+    const allQuestionsAnswered = template.sections.every(
+      section => formData[section.question]?.trim()
+    );
 
-    if (invalidQuestions.length > 0) {
-      alert(`Please provide valid answers for:\n${invalidQuestions.join('\n')}`);
+    if (!allQuestionsAnswered) {
+      alert('Please answer all questions before saving.');
       return;
     }
 
@@ -140,9 +104,9 @@ const BuyerPersona = ({ onComplete }) => {
         timestamp: serverTimestamp(),
       });
 
-      alert('Form saved successfully!');
-      setFormData({});
-      onComplete();
+      alert('Form submitted successfully!');
+      setFormData({}); // Clear the form
+      onComplete(); // Return to main dashboard
     } catch (error) {
       console.error('Error saving form data:', error);
       alert('Error saving form data. Please try again.');
@@ -174,7 +138,7 @@ const BuyerPersona = ({ onComplete }) => {
   }
 
   const renderField = (section) => {
-    const { question, options, definition } = section;
+    const { question, options } = section;
 
     // For Maslow's Hierarchy questions or other select options
     if (options) {
@@ -225,10 +189,7 @@ const BuyerPersona = ({ onComplete }) => {
         <Input
           type="text"
           value={formData[question] || ''}
-          onChange={(e) => {
-            const value = e.target.value.replace(/[^0-9.]/g, '');
-            handleInputChange(question, value ? `$${value}` : '');
-          }}
+          onChange={(e) => handleInputChange(question, e.target.value)}
           placeholder="Annual Income"
         />
       );
