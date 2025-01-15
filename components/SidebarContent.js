@@ -46,8 +46,8 @@ const SidebarContent = ({
           <ScrollArea className="flex-1">
             
             
-            {/* Agents Section */}
-<Accordion type="multiple" collapsible className="w-full">
+           {/* Agents Section */}
+<Accordion type="multiple" className="w-full">
   <AccordionItem value="agents">
     <AccordionTrigger>Agents</AccordionTrigger>
     <AccordionContent>
@@ -57,54 +57,50 @@ const SidebarContent = ({
             <h4 className="font-bold text-lg mb-2">{category}</h4>
             {Array.isArray(categoryAgents) && categoryAgents.length > 0 ? (
               categoryAgents.map((agent) => (
-                <Accordion key={agent.id} type="single" collapsible className="w-full">
-                  <AccordionItem value={agent.id}>
-                    <AccordionTrigger
-                      className="flex justify-between items-center py-2 hover:bg-gray-100 cursor-pointer"
-                      onClick={() => {
-                        setCurrentChat({
-                          id: `${agent.id}-default`,
-                          agentId: agent.id,
-                          isDefault: true,
-                          title: `${agent.name} Conversation`,
-                          conversationName: `${agent.id}-default`,
-                        });
-                        router.push(`/chat/${agent.id}-default`);
-                      }}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-medium">{agent.name || 'Unknown Agent'}</span>
-                        <span className="text-sm text-gray-500 ml-4">{agent.role || 'No Role Assigned'}</span>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      {Array.isArray(nestedChats[agent.id]) && nestedChats[agent.id].length > 0 ? (
-                        nestedChats[agent.id]
-                          .filter((subChat) => !subChat.isDefault)
-                          .map((subChat) => (
-                            <div
-                              key={subChat.id}
-                              className="py-2 cursor-pointer hover:bg-gray-200 ml-4"
-                              onClick={() => {
-                                setCurrentChat({
-                                  id: subChat.id,
-                                  agentId: agent.id,
-                                  isDefault: false,
-                                  title: subChat.displayName,
-                                  conversationName: subChat.id,
-                                });
-                                router.push(`/chat/${subChat.id}`);
-                              }}
-                            >
-                              <p className="text-sm text-gray-800">{subChat.displayName || 'Unnamed Sub-Chat'}</p>
-                            </div>
-                          ))
-                      ) : (
-                        <p className="text-sm text-gray-500 ml-4">No sub-chats available.</p>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
+                <div key={agent.id} className="mb-2">
+                  <div
+                    className="flex items-center justify-between py-2 px-4 hover:bg-gray-100 cursor-pointer rounded"
+                    onClick={() => {
+                      setCurrentChat({
+                        id: `${agent.id}-default`,
+                        agentId: agent.id,
+                        isDefault: true,
+                        title: `${agent.name} Conversation`,
+                        conversationName: `${agent.id}-default`,
+                      });
+                      router.push(`/chat/${agent.id}-default`);
+                    }}
+                  >
+                    <span className="font-medium">{agent.name || 'Unknown Agent'}</span>
+                    <span className="text-sm text-gray-500">{agent.role || 'No Role'}</span>
+                  </div>
+                  
+                  {/* Sub-conversations */}
+                  {Array.isArray(nestedChats[agent.id]) && nestedChats[agent.id].length > 0 && (
+                    <div className="ml-4 mt-1">
+                      {nestedChats[agent.id]
+                        .filter(chat => !chat.isDefault)
+                        .map(subChat => (
+                          <div
+                            key={subChat.id}
+                            className="py-2 px-4 cursor-pointer hover:bg-gray-100 rounded text-sm"
+                            onClick={() => {
+                              setCurrentChat({
+                                id: subChat.id,
+                                agentId: agent.id,
+                                isDefault: false,
+                                title: subChat.displayName || 'Untitled Chat',
+                                conversationName: subChat.id,
+                              });
+                              router.push(`/chat/${subChat.id}`);
+                            }}
+                          >
+                            <p className="text-gray-600">{subChat.displayName || 'Unnamed Chat'}</p>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
               ))
             ) : (
               <p className="text-sm text-gray-500">No agents available in this category.</p>

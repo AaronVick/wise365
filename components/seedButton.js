@@ -1,13 +1,13 @@
 // components/seedButton.js
 import React, { useState } from 'react';
-import Button from './ui/button'; // Correct import for the Button component
+import Button from './ui/button';
 
 export default function SeedButton() {
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSeed = async () => {
-    if (!confirm('Are you sure you want to import the funnel data into Firebase? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to import the agent data? This will only import new records.')) {
       return;
     }
 
@@ -34,8 +34,7 @@ export default function SeedButton() {
       }
 
       const data = await response.json();
-      console.log('Import response:', data); // Debug log
-      setStatus(`Success! ${data.message || 'Data imported successfully.'}`);
+      setStatus(`Success! ${data.message}`);
     } catch (error) {
       console.error('Import error:', error);
       setStatus(`Error: ${error.message || 'Failed to import data'}`);
@@ -51,7 +50,7 @@ export default function SeedButton() {
         disabled={isLoading}
         className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-blue-300"
       >
-        {isLoading ? 'Importing...' : 'Import Funnel Data'}
+        {isLoading ? 'Importing...' : 'Import Agent Data'}
       </Button>
       {status && (
         <p className={`text-sm ${status.includes('Error') ? 'text-red-500' : 'text-green-500'}`}>

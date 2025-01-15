@@ -10,7 +10,6 @@ const ImportPage = () => {
     setStatus('Starting import...');
 
     try {
-      // Make API call to local endpoint instead of Vercel URL
       const response = await fetch('/api/admin/import', {
         method: 'POST',
         headers: {
@@ -18,21 +17,13 @@ const ImportPage = () => {
         }
       });
 
-      // Log the raw response for debugging
-      console.log('Raw response:', response);
-
-      // Check if the response is ok
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Error response:', errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Parse the JSON response
       const data = await response.json();
-      console.log('Response data:', data);
-
-      // Update status based on response
       setStatus(data.message || 'Import completed successfully');
 
     } catch (error) {
@@ -45,7 +36,7 @@ const ImportPage = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Import Funnels</h1>
+      <h1 className="text-2xl font-bold mb-4">Import Agent Data</h1>
       
       <button
         onClick={handleImport}

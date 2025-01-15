@@ -14,8 +14,10 @@ import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
 import { Select, SelectItem } from '../ui/select';
-import Checkbox from '../ui/checkbox';
+import { Checkbox } from '../ui/checkbox';
 import { Card } from '../ui/card';
+import FormChat from './FormChat';
+import FormChatButton from './FormChatButton';
 
 const SuccessWheel = ({ onComplete }) => {
   const { currentUser } = useAuth() || {};
@@ -24,11 +26,13 @@ const SuccessWheel = ({ onComplete }) => {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [shared, setShared] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [formId] = useState(() => `sw_${Date.now()}`); // Unique ID for this form instance
   const templateName = 'Marketing Success Wheel';
 
   useEffect(() => {
     const fetchTemplateAndAnswers = async () => {
       try {
+        // Fetch template
         const templateQuery = query(
           collection(db, 'resources'),
           where('templateName', '==', templateName)
@@ -39,6 +43,7 @@ const SuccessWheel = ({ onComplete }) => {
           const templateData = templateSnapshot.docs[0].data();
           setTemplate(templateData);
 
+          // Fetch previous answers if user exists
           if (currentUser) {
             const answersQuery = query(
               collection(db, 'resourcesData'),
@@ -68,7 +73,7 @@ const SuccessWheel = ({ onComplete }) => {
   }, [currentUser]);
 
   const handleChange = (question, answer) => {
-    setResponses((prev) => ({
+    setResponses(prev => ({
       ...prev,
       [question]: answer,
     }));
@@ -78,9 +83,7 @@ const SuccessWheel = ({ onComplete }) => {
     if (!template || !currentUser) return;
 
     const allQuestionsAnswered = template.sections.every(
-      (section) =>
-        responses[section.question]?.trim() ||
-        (section.gradingScale && responses[section.question] !== undefined)
+      section => responses[section.question]?.trim()
     );
 
     if (!allQuestionsAnswered) {
@@ -89,7 +92,7 @@ const SuccessWheel = ({ onComplete }) => {
     }
 
     try {
-      const formattedResponses = template.sections.map((section) => ({
+      const formattedResponses = template.sections.map(section => ({
         question: section.question,
         answer: responses[section.question],
         definition: section.definition,
@@ -130,29 +133,27 @@ const SuccessWheel = ({ onComplete }) => {
     );
   }
 
-  return (
+  const formContent = (
     <div className="max-w-4xl mx-auto p-6">
       <Card className="p-6">
         <h1 className="text-2xl font-bold mb-4">{template.templateName}</h1>
         <p className="text-gray-600 mb-6">{template.description}</p>
 
-        {lastUpdated ? (
-          <p className="mb-6 text-sm text-gray-500">
+        {lastUpdated && (
+          <p className="text-sm text-gray-500 mb-4">
             Last updated: {lastUpdated.toLocaleDateString()}{' '}
             {lastUpdated.toLocaleTimeString()}
-          </p>
-        ) : (
-          <p className="mb-6 text-sm text-gray-500">
-            This is your first time completing this form.
           </p>
         )}
 
         <form className="space-y-6">
           {template.sections.map((section, index) => (
-            <div key={index} className="mb-6">
+            <div key={index} className="p-4 border rounded-lg bg-gray-50">
               <h2 className="text-lg font-semibold mb-2">{section.question}</h2>
-              <p className="text-sm text-gray-500 mb-2">{section.definition}</p>
-              <p className="text-sm text-gray-500 mb-4">{section.evaluationCriteria}</p>
+              <p className="text-sm text-gray-600 mb-2">{section.definition}</p>
+              <p className="text-sm text-gray-500 italic mb-4">
+                {section.evaluationCriteria}
+              </p>
 
               <Select
                 value={responses[section.question] || ''}
@@ -168,24 +169,37 @@ const SuccessWheel = ({ onComplete }) => {
             </div>
           ))}
 
-          <div className="flex items-center mb-6">
+          <div className="flex items-center space-x-2 my-4">
             <Checkbox
               id="shared"
               checked={shared}
               onCheckedChange={(checked) => setShared(checked)}
-              label="Share responses with my team"
             />
+            <label htmlFor="shared" className="text-sm text-gray-600">
+              Share responses with my team
+            </label>
           </div>
 
           <Button
             onClick={handleSubmit}
-            className="bg-blue-600 hover:bg-blue-700 text-white w-full py-2"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             Save Responses
           </Button>
         </form>
       </Card>
     </div>
+  );
+
+  return (
+    <FormChat
+      formName={templateName}
+      formId={formId}
+      projectId={currentUser?.teamId}
+      projectName={template.templateName}
+    >
+      {formContent}
+    </FormChat>
   );
 };
 

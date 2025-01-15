@@ -17,6 +17,7 @@ import { Input } from '../ui/input';
 import Textarea from '../ui/textarea';
 import { Select, SelectItem } from '../ui/select';
 import { Card } from '../ui/card';
+import FormChat from './FormChat';
 
 const BuyerPersona = ({ onComplete }) => {
   const { currentUser } = useAuth() || {};
@@ -25,6 +26,7 @@ const BuyerPersona = ({ onComplete }) => {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [shared, setShared] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [formId] = useState(() => `bp_${Date.now()}`); // Unique ID for this form instance
 
   // Fetch the template and previous answers
   useEffect(() => {
@@ -32,7 +34,7 @@ const BuyerPersona = ({ onComplete }) => {
       try {
         const q = query(
           collection(db, 'resources'),
-          where('templateName', '==', "Worlds Best Buyer Persona")
+          where('templateName', '==', "World's Best Buyer Persona")
         );
         const querySnapshot = await getDocs(q);
 
@@ -130,7 +132,7 @@ const BuyerPersona = ({ onComplete }) => {
     );
   }
 
-  return (
+  const formContent = (
     <div className="max-w-4xl mx-auto p-6">
       <Card className="p-6">
         <h1 className="text-2xl font-bold mb-4">{template.templateName}</h1>
@@ -191,6 +193,17 @@ const BuyerPersona = ({ onComplete }) => {
         </form>
       </Card>
     </div>
+  );
+
+  return (
+    <FormChat
+      formName="World's Best Buyer Persona"
+      formId={formId}
+      projectId={currentUser?.teamId}
+      projectName={template?.templateName}
+    >
+      {formContent}
+    </FormChat>
   );
 };
 
