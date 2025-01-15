@@ -46,7 +46,7 @@ const SuccessWheel = ({ onComplete }) => {
           setTemplate(templateData);
 
           // Fetch previous answers if user exists
-          if (currentUser) {
+          if (currentUser?.uid) {
             const answersQuery = query(
               collection(db, 'resourcesData'),
               where('templateName', '==', TEMPLATE_NAME),
@@ -72,7 +72,7 @@ const SuccessWheel = ({ onComplete }) => {
     };
 
     fetchTemplateAndAnswers();
-  }, [currentUser]);
+  }, [currentUser?.uid]);
 
   const handleInputChange = (question, value) => {
     setFormData(prev => ({
@@ -82,7 +82,7 @@ const SuccessWheel = ({ onComplete }) => {
   };
 
   const handleSubmit = async () => {
-    if (!template || !currentUser) return;
+    if (!template || !currentUser?.uid) return;
 
     const allQuestionsAnswered = template.sections.every(
       section => formData[section.question]?.trim()
@@ -118,14 +118,6 @@ const SuccessWheel = ({ onComplete }) => {
       alert('An error occurred while saving your responses. Please try again.');
     }
   };
-
-  if (!auth || !currentUser) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p>Please sign in to access this form.</p>
-      </div>
-    );
-  }
 
   if (loading) {
     return (

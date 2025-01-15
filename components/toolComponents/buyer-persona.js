@@ -47,7 +47,7 @@ const BuyerPersona = ({ onComplete }) => {
           setTemplate(templateData);
 
           // Fetch previous answers if user exists
-          if (currentUser) {
+          if (currentUser?.uid) {
             const answersQuery = query(
               collection(db, 'resourcesData'),
               where('templateName', '==', TEMPLATE_NAME),
@@ -73,7 +73,7 @@ const BuyerPersona = ({ onComplete }) => {
     };
 
     fetchTemplateAndAnswers();
-  }, [currentUser]);
+  }, [currentUser?.uid]);
 
   const handleInputChange = (question, value) => {
     setFormData(prev => ({
@@ -83,7 +83,7 @@ const BuyerPersona = ({ onComplete }) => {
   };
 
   const handleSubmit = async () => {
-    if (!template || !currentUser) return;
+    if (!template || !currentUser?.uid) return;
 
     const allQuestionsAnswered = template.sections.every(
       section => formData[section.question]?.trim()
@@ -105,21 +105,13 @@ const BuyerPersona = ({ onComplete }) => {
       });
 
       alert('Form submitted successfully!');
-      setFormData({}); // Clear the form
-      onComplete(); // Return to main dashboard
+      setFormData({});
+      onComplete();
     } catch (error) {
       console.error('Error saving form data:', error);
       alert('Error saving form data. Please try again.');
     }
   };
-
-  if (!auth || !currentUser) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p>Please sign in to access this form.</p>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
