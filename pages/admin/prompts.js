@@ -35,24 +35,23 @@ export default function Prompts() {
     fetchAgents();
   }, []);
 
+  
   const fetchAgentDefinition = async (agentId) => {
     try {
       const docRef = doc(db, 'agentsDefined', agentId);
       const docSnap = await getDoc(docRef);
   
       if (!docSnap.exists()) {
-        console.log(`No record found in agentsDefined for agentId: ${agentId}`);
+        console.log(`No record found in agentsDefined for agentId: ${agentId}`); // Debug log
         return null;
       }
   
       const data = docSnap.data();
-  
-      // Log the prompt field to ensure the structure is as expected
-      console.log(`Fetched prompts for ${agentId}:`, data.prompt);
+      console.log(`Record fetched from agentsDefined:`, data); // Debug log
   
       return {
         ...data,
-        prompt: data.prompt || {}, // Ensure prompt is always an object/map
+        prompt: data.prompt || {}, // Ensure prompt is always an object
       };
     } catch (err) {
       console.error('Error fetching agent definition:', err);
@@ -61,15 +60,17 @@ export default function Prompts() {
   };
 
   
+
   
-
-
   const handleAgentSelection = async (agentId) => {
     setSelectedAgent(agentId);
     setLoading(true);
-
+  
     try {
+      console.log(`Selected Agent ID: ${agentId}`); // Debug log
       const agentDefinition = await fetchAgentDefinition(agentId);
+      console.log(`Fetched Agent Definition:`, agentDefinition); // Debug log
+  
       setPrompts(agentDefinition?.prompt || {}); // Set the prompt field or an empty object
     } catch (err) {
       console.error('Error fetching prompts:', err);
@@ -78,6 +79,8 @@ export default function Prompts() {
       setLoading(false);
     }
   };
+
+  
 
   const handlePromptUpdate = async (llmType, newPrompt) => {
     if (!selectedAgent || !llmType) return; // Ensure valid agent and LLM type
@@ -284,27 +287,29 @@ export default function Prompts() {
 
       {/* Section for displaying existing prompts */}
       {selectedAgent && prompts && (
-        <div className="mt-8 bg-white shadow rounded p-6">
-          <h3 className="text-lg font-semibold mb-4">
-            Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
-          </h3>
-          {Object.keys(prompts).length > 0 ? (
-            Object.entries(prompts).map(([llmType, promptData]) => (
-              <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
-                <h4 className="font-bold text-lg">{llmType} ({promptData.version})</h4>
-                <textarea
-                  className="w-full p-2 border rounded mt-2"
-                  rows="6"
-                  value={promptData.description || 'No description available'}
-                  readOnly
-                />
-              </div>
-            ))
-          ) : (
-            <div className="text-gray-500">No prompts available for this agent.</div>
-          )}
-        </div>
-      )}
+          <div className="mt-8 bg-white shadow rounded p-6">
+            <h3 className="text-lg font-semibold mb-4">
+              Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
+            </h3>
+            {Object.keys(prompts).length > 0 ? (
+              Object.entries(prompts).map(([llmType, promptData]) => (
+                <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
+                  <h4 className="font-bold text-lg">
+                    {llmType} ({promptData.version})
+                  </h4>
+                  <textarea
+                    className="w-full p-2 border rounded mt-2"
+                    rows="6"
+                    value={promptData.description || 'No description available'}
+                    readOnly
+                  />
+                </div>
+              ))
+            ) : (
+              <div className="text-gray-500">No prompts available for this agent.</div>
+            )}
+          </div>
+        )}
          
       
     </div>
