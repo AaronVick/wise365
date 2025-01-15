@@ -39,21 +39,29 @@ export default function Prompts() {
     try {
       const docRef = doc(db, 'agentsDefined', agentId);
       const docSnap = await getDoc(docRef);
-
-      if (!docSnap.exists()) return null; // No record found
-
+  
+      if (!docSnap.exists()) {
+        console.log(`No record found in agentsDefined for agentId: ${agentId}`);
+        return null;
+      }
+  
       const data = docSnap.data();
-
-      // Return the prompt field as part of the state
+  
+      // Log the prompt field to ensure the structure is as expected
+      console.log(`Fetched prompts for ${agentId}:`, data.prompt);
+  
       return {
         ...data,
-        prompt: data.prompt || {}, // Ensure prompt is always an object
+        prompt: data.prompt || {}, // Ensure prompt is always an object/map
       };
     } catch (err) {
       console.error('Error fetching agent definition:', err);
       return null;
     }
   };
+
+  
+  
 
 
   const handleAgentSelection = async (agentId) => {
@@ -283,13 +291,11 @@ export default function Prompts() {
           {Object.keys(prompts).length > 0 ? (
             Object.entries(prompts).map(([llmType, promptData]) => (
               <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
-                <h4 className="font-bold text-lg">
-                  {llmType} ({promptData.version})
-                </h4>
+                <h4 className="font-bold text-lg">{llmType} ({promptData.version})</h4>
                 <textarea
                   className="w-full p-2 border rounded mt-2"
                   rows="6"
-                  value={promptData.description}
+                  value={promptData.description || 'No description available'}
                   readOnly
                 />
               </div>
@@ -297,6 +303,9 @@ export default function Prompts() {
           ) : (
             <div className="text-gray-500">No prompts available for this agent.</div>
           )}
+        </div>
+      )}
+         
         </div>
       )}
     </div>
