@@ -1,6 +1,6 @@
 // components/toolComponents/positioning-factors.js
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   collection,
   query,
@@ -11,85 +11,95 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
-import { Select, SelectItem } from '../ui/select';
 import { Card } from '../ui/card';
+import { Checkbox } from '../ui/checkbox';
+import { Textarea } from '../ui/textarea';
+import { Input } from '../ui/input';
+import { Select, SelectItem } from '../ui/select';
 import FormChat from './FormChat';
 
-const TEMPLATE_NAME = "Positioning Factor Worksheet";
-
-const PositioningFactors = ({ onComplete, currentUser }) => {
-  // Auth handled via props from dashboard
-
+const PositioningFactors = ({ onComplete }) => {
+  const { currentUser } = useAuth() || {};
   const [template, setTemplate] = useState(null);
   const [formData, setFormData] = useState({});
   const [lastUpdated, setLastUpdated] = useState(null);
   const [shared, setShared] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [formId] = useState(() => `pf_${Date.now()}`);
+  const [formId] = useState(() => `pf_${Date.now()}`); // Unique ID for this form instance
+  const templateName = 'Positioning Factor Worksheet';
 
+  // Fetch template and previous answers
   useEffect(() => {
-    const fetchTemplateAndAnswers = async () => {
+    const fetchTemplate = async () => {
       try {
-        // Fetch template
-        const templateQuery = query(
+        const q = query(
           collection(db, 'resources'),
-          where('templateName', '==', TEMPLATE_NAME)
+          where('templateName', '==', templateName)
         );
-        const templateSnapshot = await getDocs(templateQuery);
+        const querySnapshot = await getDocs(q);
 
-        if (!templateSnapshot.empty) {
-          const templateData = templateSnapshot.docs[0].data();
+        if (!querySnapshot.empty) {
+          const templateData = querySnapshot.docs[0].data();
           setTemplate(templateData);
-
-          // Fetch previous answers if user exists
-          if (currentUser?.uid) {
-            const answersQuery = query(
-              collection(db, 'resourcesData'),
-              where('templateName', '==', TEMPLATE_NAME),
-              where('userId', '==', currentUser.uid),
-              orderBy('timestamp', 'desc')
-            );
-            const answersSnapshot = await getDocs(answersQuery);
-
-            if (!answersSnapshot.empty) {
-              const lastSubmission = answersSnapshot.docs[0].data();
-              setFormData(lastSubmission.answers || {});
-              setLastUpdated(lastSubmission.timestamp?.toDate());
-            }
-          }
         } else {
           console.warn('Template not found in Firestore');
         }
       } catch (error) {
-        console.error('Error fetching template or prior responses:', error);
+        console.error('Error fetching template:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTemplateAndAnswers();
-  }, [currentUser?.uid]);
+    const fetchPreviousAnswers = async () => {
+      if (!currentUser?.uid) return;
+
+      try {
+        const q = query(
+          collection(db, 'resourcesData'),
+          where('userId', '==', currentUser.uid),
+          where('templateName', '==', templateName),
+          orderBy('timestamp', 'desc')
+        );
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          const lastAnswer = querySnapshot.docs[0].data();
+          setFormData(lastAnswer.answers || {});
+          setLastUpdated(lastAnswer.timestamp?.toDate());
+        }
+      } catch (error) {
+        console.error('Error fetching previous answers:', error);
+      }
+    };
+
+    fetchTemplate();
+    if (currentUser) {
+      fetchPreviousAnswers();
+    }
+  }, [currentUser]);
 
   const handleInputChange = (question, value) => {
     setFormData(prev => ({
       ...prev,
-      [question]: value,
+      [question]: value || '',
     }));
   };
 
   const handleSubmit = async () => {
-    if (!template || !currentUser?.uid) return;
+    if (!template || !currentUser) return;
 
-    const allQuestionsAnswered = template.sections.every(
-      section => formData[section.question]?.trim()
+    const allQuestionsAnswered = template.sections.every(section =>
+      section.subQuestions
+        ? section.subQuestions.every(
+            subQ => formData[subQ.question]?.trim()
+          )
+        : formData[section.question]?.trim()
     );
 
     if (!allQuestionsAnswered) {
-      alert('Please answer all questions before submitting.');
+      alert('Please answer all questions before saving.');
       return;
     }
 
@@ -97,18 +107,18 @@ const PositioningFactors = ({ onComplete, currentUser }) => {
       await addDoc(collection(db, 'resourcesData'), {
         userId: currentUser.uid,
         teamId: currentUser.teamId || '',
-        templateName: TEMPLATE_NAME,
+        templateName,
         answers: formData,
         shared,
         timestamp: serverTimestamp(),
       });
 
       alert('Form submitted successfully!');
-      setFormData({});
-      onComplete();
+      setFormData({}); // Clear the form
+      onComplete(); // Return to main dashboard
     } catch (error) {
-      console.error('Error saving form data:', error);
-      alert('An error occurred while saving your responses. Please try again.');
+      console.error('Error submitting form:', error);
+      alert('An error occurred while submitting the form. Please try again.');
     }
   };
 
@@ -128,74 +138,82 @@ const PositioningFactors = ({ onComplete, currentUser }) => {
     );
   }
 
-  const renderField = (section) => {
-    const { question, options } = section;
-
-    if (options) {
-      return (
-        <Select
-          value={formData[question] || ''}
-          onValueChange={(value) => handleInputChange(question, value)}
-        >
-          <SelectItem value="">Select an option</SelectItem>
-          {options.map((option, idx) => (
-            <SelectItem key={idx} value={option}>
-              {option}
-            </SelectItem>
-          ))}
-        </Select>
-      );
-    }
-
-    // Use textarea for longer responses
-    return (
-      <Textarea
-        value={formData[question] || ''}
-        onChange={(e) => handleInputChange(question, e.target.value)}
-        placeholder="Your answer"
-        rows={4}
-      />
-    );
-  };
-
   const formContent = (
     <div className="max-w-4xl mx-auto p-6">
       <Card className="p-6">
-        <h1 className="text-2xl font-bold mb-4">{template.templateName}</h1>
-        <p className="text-sm text-gray-500 mb-6">{template.description}</p>
-
-        {lastUpdated && (
+        <h2 className="text-2xl font-bold mb-4">{template.templateName}</h2>
+        {lastUpdated ? (
           <p className="text-sm text-gray-500 mb-4">
-            Last updated on: {new Date(lastUpdated).toLocaleString()}
+            Last updated: {new Date(lastUpdated).toLocaleString()}
+          </p>
+        ) : (
+          <p className="text-sm text-gray-500 mb-4">
+            This is your first time completing this form.
           </p>
         )}
 
         <form className="space-y-6">
           {template.sections.map((section, index) => (
-            <div key={index} className="space-y-2">
-              <label className="block text-sm font-medium">
-                {section.question}
-              </label>
+            <div key={index} className="p-4 border rounded-lg bg-gray-50">
+              <h3 className="font-semibold text-lg mb-2">{section.question}</h3>
               {section.definition && (
-                <p className="text-sm text-gray-500 mb-2">{section.definition}</p>
+                <p className="text-sm text-gray-600 mb-2">{section.definition}</p>
               )}
-              {section.evaluationCriteria && (
-                <p className="text-sm text-gray-400 italic mb-2">
-                  {section.evaluationCriteria}
-                </p>
+
+              {section.subQuestions ? (
+                <div className="space-y-4">
+                  {section.subQuestions.map((subQ, subIndex) => (
+                    <div key={subIndex} className="mb-4">
+                      <label className="block font-medium text-sm mb-1">
+                        {subQ.question}
+                      </label>
+                      <Input
+                        value={formData[subQ.question] || ''}
+                        onChange={(e) =>
+                          handleInputChange(subQ.question, e.target.value)
+                        }
+                        placeholder="Your answer"
+                        className="w-full"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : section.options ? (
+                <Select
+                  value={formData[section.question] || ''}
+                  onValueChange={(value) =>
+                    handleInputChange(section.question, value)
+                  }
+                >
+                  <SelectItem value="">Select an option</SelectItem>
+                  {section.options.map((option, optIndex) => (
+                    <SelectItem key={optIndex} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </Select>
+              ) : (
+                <Textarea
+                  value={formData[section.question] || ''}
+                  onChange={(e) =>
+                    handleInputChange(section.question, e.target.value)
+                  }
+                  placeholder="Your answer"
+                  className="w-full"
+                />
               )}
-              {renderField(section)}
             </div>
           ))}
 
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
+          <div className="flex items-center space-x-2 my-4">
+            <Checkbox
+              id="shared"
               checked={shared}
-              onChange={(e) => setShared(e.target.checked)}
-              className="rounded border-gray-300"
+              onCheckedChange={(checked) => setShared(checked)}
             />
-            <label className="text-sm">Share with my team</label>
+            <label htmlFor="shared" className="text-sm text-gray-600">
+              Share with my team
+            </label>
           </div>
 
           <Button
@@ -203,7 +221,7 @@ const PositioningFactors = ({ onComplete, currentUser }) => {
             onClick={handleSubmit}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
-            Save
+            Submit
           </Button>
         </form>
       </Card>
@@ -212,10 +230,10 @@ const PositioningFactors = ({ onComplete, currentUser }) => {
 
   return (
     <FormChat
-      formName={TEMPLATE_NAME}
+      formName={templateName}
       formId={formId}
       projectId={currentUser?.teamId}
-      projectName={template?.templateName}
+      projectName={template.templateName}
     >
       {formContent}
     </FormChat>

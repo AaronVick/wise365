@@ -522,9 +522,23 @@ const Dashboard = () => {
               <header className="border-b bg-white shadow-sm">
                 <div className="px-6 py-4">
                   <h1 className="text-2xl font-semibold text-gray-900">
-                    {currentTool === 'buyer-persona' && "Buyer Persona Tool"}
-                    {currentTool === 'success-wheel' && "Marketing Success Wheel"}
-                    {currentTool === 'positioning-factors' && "Positioning Factors"}
+                  {currentTool === 'buyer-persona' && (
+                    <BuyerPersona 
+                      onComplete={() => setCurrentTool(null)} 
+                      currentUser={userData}
+                    />
+                  )}
+                  {currentTool === 'success-wheel' && (
+                    <SuccessWheel 
+                      onComplete={() => setCurrentTool(null)}
+                      currentUser={userData}
+                    />
+                  )}
+                  {currentTool === 'positioning-factors' && (
+                    <PositioningFactors 
+                      onComplete={() => setCurrentTool(null)}
+                      currentUser={userData}
+                    />
                   </h1>
                 </div>
               </header>

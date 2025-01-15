@@ -11,24 +11,22 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
 import { Select, SelectItem } from '../ui/select';
 import { Checkbox } from '../ui/checkbox';
 import { Card } from '../ui/card';
 import FormChat from './FormChat';
+import FormChatButton from './FormChatButton';
 
-const TEMPLATE_NAME = "Marketing Success Wheel";
-
-const SuccessWheel = ({ onComplete, currentUser }) => {
-  // Auth handled via props from dashboard
-
+const SuccessWheel = ({ onComplete }) => {
+  const { currentUser } = useAuth() || {};
   const [template, setTemplate] = useState(null);
-  const [formData, setFormData] = useState({});
+  const [responses, setResponses] = useState({});
   const [lastUpdated, setLastUpdated] = useState(null);
   const [shared, setShared] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [formId] = useState(() => `sw_${Date.now()}`);
+  const [formId] = useState(() => `sw_${Date.now()}`); // Unique ID for this form instance
+  const templateName = 'Marketing Success Wheel';
 
   useEffect(() => {
     const fetchTemplateAndAnswers = async () => {
@@ -36,7 +34,7 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
         // Fetch template
         const templateQuery = query(
           collection(db, 'resources'),
-          where('templateName', '==', TEMPLATE_NAME)
+          where('templateName', '==', templateName)
         );
         const templateSnapshot = await getDocs(templateQuery);
 
@@ -45,10 +43,10 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
           setTemplate(templateData);
 
           // Fetch previous answers if user exists
-          if (currentUser?.uid) {
+          if (currentUser) {
             const answersQuery = query(
               collection(db, 'resourcesData'),
-              where('templateName', '==', TEMPLATE_NAME),
+              where('templateName', '==', templateName),
               where('userId', '==', currentUser.uid),
               orderBy('timestamp', 'desc')
             );
@@ -56,7 +54,7 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
 
             if (!answersSnapshot.empty) {
               const lastSubmission = answersSnapshot.docs[0].data();
-              setFormData(lastSubmission.answers || {});
+              setResponses(lastSubmission.answers || {});
               setLastUpdated(lastSubmission.timestamp?.toDate());
             }
           }
@@ -71,20 +69,20 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
     };
 
     fetchTemplateAndAnswers();
-  }, [currentUser?.uid]);
+  }, [currentUser]);
 
-  const handleInputChange = (question, value) => {
-    setFormData(prev => ({
+  const handleChange = (question, answer) => {
+    setResponses(prev => ({
       ...prev,
-      [question]: value,
+      [question]: answer,
     }));
   };
 
   const handleSubmit = async () => {
-    if (!template || !currentUser?.uid) return;
+    if (!template || !currentUser) return;
 
     const allQuestionsAnswered = template.sections.every(
-      section => formData[section.question]?.trim()
+      section => responses[section.question]?.trim()
     );
 
     if (!allQuestionsAnswered) {
@@ -95,13 +93,13 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
     try {
       const formattedResponses = template.sections.map(section => ({
         question: section.question,
-        answer: formData[section.question],
+        answer: responses[section.question],
         definition: section.definition,
         evaluationCriteria: section.evaluationCriteria,
       }));
 
       await addDoc(collection(db, 'resourcesData'), {
-        templateName: TEMPLATE_NAME,
+        templateName: template.templateName,
         userId: currentUser.uid,
         teamId: currentUser.teamId || '',
         shared,
@@ -110,7 +108,7 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
       });
 
       alert('Your responses have been saved successfully!');
-      setFormData({});
+      setResponses({});
       onComplete();
     } catch (error) {
       console.error('Error saving responses:', error);
@@ -120,7 +118,7 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center min-h-screen">
         <p>Loading form...</p>
       </div>
     );
@@ -128,7 +126,7 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
 
   if (!template) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center min-h-screen">
         <p>The required template was not found. Please contact support.</p>
       </div>
     );
@@ -142,7 +140,8 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
 
         {lastUpdated && (
           <p className="text-sm text-gray-500 mb-4">
-            Last updated: {new Date(lastUpdated).toLocaleString()}
+            Last updated: {lastUpdated.toLocaleDateString()}{' '}
+            {lastUpdated.toLocaleTimeString()}
           </p>
         )}
 
@@ -156,11 +155,11 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
               </p>
 
               <Select
-                value={formData[section.question] || ''}
-                onValueChange={(value) => handleInputChange(section.question, value)}
+                value={responses[section.question] || ''}
+                onValueChange={(value) => handleChange(section.question, value)}
               >
                 <SelectItem value="">Select a grade</SelectItem>
-                {section.gradingScale?.map((grade, idx) => (
+                {section.gradingScale.map((grade, idx) => (
                   <SelectItem key={idx} value={grade}>
                     {grade}
                   </SelectItem>
@@ -193,7 +192,7 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
 
   return (
     <FormChat
-      formName={TEMPLATE_NAME}
+      formName={templateName}
       formId={formId}
       projectId={currentUser?.teamId}
       projectName={template.templateName}
