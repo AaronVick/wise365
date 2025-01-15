@@ -39,19 +39,25 @@ export default function Prompts() {
     try {
       const docRef = doc(db, 'agentsDefined', agentId);
       const docSnap = await getDoc(docRef);
-      return docSnap.exists() ? docSnap.data() : null;
+      if (!docSnap.exists()) return null;
+      const data = docSnap.data();
+      return {
+        ...data,
+        prompt: data.prompt || {}, // Ensure prompt is a valid object
+      };
     } catch (err) {
       console.error('Error fetching agent definition:', err);
       return null;
     }
   };
+  
 
   const handleAgentSelection = async (agentId) => {
     setSelectedAgent(agentId);
     setLoading(true);
     try {
       const agentDefinition = await fetchAgentDefinition(agentId);
-      setPrompts(agentDefinition?.prompt || null);
+      setPrompts(agentDefinition?.prompt || {});
     } catch (err) {
       console.error('Error fetching prompts:', err);
       setError('Failed to fetch prompts for the selected agent.');
@@ -59,35 +65,44 @@ export default function Prompts() {
       setLoading(false);
     }
   };
+  
 
-  const handlePromptUpdate = async (version, newPrompt) => {
-    if (!selectedAgent) return;
+  const handlePromptUpdate = async (llmType, newPrompt) => {
+    if (!selectedAgent || !llmType) return; // Ensure valid agent and LLM type
     setLoading(true);
+  
     try {
+      // Fetch existing data for the selected agent
       const agentDoc = doc(db, 'agentsDefined', selectedAgent);
       const currentData = await getDoc(agentDoc);
       const existingPrompts = currentData.exists() ? currentData.data().prompt || {} : {};
-      
+  
+      // Update or add the prompt for the specific LLM
       const updatedPrompts = {
         ...existingPrompts,
-        [selectedLLM]: {
+        [llmType]: {
           description: newPrompt,
-          version: getLLMVersion(selectedLLM)
-        }
+          version: getLLMVersion(llmType), // Ensure version consistency for the LLM
+        },
       };
-
+  
       if (currentData.exists()) {
-        await updateDoc(agentDoc, { prompt: updatedPrompts });
-      } else {
-        await setDoc(agentDoc, { 
-          agentId: agents.find(a => a.id === selectedAgent)?.agentName,
+        // Update the existing Firestore document
+        await updateDoc(agentDoc, { 
           prompt: updatedPrompts,
-          lastUpdated: new Date()
+          lastUpdated: new Date(),
+        });
+      } else {
+        // Create a new document if it doesn't exist
+        await setDoc(agentDoc, {
+          agentId: agents.find((a) => a.id === selectedAgent)?.agentName,
+          prompt: updatedPrompts,
+          lastUpdated: new Date(),
         });
       }
-      
-      setPrompts(updatedPrompts);
-      alert('Prompt updated successfully!');
+  
+      setPrompts(updatedPrompts); // Update the state to reflect the changes
+      alert(`Prompt for ${llmType} updated successfully!`);
     } catch (err) {
       console.error('Error updating prompt:', err);
       alert('Failed to update prompt. Please try again.');
@@ -96,17 +111,7 @@ export default function Prompts() {
     }
   };
 
-  const getLLMVersion = (llm) => {
-    switch(llm) {
-      case 'Anthropic':
-        return 'Claude-3_5-Sonet';
-      case 'OpenAI':
-        return 'ChatGPT-4o';
-      default:
-        return '';
-    }
-  };
-
+  
   const handleGeneratePrompt = async () => {
     if (!selectedAgent || !selectedLLM) {
       alert('Please select an agent and LLM before generating a prompt.');
@@ -222,10 +227,10 @@ export default function Prompts() {
         </div>
       </div>
 
-      {selectedAgent && prompts && (
-        <div>
-          <h3 className="text-lg font-bold mb-4">
-            Current Prompts for Agent: {agents.find(a => a.id === selectedAgent)?.agentName}
+            {selectedAgent && prompts && (
+        <div className="mt-8 bg-white shadow rounded p-6">
+          <h3 className="text-lg font-semibold mb-4">
+            Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
           </h3>
           {Object.entries(prompts).map(([llmType, promptData]) => (
             <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
@@ -234,10 +239,7 @@ export default function Prompts() {
                 className="w-full p-2 border rounded mt-2"
                 rows="6"
                 value={promptData.description}
-                onChange={(e) => {
-                  const newPrompt = e.target.value;
-                  handlePromptUpdate(llmType, newPrompt);
-                }}
+                readOnly
               />
             </div>
           ))}
