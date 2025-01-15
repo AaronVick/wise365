@@ -36,35 +36,43 @@ export default function Prompts() {
   }, []);
 
   const fetchAgentDefinition = async (agentId) => {
-    try {
-      const docRef = doc(db, 'agentsDefined', agentId);
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) return null;
-      const data = docSnap.data();
-      return {
-        ...data,
-        prompt: data.prompt || {}, // Ensure prompt is a valid object
-      };
-    } catch (err) {
-      console.error('Error fetching agent definition:', err);
-      return null;
-    }
-  };
+    const fetchAgentDefinition = async (agentId) => {
+      try {
+        const docRef = doc(db, 'agentsDefined', agentId);
+        const docSnap = await getDoc(docRef);
+    
+        if (!docSnap.exists()) return null; // No record found
+    
+        const data = docSnap.data();
+    
+        // Return the prompt field as part of the state
+        return {
+          ...data,
+          prompt: data.prompt || {}, // Ensure prompt is always an object
+        };
+      } catch (err) {
+        console.error('Error fetching agent definition:', err);
+        return null;
+      }
+    };
+    
   
 
-  const handleAgentSelection = async (agentId) => {
-    setSelectedAgent(agentId);
-    setLoading(true);
-    try {
-      const agentDefinition = await fetchAgentDefinition(agentId);
-      setPrompts(agentDefinition?.prompt || {});
-    } catch (err) {
-      console.error('Error fetching prompts:', err);
-      setError('Failed to fetch prompts for the selected agent.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const handleAgentSelection = async (agentId) => {
+      setSelectedAgent(agentId);
+      setLoading(true);
+    
+      try {
+        const agentDefinition = await fetchAgentDefinition(agentId);
+        setPrompts(agentDefinition?.prompt || {}); // Set the prompt field or an empty object
+      } catch (err) {
+        console.error('Error fetching prompts:', err);
+        setError('Failed to fetch prompts for the selected agent.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
   
 
   const handlePromptUpdate = async (llmType, newPrompt) => {
@@ -271,26 +279,28 @@ export default function Prompts() {
       </div>
   
    {/* Section for displaying existing prompts */}
-   {selectedAgent && prompts && (
-        <div className="mt-8 bg-white shadow rounded p-6">
-          <h3 className="text-lg font-semibold mb-4">
-            Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
-          </h3>
-          {Object.entries(prompts).length > 0 ? (
-            Object.entries(prompts).map(([llmType, promptData]) => (
-              <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
-                <h4 className="font-bold text-lg">{llmType} ({promptData.version})</h4>
-                <textarea
-                  className="w-full p-2 border rounded mt-2"
-                  rows="6"
-                  value={promptData.description}
-                  readOnly
-                />
-              </div>
-            ))
-          ) : (
-            <div className="text-gray-500">No prompts available for this agent.</div>
-          )}
+          {selectedAgent && prompts && (
+          <div className="mt-8 bg-white shadow rounded p-6">
+            <h3 className="text-lg font-semibold mb-4">
+              Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
+            </h3>
+            {Object.keys(prompts).length > 0 ? ( // Check if there are prompts
+              Object.entries(prompts).map(([llmType, promptData]) => (
+                <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
+                  <h4 className="font-bold text-lg">{llmType} ({promptData.version})</h4>
+                  <textarea
+                    className="w-full p-2 border rounded mt-2"
+                    rows="6"
+                    value={promptData.description}
+                    readOnly
+                  />
+                </div>
+              ))
+            ) : (
+              <div className="text-gray-500">No prompts available for this agent.</div>
+            )}
+          </div>
+        )}
         </div>
       )}
     </div>
