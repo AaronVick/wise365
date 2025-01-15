@@ -1,23 +1,35 @@
 // pages/admin/training.js
-// Section 1: Agent Selection
 
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { 
+  collection, 
+  getDocs, 
+  query, 
+  where, 
+  addDoc 
+} from 'firebase/firestore';
 
 export default function Training() {
+  // Section 1: State Management
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [error, setError] = useState(null);
   const [trainingData, setTrainingData] = useState([]);
   const [loadingTrainingData, setLoadingTrainingData] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [availableDataTypes, setAvailableDataTypes] = useState([]);
+  const [selectedDataType, setSelectedDataType] = useState('');
+  const [dynamicFields, setDynamicFields] = useState([]);
+  const [newRecordFields, setNewRecordFields] = useState({});
+  const [saving, setSaving] = useState(false);
 
-  // Fetch agents from Firestore
+  // Section 2: Agent Fetching
   useEffect(() => {
     const fetchAgents = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'agents'));
-        const agentList = querySnapshot.docs.map((doc) => ({
+        const agentList = querySnapshot.docs.map(doc => ({
           agentId: doc.get('agentId') || doc.id,
           agentName: doc.get('agentName') || 'Unnamed Agent',
           role: doc.get('Role') || 'No Role',
@@ -32,7 +44,113 @@ export default function Training() {
     fetchAgents();
   }, []);
 
-  // Render agent selection dropdown
+  // Section 3: Training Data Fetching
+  useEffect(() => {
+    if (!selectedAgent) return;
+
+    const fetchTrainingData = async () => {
+      setLoadingTrainingData(true);
+      try {
+        const trainingQuery = query(
+          collection(db, 'agentData'), 
+          where('agentId', '==', selectedAgent)
+        );
+        const querySnapshot = await getDocs(trainingQuery);
+        const records = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setTrainingData(records);
+      } catch (err) {
+        console.error('Error fetching training data:', err);
+        setError('Failed to load training data.');
+      } finally {
+        setLoadingTrainingData(false);
+      }
+    };
+
+    fetchTrainingData();
+  }, [selectedAgent]);
+
+  // Section 4: Data Type Aggregation
+  useEffect(() => {
+    const aggregateDataTypes = () => {
+      const dataTypeMap = {};
+
+      trainingData.forEach(record => {
+        const { datatype, ...fields } = record;
+        if (!datatype) return;
+
+        if (!dataTypeMap[datatype]) {
+          dataTypeMap[datatype] = new Set();
+        }
+
+        Object.keys(fields)
+          .filter(key => key !== 'agentId' && key !== 'id')
+          .forEach(field => dataTypeMap[datatype].add(field));
+      });
+
+      const aggregatedTypes = Object.entries(dataTypeMap).map(([type, fields]) => ({
+        type,
+        fields: Array.from(fields),
+      }));
+
+      setAvailableDataTypes(aggregatedTypes);
+    };
+
+    if (trainingData.length > 0) {
+      aggregateDataTypes();
+    }
+  }, [trainingData]);
+
+  // Section 5: Form Handlers
+  const handleDataTypeSelection = (event) => {
+    const selectedType = event.target.value;
+    setSelectedDataType(selectedType);
+
+    const typeFields = availableDataTypes.find(
+      type => type.type === selectedType
+    )?.fields || [];
+    setDynamicFields(typeFields);
+    setNewRecordFields({});
+  };
+
+  const handleFieldChange = (field, value) => {
+    setNewRecordFields(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSaveRecord = async () => {
+    if (!selectedAgent || !selectedDataType) {
+      setError('Please select an agent and a data type.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const newRecord = {
+        agentId: selectedAgent,
+        datatype: selectedDataType,
+        ...newRecordFields,
+      };
+
+      const docRef = await addDoc(collection(db, 'agentData'), newRecord);
+      
+      // Add the new record to the local state with the generated ID
+      setTrainingData(prev => [...prev, { id: docRef.id, ...newRecord }]);
+      setIsFormOpen(false);
+      setError(null);
+    } catch (err) {
+      console.error('Error saving new record:', err);
+      setError('Failed to save new record.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Section 6: Render Functions
   const renderAgentSelection = () => (
     <div className="mb-6">
       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -61,151 +179,39 @@ export default function Training() {
     </div>
   );
 
-    // Section 2: Fetching and Displaying Training Data
-
-    useEffect(() => {
-      if (!selectedAgent) return;
-  
-      const fetchTrainingData = async () => {
-        setLoadingTrainingData(true);
-        try {
-          const querySnapshot = await getDocs(
-            query(collection(db, 'agentData'), where('agentId', '==', selectedAgent))
-          );
-          const records = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setTrainingData(records);
-        } catch (err) {
-          console.error('Error fetching training data:', err);
-          setError('Failed to load training data.');
-        } finally {
-          setLoadingTrainingData(false);
-        }
-      };
-  
-      fetchTrainingData();
-    }, [selectedAgent]);
-  
-    const renderTrainingData = () => {
-      if (loadingTrainingData) {
-        return (
-          <div className="text-center py-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-            <p>Loading training data...</p>
-          </div>
-        );
-      }
-  
-      if (trainingData.length === 0) {
-        return <p className="text-gray-600">No training data available for this agent.</p>;
-      }
-  
+  const renderTrainingData = () => {
+    if (loadingTrainingData) {
       return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {trainingData.map((record) => (
-            <div key={record.id} className="bg-white shadow rounded border border-gray-200 p-4">
-              <h3 className="text-lg font-bold mb-2">{record.datatype || 'Unknown Type'}</h3>
-              <p className="text-sm text-gray-600 mb-2">{record.description || 'No description available.'}</p>
-              {record.details && Array.isArray(record.details) && (
-                <ul className="list-disc list-inside text-sm text-gray-600">
-                  {record.details.map((detail, idx) => (
-                    <li key={idx}>{detail}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
+        <div className="text-center py-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p>Loading training data...</p>
         </div>
       );
-    };
-
-    
-
-
-  // Section 3: Adding New Training Data
-
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [availableDataTypes, setAvailableDataTypes] = useState([]);
-  const [selectedDataType, setSelectedDataType] = useState('');
-  const [dynamicFields, setDynamicFields] = useState([]);
-  const [newRecordFields, setNewRecordFields] = useState({});
-  const [saving, setSaving] = useState(false);
-
-  // Aggregate data types and fields from agentData
-  useEffect(() => {
-    const aggregateDataTypes = () => {
-      const dataTypeMap = {};
-
-      trainingData.forEach((record) => {
-        const { datatype, ...fields } = record;
-
-        if (!dataTypeMap[datatype]) {
-          dataTypeMap[datatype] = new Set();
-        }
-
-        Object.keys(fields).forEach((field) => dataTypeMap[datatype].add(field));
-      });
-
-      const aggregatedDataTypes = Object.entries(dataTypeMap).map(([type, fields]) => ({
-        type,
-        fields: Array.from(fields),
-      }));
-
-      setAvailableDataTypes(aggregatedDataTypes);
-    };
-
-    if (trainingData.length > 0) {
-      aggregateDataTypes();
-    }
-  }, [trainingData]);
-
-  const handleDataTypeSelection = (event) => {
-    const selectedType = event.target.value;
-    setSelectedDataType(selectedType);
-
-    const selectedTypeFields = availableDataTypes.find((type) => type.type === selectedType)?.fields || [];
-    setDynamicFields(selectedTypeFields);
-
-    // Reset fields for the new record
-    setNewRecordFields({});
-  };
-
-  const handleFieldChange = (field, value) => {
-    setNewRecordFields((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleSaveRecord = async () => {
-    if (!selectedAgent || !selectedDataType) {
-      setError('Please select an agent and a data type.');
-      return;
     }
 
-    setSaving(true);
-    try {
-      const newRecord = {
-        agentId: selectedAgent,
-        datatype: selectedDataType,
-        ...newRecordFields,
-      };
-
-      const docRef = collection(db, 'agentData');
-      await docRef.add(newRecord);
-
-      // Refresh training data after saving
-      setTrainingData((prev) => [...prev, newRecord]);
-      setIsFormOpen(false);
-      setError(null);
-    } catch (err) {
-      console.error('Error saving new record:', err);
-      setError('Failed to save new record.');
-    } finally {
-      setSaving(false);
+    if (trainingData.length === 0) {
+      return <p className="text-gray-600">No training data available for this agent.</p>;
     }
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {trainingData.map((record) => (
+          <div key={record.id} className="bg-white shadow rounded border border-gray-200 p-4">
+            <h3 className="text-lg font-bold mb-2">{record.datatype || 'Unknown Type'}</h3>
+            <p className="text-sm text-gray-600 mb-2">
+              {record.description || 'No description available.'}
+            </p>
+            {record.details && Array.isArray(record.details) && (
+              <ul className="list-disc list-inside text-sm text-gray-600">
+                {record.details.map((detail, idx) => (
+                  <li key={idx}>{detail}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   const renderAddForm = () => {
@@ -216,7 +222,9 @@ export default function Training() {
         <h3 className="text-lg font-bold mb-4">Add New Training Data</h3>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Data Type</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Data Type
+          </label>
           <select
             value={selectedDataType}
             onChange={handleDataTypeSelection}
@@ -237,7 +245,9 @@ export default function Training() {
           <div>
             {dynamicFields.map((field) => (
               <div key={field} className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{field}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {field}
+                </label>
                 <input
                   type="text"
                   value={newRecordFields[field] || ''}
@@ -277,39 +287,32 @@ export default function Training() {
     </button>
   );
 
+  // Section 7: Main Render
+  return (
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-4">Agent Training Data</h2>
 
-    // Final Render Section
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
 
-    return (
-      <div className="p-6">
-        <h2 className="text-2xl font-bold mb-4">Agent Training Data</h2>
-  
-        {/* Error Display */}
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+      {renderAgentSelection()}
+
+      {selectedAgent && (
+        <>
+          <div className="mt-6">
+            <h3 className="text-xl font-semibold mb-4">Training Data</h3>
+            {renderTrainingData()}
           </div>
-        )}
-  
-        {/* Agent Selection Dropdown */}
-        {renderAgentSelection()}
-  
-        {/* Training Data Display */}
-        {selectedAgent && (
-          <>
-            <div className="mt-6">
-              <h3 className="text-xl font-semibold mb-4">Training Data</h3>
-              {renderTrainingData()}
-            </div>
-  
-            {/* Add New Training Data */}
-            <div className="mt-6">
-              {renderAddButton()}
-              {renderAddForm()}
-            </div>
-          </>
-        )}
-      </div>
-    );
-  }
-  
+
+          <div className="mt-6">
+            {renderAddButton()}
+            {renderAddForm()}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

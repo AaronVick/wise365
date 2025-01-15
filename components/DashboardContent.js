@@ -260,6 +260,7 @@ const DashboardContent = ({
                             return;
                           }
 
+                          // Create or get conversation name
                           const namesRef = collection(db, 'conversationNames');
                           const defaultNameQuery = query(
                             namesRef,
@@ -270,8 +271,10 @@ const DashboardContent = ({
                           
                           const querySnapshot = await getDocs(defaultNameQuery);
                           let chatId;
+                          let isNewUser = false;
 
                           if (querySnapshot.empty) {
+                            isNewUser = true;
                             // Create new conversation name document
                             const nameDoc = await addDoc(namesRef, {
                               agentId: 'shawn',
@@ -280,28 +283,87 @@ const DashboardContent = ({
                               isDefault: true,
                               projectName: '',
                               timestamp: serverTimestamp(),
-                              participants: [currentUser.uid, 'shawn'] // Add participants field
+                              participants: [currentUser.uid, 'shawn']
                             });
 
                             chatId = nameDoc.id;
 
-                            // Create initial conversation document
-                            const conversationsRef = collection(db, 'conversations');
-                            await addDoc(conversationsRef, {
+                            // Get onboarding funnel analysis
+                            const onboardingFunnel = await getOnboardingFunnel(currentUser);
+                            const insights = await gatherFunnelInsights(currentUser, onboardingFunnel);
+                            const userContext = await analyzeUserContext(currentUser);
+
+                            // Prepare context for LLM
+                            const contextPayload = {
+                              user: {
+                                name: currentUser.name,
+                                role: currentUser.role || "team member",
+                              },
+                              funnel: {
+                                name: onboardingFunnel?.name,
+                                milestones: onboardingFunnel?.milestones?.map(m => m.name) || [],
+                                insights: insights?.nextSteps || [],
+                                blockers: insights?.blockers || [],
+                              },
+                              userContext: {
+                                insights: userContext?.insights || [],
+                                blockers: userContext?.blockers || [],
+                                nextSteps: userContext?.nextSteps || [],
+                              },
+                              agent: {
+                                name: "Shawn",
+                                role: "Tool Guidance Assistant",
+                              },
+                            };
+
+                            // Get LLM-generated opening message
+                            const llmResponse = await fetch('/api/chat', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                messages: [
+                                  {
+                                    role: 'system',
+                                    content: `You are Shawn, the guidance assistant for Business Wise365. Based on the following context, generate a personalized welcome message and initial guidance for the user. Consider their role, any identified needs or blockers, and suggest relevant next steps or tools that would be most beneficial for them.
+
+            Context:
+            ${JSON.stringify(contextPayload, null, 2)}
+
+            Focus on being helpful and specific while maintaining a friendly, conversational tone. If there are clear next steps or tools that would benefit the user, mention them specifically.`
+                                  },
+                                  {
+                                    role: 'user',
+                                    content: 'Generate an appropriate welcome message and initial guidance based on the provided context.'
+                                  }
+                                ]
+                              }),
+                            });
+
+                            if (!llmResponse.ok) {
+                              throw new Error('Failed to generate welcome message');
+                            }
+
+                            const { reply: welcomeContent } = await llmResponse.json();
+
+                            // Create initial message with LLM-generated content
+                            const welcomeMessage = {
                               agentId: 'shawn',
-                              content: "Hi! I'm Shawn, your personal guide to Business Wise365. I'll help you navigate our platform and connect you with the right experts for your business needs. Are you ready to get started?",
+                              content: welcomeContent,
                               conversationName: chatId,
                               from: 'shawn',
                               isDefault: true,
                               timestamp: serverTimestamp(),
                               type: 'agent',
-                              participants: [currentUser.uid, 'shawn'] // Add participants field
-                            });
+                              participants: [currentUser.uid, 'shawn']
+                            };
+
+                            const messagesRef = collection(db, 'conversations');
+                            await addDoc(messagesRef, welcomeMessage);
                           } else {
                             chatId = querySnapshot.docs[0].id;
                           }
 
-                          // Set the current chat with all required fields
+                          // Set the current chat using the existing ChatInterface structure
                           setCurrentChat({
                             id: chatId,
                             agentId: 'shawn',
@@ -313,9 +375,9 @@ const DashboardContent = ({
 
                           // Update hasShawnChat state
                           setHasShawnChat(true);
+
                         } catch (error) {
                           console.error('Error handling Shawn chat:', error);
-                          // Handle the error appropriately
                           if (error.code === 'permission-denied') {
                             console.error('Permission denied to access Firestore');
                           }
