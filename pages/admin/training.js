@@ -121,52 +121,7 @@ useEffect(() => {
   return () => { isSubscribed = false; };
 }, [db]); // Add db as dependency
 
-// Modify handleAgentSelection to handle Firestore data
-const handleAgentSelection = async (agentId) => {
-  if (!agentId) return;
-  
-  setSelectedAgent(agentId);
-  setLoading(true);
-  setError(null);
-  setSelectedLLM(''); // Reset LLM selection when agent changes
 
-  try {
-    // Query agentData collection for the selected agent
-    const agentDataQuery = query(
-      collection(db, 'agentData'),
-      where('agentId', '==', agentId)
-    );
-    
-    const agentDataSnapshot = await getDocs(agentDataQuery);
-    
-    if (agentDataSnapshot.empty) {
-      setData({});
-      setError('No training data available for this agent. Use the LLM generator to create initial training data.');
-      return;
-    }
-
-    // Transform Firestore data
-    const records = agentDataSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt || null,
-    }));
-
-    // Generate options and aggregate data
-    const dynamicOptions = generateDataTypeOptions(records);
-    setDataTypeOptions(dynamicOptions);
-
-    const aggregatedData = aggregateDataByType(records);
-    setData(aggregatedData);
-
-  } catch (error) {
-    console.error('Error fetching training data:', error);
-    setError('Failed to load training data. Please try again.');
-    setData({});
-  } finally {
-    setLoading(false);
-  }
-};
 
 // Section 3: Agent Selection and Training Data Fetch
 const handleAgentSelection = async (agentId) => {
