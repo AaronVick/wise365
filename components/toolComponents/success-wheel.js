@@ -20,7 +20,9 @@ import FormChat from './FormChat';
 import FormChatButton from './FormChatButton';
 
 const SuccessWheel = ({ onComplete }) => {
-  const { currentUser } = useAuth() || {};
+  const auth = useAuth();
+  const currentUser = auth?.currentUser;
+
   const [template, setTemplate] = useState(null);
   const [responses, setResponses] = useState({});
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -116,6 +118,14 @@ const SuccessWheel = ({ onComplete }) => {
       alert('An error occurred while saving your responses. Please try again.');
     }
   };
+
+  if (!auth || !currentUser) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p>Please sign in to access this form.</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

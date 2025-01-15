@@ -21,7 +21,9 @@ import { Select, SelectItem } from '../ui/select';
 import FormChat from './FormChat';
 
 const PositioningFactors = ({ onComplete }) => {
-  const { currentUser } = useAuth() || {};
+  const auth = useAuth();
+  const currentUser = auth?.currentUser;
+
   const [template, setTemplate] = useState(null);
   const [formData, setFormData] = useState({});
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -122,6 +124,14 @@ const PositioningFactors = ({ onComplete }) => {
       alert('An error occurred while submitting the form. Please try again.');
     }
   };
+
+  if (!auth || !currentUser) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p>Please sign in to access this form.</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

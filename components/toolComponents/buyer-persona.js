@@ -14,19 +14,23 @@ import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import Textarea from '../ui/textarea';
+import { Textarea } from '../ui/textarea';
 import { Select, SelectItem } from '../ui/select';
 import { Card } from '../ui/card';
 import FormChat from './FormChat';
 
+const TEMPLATE_NAME = "Worlds Best Buyer Persona"; // Match exactly what's in Firebase
+
 const BuyerPersona = ({ onComplete }) => {
-  const { currentUser } = useAuth() || {};
+  const auth = useAuth();
+  const currentUser = auth?.currentUser;
+
   const [template, setTemplate] = useState(null);
   const [formData, setFormData] = useState({});
   const [lastUpdated, setLastUpdated] = useState(null);
   const [shared, setShared] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [formId] = useState(() => `bp_${Date.now()}`); // Unique ID for this form instance
+  const [formId] = useState(() => `bp_${Date.now()}`);
 
   // Fetch the template and previous answers
   useEffect(() => {
@@ -34,7 +38,7 @@ const BuyerPersona = ({ onComplete }) => {
       try {
         const q = query(
           collection(db, 'resources'),
-          where('templateName', '==', "World's Best Buyer Persona")
+          where('templateName', '==', TEMPLATE_NAME)
         );
         const querySnapshot = await getDocs(q);
 
@@ -58,7 +62,7 @@ const BuyerPersona = ({ onComplete }) => {
         const q = query(
           collection(db, 'resourcesData'),
           where('userId', '==', currentUser.uid),
-          where('templateName', '==', "World's Best Buyer Persona"),
+          where('templateName', '==', TEMPLATE_NAME),
           orderBy('timestamp', 'desc')
         );
         const querySnapshot = await getDocs(q);
@@ -85,15 +89,44 @@ const BuyerPersona = ({ onComplete }) => {
     }));
   };
 
+  const validateInput = (section, value) => {
+    if (!value?.trim()) return false;
+
+    // Add specific validation based on question type
+    if (section.question.toLowerCase().includes('url')) {
+      try {
+        new URL(value);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    // Age validation
+    if (section.question.includes('old is your persona')) {
+      const age = parseInt(value);
+      return !isNaN(age) && age > 0 && age < 120;
+    }
+
+    // Income validation
+    if (section.question.includes('annual income')) {
+      const income = parseFloat(value.replace(/[^0-9.]/g, ''));
+      return !isNaN(income) && income >= 0;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async () => {
     if (!template || !currentUser) return;
 
-    const allQuestionsAnswered = template.sections.every((section) =>
-      formData[section.question]?.trim()
-    );
+    // Validate all answers
+    const invalidQuestions = template.sections
+      .filter(section => !validateInput(section, formData[section.question]))
+      .map(section => section.question);
 
-    if (!allQuestionsAnswered) {
-      alert('Please answer all questions before saving.');
+    if (invalidQuestions.length > 0) {
+      alert(`Please provide valid answers for:\n${invalidQuestions.join('\n')}`);
       return;
     }
 
@@ -101,20 +134,28 @@ const BuyerPersona = ({ onComplete }) => {
       await addDoc(collection(db, 'resourcesData'), {
         userId: currentUser.uid,
         teamId: currentUser.teamId || '',
-        templateName: template.templateName,
+        templateName: TEMPLATE_NAME,
         answers: formData,
         shared,
         timestamp: serverTimestamp(),
       });
 
       alert('Form saved successfully!');
-      setFormData({}); // Clear the form
-      onComplete(); // Return to main dashboard
+      setFormData({});
+      onComplete();
     } catch (error) {
       console.error('Error saving form data:', error);
       alert('Error saving form data. Please try again.');
     }
   };
+
+  if (!auth || !currentUser) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p>Please sign in to access this form.</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -131,6 +172,78 @@ const BuyerPersona = ({ onComplete }) => {
       </div>
     );
   }
+
+  const renderField = (section) => {
+    const { question, options, definition } = section;
+
+    // For Maslow's Hierarchy questions or other select options
+    if (options) {
+      return (
+        <Select
+          value={formData[question] || ''}
+          onValueChange={(value) => handleInputChange(question, value)}
+        >
+          <SelectItem value="">Select an option</SelectItem>
+          {options.map((option, idx) => (
+            <SelectItem key={idx} value={option}>
+              {option}
+            </SelectItem>
+          ))}
+        </Select>
+      );
+    }
+
+    // For URL input
+    if (question.toLowerCase().includes('url')) {
+      return (
+        <Input
+          type="url"
+          value={formData[question] || ''}
+          onChange={(e) => handleInputChange(question, e.target.value)}
+          placeholder="https://example.com"
+        />
+      );
+    }
+
+    // For age input
+    if (question.includes('old is your persona')) {
+      return (
+        <Input
+          type="number"
+          value={formData[question] || ''}
+          onChange={(e) => handleInputChange(question, e.target.value)}
+          placeholder="Age"
+          min="1"
+          max="120"
+        />
+      );
+    }
+
+    // For income input
+    if (question.includes('annual income')) {
+      return (
+        <Input
+          type="text"
+          value={formData[question] || ''}
+          onChange={(e) => {
+            const value = e.target.value.replace(/[^0-9.]/g, '');
+            handleInputChange(question, value ? `$${value}` : '');
+          }}
+          placeholder="Annual Income"
+        />
+      );
+    }
+
+    // Default to textarea for longer form answers
+    return (
+      <Textarea
+        value={formData[question] || ''}
+        onChange={(e) => handleInputChange(question, e.target.value)}
+        placeholder="Your answer"
+        rows={4}
+      />
+    );
+  };
 
   const formContent = (
     <div className="max-w-4xl mx-auto p-6">
@@ -150,26 +263,15 @@ const BuyerPersona = ({ onComplete }) => {
               <label className="block text-sm font-medium">
                 {section.question}
               </label>
-
-              {section.options ? (
-                <Select
-                  value={formData[section.question] || ''}
-                  onValueChange={(value) => handleInputChange(section.question, value)}
-                >
-                  <SelectItem value="">Select an option</SelectItem>
-                  {section.options.map((option, idx) => (
-                    <SelectItem key={idx} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </Select>
-              ) : (
-                <Textarea
-                  value={formData[section.question] || ''}
-                  onChange={(e) => handleInputChange(section.question, e.target.value)}
-                  placeholder="Your answer"
-                />
+              {section.definition && (
+                <p className="text-sm text-gray-500 mb-2">{section.definition}</p>
               )}
+              {section.evaluationCriteria && (
+                <p className="text-sm text-gray-400 italic mb-2">
+                  {section.evaluationCriteria}
+                </p>
+              )}
+              {renderField(section)}
             </div>
           ))}
 
@@ -197,7 +299,7 @@ const BuyerPersona = ({ onComplete }) => {
 
   return (
     <FormChat
-      formName="World's Best Buyer Persona"
+      formName={TEMPLATE_NAME}
       formId={formId}
       projectId={currentUser?.teamId}
       projectName={template?.templateName}
