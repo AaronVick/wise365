@@ -1,7 +1,7 @@
 // /pages/admin/training.js
 
 // Section 1: Imports and Initial State Setup
-import { useEffect, useState, useCallback } from 'react'; // Added useCallback for memoization
+import { useEffect, useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import dynamic from 'next/dynamic';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
@@ -19,16 +19,23 @@ const trainingDataPropTypes = {
   traits: PropTypes.arrayOf(PropTypes.string),
   tone: PropTypes.string,
   datatype: PropTypes.string.isRequired,
+};
 
-  const [selectedLLM, setSelectedLLM] = useState('');
-  const LLM_OPTIONS = [
-    { value: 'gpt-4', label: 'GPT-4' },
-    { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-    { value: 'claude-3-opus', label: 'Claude 3 Opus' },
-    { value: 'claude-3-sonnet', label: 'Claude 3 Sonnet' },
-    { value: 'claude-3-haiku', label: 'Claude 3 Haiku' }
-  ];
+// Constants
+const LLM_OPTIONS = [
+  { value: 'gpt-4', label: 'GPT-4' },
+  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+  { value: 'claude-3-opus', label: 'Claude 3 Opus' },
+  { value: 'claude-3-sonnet', label: 'Claude 3 Sonnet' },
+  { value: 'claude-3-haiku', label: 'Claude 3 Haiku' }
+];
 
+const DATA_TYPE_FIELDS = {
+  instructions: ['title', 'details', 'priority'],
+  personality: ['tone', 'traits', 'description'],
+  milestone: ['title', 'description', 'date', 'impact'],
+  knowledge: ['category', 'content', 'source']
+};
 
 // Main Training Component
 export default function Training() {
@@ -36,6 +43,7 @@ export default function Training() {
   const [data, setData] = useState({});  // Changed to object for better key-based access
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [selectedLLM, setSelectedLLM] = useState('');
   
   // UI states
   const [loading, setLoading] = useState(false);
@@ -50,14 +58,6 @@ export default function Training() {
     fields: {},
   });
 
-  // Constants for data types and their fields
-  const DATA_TYPE_FIELDS = {
-    instructions: ['title', 'details', 'priority'],
-    personality: ['tone', 'traits', 'description'],
-    milestone: ['title', 'description', 'date', 'impact'],
-    knowledge: ['category', 'content', 'source']
-  };
-
   Training.propTypes = {
     initialAgents: PropTypes.arrayOf(PropTypes.shape({
       agentId: PropTypes.string.isRequired,
@@ -66,7 +66,7 @@ export default function Training() {
     })),
     onError: PropTypes.func
   };
-
+  
   
     // Section 2: Fetching Agents from Database
 useEffect(() => {
