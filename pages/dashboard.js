@@ -492,23 +492,16 @@ const Dashboard = () => {
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto bg-slate-50">
         {currentChat ? (
-          currentChat.agentId === 'shawn' ? (
-            <ChatWithShawn 
-              currentUser={userData} 
-              isNewUser={currentChat.isNewUser}
-            />
-          ) : (
-            <ChatInterface
-              chatId={currentChat.id}
-              agentId={currentChat.agentId}
-              userId={user.uid}
-              isDefault={currentChat.isDefault}
-              title={currentChat.title}
-              conversationName={currentChat.conversationName}
-              projectId={currentChat.projectId}
-              projectName={currentChat.projectName}
-            />
-          )
+          <ChatInterface
+            chatId={currentChat.id}
+            agentId={currentChat.agentId}
+            userId={user.authenticationID}  // Use the correct ID field
+            isDefault={currentChat.isDefault}
+            title={currentChat.title}
+            conversationName={currentChat.conversationName}
+            projectId={currentChat.projectId}
+            projectName={currentChat.projectName}
+          />
         ) : currentTool ? (
           <div className="h-full flex flex-col">
             <header className="border-b bg-white shadow-sm">

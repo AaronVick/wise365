@@ -492,7 +492,9 @@ const DashboardContent = ({
                 title: 'Chat with Shawn',
                 participants: [currentUser.authenticationID, 'shawn'],
                 isDefault: true,
-                conversationName: chatId
+                conversationName: chatId,
+                projectId: null,  
+                projectName: ''
               };
               
               console.log('Setting current chat with data:', chatData);
