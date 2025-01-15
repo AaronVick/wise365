@@ -21,9 +21,8 @@ import FormChat from './FormChat';
 
 const TEMPLATE_NAME = "Positioning Factor Worksheet";
 
-const PositioningFactors = ({ onComplete }) => {
-  const auth = useAuth();
-  const currentUser = auth?.currentUser;
+const PositioningFactors = ({ onComplete, currentUser }) => {
+  // Auth handled via props from dashboard
 
   const [template, setTemplate] = useState(null);
   const [formData, setFormData] = useState({});

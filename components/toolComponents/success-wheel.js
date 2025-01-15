@@ -20,9 +20,8 @@ import FormChat from './FormChat';
 
 const TEMPLATE_NAME = "Marketing Success Wheel";
 
-const SuccessWheel = ({ onComplete }) => {
-  const auth = useAuth();
-  const currentUser = auth?.currentUser;
+const SuccessWheel = ({ onComplete, currentUser }) => {
+  // Auth handled via props from dashboard
 
   const [template, setTemplate] = useState(null);
   const [formData, setFormData] = useState({});

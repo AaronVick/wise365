@@ -21,9 +21,8 @@ import FormChat from './FormChat';
 
 const TEMPLATE_NAME = "Worlds Best Buyer Persona";
 
-const BuyerPersona = ({ onComplete }) => {
-  const auth = useAuth();
-  const currentUser = auth?.currentUser;
+const BuyerPersona = ({ onComplete, currentUser }) => {
+  // Auth handled via props from dashboard
 
   const [template, setTemplate] = useState(null);
   const [formData, setFormData] = useState({});
