@@ -19,7 +19,16 @@ const trainingDataPropTypes = {
   traits: PropTypes.arrayOf(PropTypes.string),
   tone: PropTypes.string,
   datatype: PropTypes.string.isRequired,
-};
+
+  const [selectedLLM, setSelectedLLM] = useState('');
+  const LLM_OPTIONS = [
+    { value: 'gpt-4', label: 'GPT-4' },
+    { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+    { value: 'claude-3-opus', label: 'Claude 3 Opus' },
+    { value: 'claude-3-sonnet', label: 'Claude 3 Sonnet' },
+    { value: 'claude-3-haiku', label: 'Claude 3 Haiku' }
+  ];
+
 
 // Main Training Component
 export default function Training() {
@@ -59,92 +68,89 @@ export default function Training() {
   };
 
   
-    // Section 2: Fetching Agents
-    useEffect(() => {
-      let isSubscribed = true; // For handling unmounting
-      
-      const fetchAgents = async () => {
-        if (!isSubscribed) return;
-        
-        setLoading(true);
-        setError(null);
+    // Section 2: Fetching Agents from Database
+useEffect(() => {
+  let isSubscribed = true;
   
-        try {
-          const response = await fetch('/api/admin?tab=agents', {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-              'Content-Type': 'application/json',
-            },
-          });
-  
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-          }
-  
-          const agentsData = await response.json();
-          
-          // Validate the structure of received data
-          if (!Array.isArray(agentsData)) {
-            throw new Error('Invalid data format: Expected an array of agents');
-          }
-  
-          // Validate each agent has required fields
-          const validatedAgents = agentsData.filter(agent => {
-            const isValid = agent && 
-              typeof agent.agentId === 'string' && 
-              typeof agent.agentName === 'string' && 
-              typeof agent.role === 'string';
-            
-            if (!isValid) {
-              console.warn('Invalid agent data structure:', agent);
-            }
-            return isValid;
-          });
-  
-          if (isSubscribed) {
-            setAgents(validatedAgents);
-            
-            // If there's only one agent, auto-select it
-            if (validatedAgents.length === 1 && !selectedAgent) {
-              handleAgentSelection(validatedAgents[0].agentId);
-            }
-            
-            // Log successful fetch for debugging
-            console.debug('Fetched agents:', validatedAgents.length);
-          }
-        } catch (error) {
-          console.error('Error fetching agents:', error);
-          if (isSubscribed) {
-            setError(error.message || 'Failed to load agents. Please try again.');
-            // Clear agents list on error
-            setAgents([]);
-          }
-        } finally {
-          if (isSubscribed) {
-            setLoading(false);
-          }
-        }
-      };
-  
-      fetchAgents();
-  
-      // Cleanup subscription on unmount
-      return () => {
-        isSubscribed = false;
-      };
-    }, []); // Empty dependency array as we only want to fetch on mount
-  
-// Section 3: Agent Selection and Data Fetch
+  const fetchAgents = async () => {
+    if (!isSubscribed) return;
+    
+    setLoading(true);
+    setError(null);
 
+    try {
+      // Fetch agents from the agents table
+      const response = await fetch('/api/admin/agents', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const agentsData = await response.json();
+      
+      // Ensure we have an array of agents
+      if (!Array.isArray(agentsData?.agents)) {
+        throw new Error('Invalid data format: Expected an array of agents');
+      }
+
+      // Validate and format agent data
+      const validatedAgents = agentsData.agents
+        .filter(agent => (
+          agent?.id && 
+          agent?.name && 
+          agent?.role && 
+          typeof agent.id === 'string' && 
+          typeof agent.name === 'string' && 
+          typeof agent.role === 'string'
+        ))
+        .map(agent => ({
+          agentId: agent.id,
+          agentName: agent.name,
+          role: agent.role,
+          isActive: agent.isActive ?? true
+        }))
+        .filter(agent => agent.isActive); // Only show active agents
+
+      if (isSubscribed) {
+        setAgents(validatedAgents);
+        console.debug('Fetched agents:', validatedAgents.length);
+      }
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+      if (isSubscribed) {
+        setError('Failed to load agents. Please try again.');
+        setAgents([]);
+      }
+    } finally {
+      if (isSubscribed) {
+        setLoading(false);
+      }
+    }
+  };
+
+  fetchAgents();
+  return () => { isSubscribed = false; };
+}, []);
+
+// Section 3: Agent Selection and Training Data Fetch
 const handleAgentSelection = async (agentId) => {
+  if (!agentId) return;
+  
   setSelectedAgent(agentId);
   setLoading(true);
   setError(null);
+  setSelectedLLM(''); // Reset LLM selection when agent changes
 
   try {
-    const response = await fetch(`/api/admin?tab=training&agentId=${agentId}`, {
+    // Fetch training data for the selected agent from agentData table
+    const response = await fetch(`/api/admin/training/${agentId}`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
         'Content-Type': 'application/json',
@@ -157,11 +163,23 @@ const handleAgentSelection = async (agentId) => {
 
     const trainingData = await response.json();
     
-    const dynamicOptions = generateDataTypeOptions(trainingData);
+    if (!Array.isArray(trainingData?.records)) {
+      throw new Error('Invalid training data format');
+    }
+
+    // Generate data type options for the form
+    const dynamicOptions = generateDataTypeOptions(trainingData.records);
     setDataTypeOptions(dynamicOptions);
 
-    const aggregatedData = aggregateDataByType(trainingData);
+    // Aggregate data by type for display
+    const aggregatedData = aggregateDataByType(trainingData.records);
     setData(aggregatedData);
+
+    // If this agent has no training data, show a message
+    if (Object.keys(aggregatedData).length === 0) {
+      setError('No training data available for this agent. Use the LLM generator to create initial training data.');
+    }
+
   } catch (error) {
     console.error('Error fetching training data:', error);
     setError('Failed to load training data. Please try again.');
@@ -173,15 +191,20 @@ const handleAgentSelection = async (agentId) => {
 
 const generateDataTypeOptions = (records) => {
   const dataTypes = new Set();
-  records.forEach((record) => {
+  
+  // Add predefined types first
+  Object.keys(DATA_TYPE_FIELDS).forEach(type => dataTypes.add(type));
+  
+  // Add any additional types from existing records
+  records.forEach(record => {
     if (record.datatype) {
       dataTypes.add(record.datatype);
     }
   });
 
-  return Array.from(dataTypes).map((type) => ({
+  return Array.from(dataTypes).map(type => ({
     value: type,
-    label: type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    label: type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
   }));
 };
 
@@ -191,9 +214,56 @@ const aggregateDataByType = (records) => {
     if (!acc[datatype]) {
       acc[datatype] = [];
     }
+
+    
+    // Sort records by date if available
     acc[datatype].push(record);
+    acc[datatype].sort((a, b) => {
+      if (a.createdAt && b.createdAt) {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      return 0;
+    });
+    
     return acc;
   }, {});
+};
+
+
+const handleGenerateContent = async () => {
+  if (!selectedAgent || !selectedLLM) {
+    setError('Please select both an agent and an LLM model');
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const response = await fetch('/api/admin/generate-training', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        agentId: selectedAgent,
+        model: selectedLLM
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate training content');
+    }
+
+    const result = await response.json();
+    // Refresh the training data after generation
+    await handleAgentSelection(selectedAgent);
+    setError(null);
+  } catch (error) {
+    console.error('Error generating content:', error);
+    setError('Failed to generate training content. Please try again.');
+  } finally {
+    setLoading(false);
+  }
 };
 
 
@@ -549,7 +619,18 @@ const renderEditModal = () => {
 
 return (
   <div className="p-6">
-    <h2 className="text-2xl font-bold mb-6">Agent Training Data</h2>
+    <div className="flex justify-between items-center mb-6">
+      <h2 className="text-2xl font-bold">Agent Training Data</h2>
+      {selectedAgent && (
+        <Button
+          onClick={() => handleGenerateContent()}
+          disabled={!selectedLLM || loading}
+          className="bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+        >
+          Generate Training Content
+        </Button>
+      )}
+    </div>
 
     {error && (
       <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -557,44 +638,22 @@ return (
       </div>
     )}
 
-    {loading && !selectedAgent && (
+    {renderAgentSelection()}
+
+    {loading && (
       <div className="text-center py-4">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
       </div>
     )}
 
-    <div className="mb-6">
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        Select an Agent
-      </label>
-      <Select
-        value={selectedAgent || ''}
-        onChange={(e) => handleAgentSelection(e.target.value)}
-        className="w-full"
-        disabled={loading || agents.length === 0}
-      >
-        <option value="" disabled>
-          {agents.length === 0 ? 'No agents available' : 'Select an Agent'}
-        </option>
-        {agents.map((agent) => (
-          <option key={agent.agentId} value={agent.agentId}>
-            {agent.agentName}: {agent.role}
-          </option>
-        ))}
-      </Select>
-    </div>
-
-    {loading && selectedAgent ? (
-      <div className="text-center py-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-      </div>
-    ) : (
+    {!loading && selectedAgent && (
       <>
         {renderAggregatedData()}
-        {selectedAgent && renderAddKnowledgeForm()}
+        {renderAddKnowledgeForm()}
         {editingItem && renderEditModal()}
       </>
     )}
   </div>
 );
+
 } // End of Training component export default Training;
