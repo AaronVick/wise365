@@ -117,33 +117,69 @@ export default function Prompts() {
       alert('Please select an agent and LLM before generating a prompt.');
       return;
     }
-
+  
     setGeneratingPrompt(true);
     try {
       // Fetch all agent data
       const agentData = await fetchAgentData(selectedAgent);
-      const selectedAgentInfo = agents.find(a => a.id === selectedAgent);
-      
-      // Prepare the API request based on selected LLM
-      const endpoint = selectedLLM === 'Anthropic' ? '/api/claude' : '/api/chatgpt';
-      
+      const selectedAgentInfo = agents.find((a) => a.id === selectedAgent);
+  
+      // Determine API endpoint and key based on selected LLM
+      let endpoint = '';
+      let headers = {};
+      if (selectedLLM === 'Anthropic') {
+        endpoint = 'https://api.anthropic.com/v1/claude';
+        headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.ANTHROPIC_API_KEY}`, // Use Anthropic API key
+        };
+      } else if (selectedLLM === 'OpenAI') {
+        endpoint = 'https://api.openai.com/v1/chat/completions';
+        headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, // Use OpenAI API key
+        };
+      } else {
+        throw new Error('Unsupported LLM selected');
+      }
+  
+      // Prepare the API request payload
+      const payload =
+        selectedLLM === 'Anthropic'
+          ? {
+              model: 'claude-v1.3',
+              prompt: `Agent Info: ${JSON.stringify(selectedAgentInfo)}\n\nAgent Data: ${JSON.stringify(
+                agentData
+              )}`,
+              max_tokens_to_sample: 1000,
+            }
+          : {
+              model: 'gpt-4',
+              messages: [
+                { role: 'system', content: 'You are a helpful assistant.' },
+                { role: 'user', content: `Agent Info: ${JSON.stringify(selectedAgentInfo)}\n\nAgent Data: ${JSON.stringify(agentData)}` },
+              ],
+              max_tokens: 1000,
+            };
+  
+      // Send the API request
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          agentInfo: selectedAgentInfo,
-          agentData: agentData,
-        }),
+        headers,
+        body: JSON.stringify(payload),
       });
-
+  
       if (!response.ok) {
         throw new Error('Failed to generate prompt');
       }
-
+  
       const data = await response.json();
-      setGeneratedPrompt(data.prompt);
+      const prompt =
+        selectedLLM === 'Anthropic'
+          ? data.completion // Anthropic response key
+          : data.choices?.[0]?.message?.content; // OpenAI response key
+  
+      setGeneratedPrompt(prompt);
     } catch (err) {
       console.error('Error generating prompt:', err);
       alert('Failed to generate prompt. Please try again.');
@@ -151,6 +187,8 @@ export default function Prompts() {
       setGeneratingPrompt(false);
     }
   };
+
+  
 
   const fetchAgentData = async (agentId) => {
     try {
@@ -227,22 +265,29 @@ export default function Prompts() {
         </div>
       </div>
 
-            {selectedAgent && prompts && (
-        <div className="mt-8 bg-white shadow rounded p-6">
-          <h3 className="text-lg font-semibold mb-4">
-            Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
-          </h3>
-          {Object.entries(prompts).map(([llmType, promptData]) => (
-            <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
-              <h4 className="font-bold text-lg">{llmType} ({promptData.version})</h4>
-              <textarea
-                className="w-full p-2 border rounded mt-2"
-                rows="6"
-                value={promptData.description}
-                readOnly
-              />
-            </div>
-          ))}
+      {selectedAgent && prompts && (
+          <div className="mt-8 bg-white shadow rounded p-6">
+            <h3 className="text-lg font-semibold mb-4">
+              Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
+            </h3>
+            {Object.entries(prompts).length > 0 ? (
+              Object.entries(prompts).map(([llmType, promptData]) => (
+                <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
+                  <h4 className="font-bold text-lg">{llmType} ({promptData.version})</h4>
+                  <textarea
+                    className="w-full p-2 border rounded mt-2"
+                    rows="6"
+                    value={promptData.description}
+                    readOnly
+                  />
+                </div>
+              ))
+            ) : (
+              <div className="text-gray-500">No prompts available for this agent.</div>
+            )}
+          </div>
+        )}
+
         </div>
       )}
     </div>
