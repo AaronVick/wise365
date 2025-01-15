@@ -35,99 +35,125 @@ export default function Prompts() {
     fetchAgents();
   }, []);
 
-  
   const fetchAgentDefinition = async (agentId) => {
     try {
-      console.log(`Fetching agent definition for agentId: ${agentId}`); // Debug
-  
-      const docRef = doc(db, 'agentsDefined', agentId);
-      const docSnap = await getDoc(docRef);
-  
-      if (!docSnap.exists()) {
-        console.warn(`No record found for agentId: ${agentId}`);
+      console.log(`Fetching agent definition for agentId: ${agentId}`);
+      
+      // First, find the agent record to get the correct agentId value
+      const agent = agents.find(a => a.id === agentId);
+      if (!agent) {
+        console.warn('Agent not found');
         return null;
       }
-  
-      const data = docSnap.data();
-      console.log(`Fetched data for agentId: ${agentId}`, data);
-  
+
+      // Query agentsDefined collection using the agent's name as the agentId field
+      const querySnapshot = await getDocs(collection(db, 'agentsDefined'));
+      const agentDef = querySnapshot.docs.find(doc => doc.data().agentId === agent.agentName);
+
+      if (!agentDef) {
+        console.warn(`No record found for agentId: ${agent.agentName}`);
+        return null;
+      }
+
+      const data = agentDef.data();
+      console.log(`Fetched data:`, data);
+
       return {
+        id: agentDef.id,
         ...data,
-        prompt: data.prompt || {}, // Always return a prompt object
+        prompt: data.prompt || {},
       };
     } catch (err) {
-      console.error(`Error fetching agent definition for agentId: ${agentId}`, err);
+      console.error(`Error fetching agent definition:`, err);
       return null;
     }
   };
-  
 
-  
   const handleAgentSelection = async (agentId) => {
     setSelectedAgent(agentId);
     setLoading(true);
-  
+    setError(null);
+
     try {
-      console.log(`Selected agentId: ${agentId}`); // Debug
       const agentDefinition = await fetchAgentDefinition(agentId);
-  
-      if (agentDefinition) {
-        console.log(`Prompts for agentId ${agentId}:`, agentDefinition.prompt);
-        setPrompts(agentDefinition.prompt); // Set the fetched prompts
+
+      if (agentDefinition && agentDefinition.prompt) {
+        // Convert prompt data to expected format if necessary
+        const formattedPrompts = {};
+        
+        // Handle both lowercase and proper case LLM names
+        if (agentDefinition.prompt.Anthropic || agentDefinition.prompt.anthropic) {
+          formattedPrompts.Anthropic = agentDefinition.prompt.Anthropic || agentDefinition.prompt.anthropic;
+        }
+        
+        if (agentDefinition.prompt.OpenAI || agentDefinition.prompt.openAI) {
+          formattedPrompts.OpenAI = agentDefinition.prompt.OpenAI || agentDefinition.prompt.openAI;
+        }
+
+        console.log('Formatted prompts:', formattedPrompts);
+        setPrompts(formattedPrompts);
       } else {
-        console.warn(`No prompts found for agentId: ${agentId}`);
         setPrompts({});
       }
     } catch (err) {
-      console.error(`Error handling agent selection for agentId: ${agentId}`, err);
+      console.error('Error:', err);
       setError('Failed to fetch prompts for the selected agent.');
     } finally {
       setLoading(false);
     }
   };
-  
-
-  
 
   const handlePromptUpdate = async (llmType, newPrompt) => {
-    if (!selectedAgent || !llmType) return; // Ensure valid agent and LLM type
+    if (!selectedAgent || !llmType) return;
     setLoading(true);
 
     try {
-      // Fetch existing data for the selected agent
-      const agentDoc = doc(db, 'agentsDefined', selectedAgent);
-      const currentData = await getDoc(agentDoc);
-      const existingPrompts = currentData.exists() ? currentData.data().prompt || {} : {};
+      const agent = agents.find(a => a.id === selectedAgent);
+      if (!agent) throw new Error('Agent not found');
 
-      // Update or add the prompt for the specific LLM
-      const updatedPrompts = {
-        ...existingPrompts,
-        [llmType]: {
-          description: newPrompt,
-          version: getLLMVersion(llmType), // Ensure version consistency for the LLM
-        },
+      // Query for existing document with matching agentId
+      const querySnapshot = await getDocs(collection(db, 'agentsDefined'));
+      const existingDoc = querySnapshot.docs.find(doc => doc.data().agentId === agent.agentName);
+
+      const promptData = {
+        description: newPrompt,
+        version: llmType === 'Anthropic' ? 'Claude-3_5-Sonet' : 'ChatGPT-4',
       };
 
-      if (currentData.exists()) {
-        // Update the existing Firestore document
-        await updateDoc(agentDoc, { 
+      if (existingDoc) {
+        // Update existing document
+        const currentData = existingDoc.data();
+        const updatedPrompts = {
+          ...currentData.prompt,
+          [llmType]: promptData,
+        };
+
+        await updateDoc(doc(db, 'agentsDefined', existingDoc.id), {
           prompt: updatedPrompts,
           lastUpdated: new Date(),
         });
       } else {
-        // Create a new document if it doesn't exist
-        await setDoc(agentDoc, {
-          agentId: agents.find((a) => a.id === selectedAgent)?.agentName,
-          prompt: updatedPrompts,
+        // Create new document
+        const docRef = doc(collection(db, 'agentsDefined'));
+        await setDoc(docRef, {
+          agentId: agent.agentName,
+          prompt: {
+            [llmType]: promptData,
+          },
           lastUpdated: new Date(),
         });
       }
 
-      setPrompts(updatedPrompts); // Update the state to reflect the changes
+      // Update local state
+      setPrompts(prevPrompts => ({
+        ...prevPrompts,
+        [llmType]: promptData,
+      }));
+
       alert(`Prompt for ${llmType} updated successfully!`);
     } catch (err) {
       console.error('Error updating prompt:', err);
-      alert('Failed to update prompt. Please try again.');
+      setError('Failed to update prompt. Please try again.');
     } finally {
       setLoading(false);
     }
