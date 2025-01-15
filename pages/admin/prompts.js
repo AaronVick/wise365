@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDocs, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 export default function Prompts() {
   const [agents, setAgents] = useState([]);
@@ -23,7 +23,7 @@ export default function Prompts() {
           id: doc.id,
           ...doc.data(),
         }));
-        console.log('Fetched agents:', agentList); // Debug log
+        console.log('Fetched agents:', agentList);
         setAgents(agentList);
       } catch (err) {
         console.error('Error fetching agents:', err);
@@ -36,62 +36,55 @@ export default function Prompts() {
     fetchAgents();
   }, []);
 
-  const fetchAgentDefinition = async (agentId) => {
+  const fetchAgentDefinition = async (selectedDocId) => {
     try {
-      // First get the agent record to get the agentId field
-      const agent = agents.find(a => a.id === agentId);
-      if (!agent || !agent.agentId) {
-        console.warn('Agent not found or missing agentId:', agentId);
+      // First, get the agentId from the selected agent record
+      const selectedAgent = agents.find(agent => agent.id === selectedDocId);
+      if (!selectedAgent) {
+        console.error('Selected agent not found');
         return null;
       }
 
-      console.log('Looking up agent definition for agentId:', agent.agentId);
-      
-      // Query agentsDefined collection where agentId matches
-      const q = query(
-        collection(db, 'agentsDefined'),
-        where('agentId', '==', agent.agentId.toLowerCase()) // Convert to lowercase for consistency
-      );
-      
+      const agentId = selectedAgent.agentId;
+      console.log('Looking up definition for agentId:', agentId);
+
+      // Query agentsDefined collection using the agentId field
+      const agentsDefinedRef = collection(db, 'agentsDefined');
+      const q = query(agentsDefinedRef, where('agentId', '==', agentId));
       const querySnapshot = await getDocs(q);
-      
+
       if (querySnapshot.empty) {
-        console.warn(`No matching record found for agentId: ${agent.agentId}`);
+        console.log('No matching definition found for agentId:', agentId);
         return null;
       }
 
-      // Get the first matching document
-      const docSnap = querySnapshot.docs[0];
-      const data = docSnap.data();
+      const definitionDoc = querySnapshot.docs[0];
+      const data = definitionDoc.data();
       
-      console.log('Found agent definition:', data);
-      console.log('Prompts data:', data.prompt);
+      console.log('Found definition:', data);
+      console.log('Prompts:', data.prompt);
 
-      return {
-        id: docSnap.id,
-        ...data,
-        prompt: data.prompt || {}
-      };
+      return data;
     } catch (err) {
-      console.error(`Error fetching agent definition:`, err);
+      console.error('Error fetching agent definition:', err);
       return null;
     }
   };
 
-  const handleAgentSelection = async (agentId) => {
-    console.log('Selected agent record ID:', agentId);
-    setSelectedAgent(agentId);
+  const handleAgentSelection = async (selectedDocId) => {
+    console.log('Selected doc ID:', selectedDocId);
+    setSelectedAgent(selectedDocId);
     setLoading(true);
     setError(null);
 
     try {
-      const agentDefinition = await fetchAgentDefinition(agentId);
-      console.log('Fetched agent definition:', agentDefinition);
-
+      const agentDefinition = await fetchAgentDefinition(selectedDocId);
+      
       if (agentDefinition && agentDefinition.prompt) {
         console.log('Setting prompts:', agentDefinition.prompt);
         setPrompts(agentDefinition.prompt);
       } else {
+        console.log('No prompts found');
         setPrompts({});
       }
     } catch (err) {
@@ -101,6 +94,7 @@ export default function Prompts() {
       setLoading(false);
     }
   };
+
 
   const handlePromptUpdate = async (llmType, newPrompt) => {
     if (!selectedAgent || !llmType) return;
@@ -266,19 +260,22 @@ export default function Prompts() {
         </option>
         {agents.map((agent) => (
           <option key={agent.id} value={agent.id}>
-            {agent.agentName} ({agent.id})
+            {agent.agentName || agent.Role} (AgentID: {agent.agentId})
           </option>
         ))}
       </select>
 
-      {/* Display current prompts section */}
+      {selectedAgent && agents.find(a => a.id === selectedAgent) && (
+        <div className="text-sm text-gray-600 mb-4">
+          Debug - Looking up agentId: {agents.find(a => a.id === selectedAgent).agentId}
+        </div>
+      )}
+
       {selectedAgent && prompts && (
         <div className="mt-8 bg-white shadow rounded p-6">
           <h3 className="text-lg font-semibold mb-4">
-            Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
+            Current Prompts for Agent: {agents.find(a => a.id === selectedAgent)?.agentName || agents.find(a => a.id === selectedAgent)?.Role}
           </h3>
-          <div className="text-sm mb-2">Debug Info - Selected Agent ID: {selectedAgent}</div>
-          <div className="text-sm mb-4">Debug Info - Prompts Object: {JSON.stringify(prompts)}</div>
           
           {Object.keys(prompts).length > 0 ? (
             Object.entries(prompts).map(([llmType, promptData]) => (
