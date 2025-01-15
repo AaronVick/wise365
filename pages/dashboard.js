@@ -562,8 +562,8 @@ const Dashboard = () => {
     />
   )}
 </div>
-      </div>  {/* Closing div for the flex h-screen container */}
-    );
+    </div>  {/* Closing div for the flex h-screen container */}
+  );
 };
 
 export default Dashboard;
