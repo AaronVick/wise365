@@ -239,6 +239,12 @@ Previous Interactions Summary:
 // Handle Sending Messages
 const handleSendMessage = async (e) => {
   e.preventDefault();
+  console.log('Starting message send with:', {
+    agentId,
+    userId,
+    conversationName,
+    projectId
+  });
 
   if (!newMessage.trim() || !conversationName) {
     console.error('Missing required message or conversation name');
@@ -248,10 +254,9 @@ const handleSendMessage = async (e) => {
   setLoading(true);
 
   try {
-    // Initialize Firestore refs
     const messagesRef = collection(db, 'conversations');
     
-    // Create user message
+    // 1. Save user message
     const userMessage = {
       content: newMessage,
       conversationName: conversationName,
@@ -263,70 +268,105 @@ const handleSendMessage = async (e) => {
       ...(agentId && { agentId }),
     };
 
-    // Add user message to Firestore
-    await addDoc(messagesRef, userMessage);
-
-    // Clear input field immediately after sending
+    const userMessageDoc = await addDoc(messagesRef, userMessage);
+    console.log('User message saved with ID:', userMessageDoc.id);
+    
     setNewMessage('');
 
-    // Perform real-time analysis of the user's message
-    const analysisModule = 'ChatInterface';
-    await analyzeMessage({
-      content: newMessage,
-      teamId: projectId, // Assuming the teamId is stored in projectId
-      userId,
-      messageId: conversationName, // Reference for marking reviewed
-      analysisModule,
+    // 2. Get agent response if we have an agentId
+    if (!agentId) {
+      console.log('No agentId provided - skipping agent response');
+      setLoading(false);
+      return;
+    }
+
+    // 3. Get conversation context and funnel insights
+    const funnelInsights = await fetchFunnelInsights(projectId);
+    console.log('Fetched funnel insights:', !!funnelInsights);
+
+    const currentContext = await getConversationContext();
+    console.log('Fetched conversation context:', !!currentContext);
+
+    // 4. Build full context for agent
+    const fullContext = `
+      Agent Role: ${agentContext || 'No specific role defined'}
+      
+      Project Context: ${projectName || 'No project specified'}
+      
+      Conversation Focus: ${currentContext || 'New conversation'}
+      
+      Funnel Insights: ${funnelInsights || 'No insights available'}
+      
+      User Name: ${userName || 'User'}
+    `.trim();
+
+    console.log('Sending request to chat API with context length:', fullContext.length);
+
+    // 5. Get agent response
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: fullContext },
+          { role: 'user', content: newMessage },
+        ],
+      }),
     });
 
-    // Only proceed with agent response if we have an agentId
-    if (agentId) {
-      // Fetch context from funnel analysis and chat history
-      const funnelInsights = await fetchFunnelInsights(projectId); // Custom function
-      const currentContext = await getConversationContext();
-
-      // Combine funnel insights with current context
-      const fullContext = `${agentContext}\n\nFunnel Insights:\n${funnelInsights}\n\n${currentContext}`.trim();
-
-      // Get agent response using the full context
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: fullContext },
-            { role: 'user', content: newMessage },
-          ],
-        }),
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Chat API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
       });
-
-      if (response.ok) {
-        const result = await response.json();
-        
-        // Create agent message
-        const agentMessage = {
-          content: result.reply,
-          conversationName: conversationName,
-          from: agentId,
-          isDefault: isDefault,
-          timestamp: serverTimestamp(),
-          type: 'agent',
-          ...(projectId && { projectId }),
-          ...(agentId && { agentId }),
-        };
-
-        // Add agent message to Firestore
-        await addDoc(messagesRef, agentMessage);
-      } else {
-        console.error('Error getting agent response:', await response.text());
-      }
+      throw new Error(`Chat API error: ${response.status} ${errorText}`);
     }
+
+    const result = await response.json();
+    
+    // 6. Save agent response
+    if (result.reply) {
+      const agentMessage = {
+        content: result.reply,
+        conversationName: conversationName,
+        from: agentId,
+        isDefault: isDefault,
+        timestamp: serverTimestamp(),
+        type: 'agent',
+        ...(projectId && { projectId }),
+        agentId, // Always include agentId for agent messages
+      };
+
+      const agentMessageDoc = await addDoc(messagesRef, agentMessage);
+      console.log('Agent response saved with ID:', agentMessageDoc.id);
+    }
+
   } catch (error) {
     console.error('Error in handleSendMessage:', error);
+    // Optionally save error message to chat
+    try {
+      await addDoc(collection(db, 'conversations'), {
+        content: 'Sorry, I encountered an error processing your message. Please try again.',
+        conversationName: conversationName,
+        from: agentId,
+        isDefault: isDefault,
+        timestamp: serverTimestamp(),
+        type: 'agent',
+        error: true,
+        ...(projectId && { projectId }),
+        agentId,
+      });
+    } catch (e) {
+      console.error('Error saving error message:', e);
+    }
   } finally {
     setLoading(false);
   }
 };
+
+
 
 // Function to Fetch Funnel Insights
 const fetchFunnelInsights = async (teamId) => {
