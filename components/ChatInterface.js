@@ -5,6 +5,10 @@ import { Send } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+
+import { analyzeMessage } from '../pages/api/funnelAnalyzer';
+
+
 import {
   collection,
   query,
@@ -232,142 +236,117 @@ Previous Interactions Summary:
     return () => unsubscribe();
   }, [conversationNameRef]);
 
+// Handle Sending Messages
+const handleSendMessage = async (e) => {
+  e.preventDefault();
 
-  // Handle Sending Messages
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
+  if (!newMessage.trim() || !conversationName) {
+    console.error('Missing required message or conversation name');
+    return;
+  }
 
-    if (!newMessage.trim() || !conversationName) {
-      console.error('Missing required message or conversation name');
-      return;
-    }
+  setLoading(true);
 
-    setLoading(true);
+  try {
+    // Initialize Firestore refs
+    const messagesRef = collection(db, 'conversations');
+    
+    // Create user message
+    const userMessage = {
+      content: newMessage,
+      conversationName: conversationName,
+      from: userId,
+      isDefault: isDefault,
+      timestamp: serverTimestamp(),
+      type: 'user',
+      ...(projectId && { projectId }),
+      ...(agentId && { agentId }),
+    };
 
-    try {
-      // Initialize Firestore refs
-      const messagesRef = collection(db, 'conversations');
-      
-      // Create user message
-      const userMessage = {
-        content: newMessage,
-        conversationName: conversationName,
-        from: userId,
-        isDefault: isDefault,
-        timestamp: serverTimestamp(),
-        type: 'user',
-        ...(projectId && { projectId }),
-        ...(agentId && { agentId })
-      };
+    // Add user message to Firestore
+    await addDoc(messagesRef, userMessage);
 
-      // Add user message to Firestore
-      await addDoc(messagesRef, userMessage);
+    // Clear input field immediately after sending
+    setNewMessage('');
 
-      // Clear input field immediately after sending
-      setNewMessage('');
+    // Perform real-time analysis of the user's message
+    const analysisModule = 'ChatInterface';
+    await analyzeMessage({
+      content: newMessage,
+      teamId: projectId, // Assuming the teamId is stored in projectId
+      userId,
+      messageId: conversationName, // Reference for marking reviewed
+      analysisModule,
+    });
 
-      // Only proceed with agent response if we have an agentId
-      if (agentId) {
-        // Get current conversation context
-        const currentContext = await getConversationContext();
+    // Only proceed with agent response if we have an agentId
+    if (agentId) {
+      // Fetch context from funnel analysis and chat history
+      const funnelInsights = await fetchFunnelInsights(projectId); // Custom function
+      const currentContext = await getConversationContext();
+
+      // Combine funnel insights with current context
+      const fullContext = `${agentContext}\n\nFunnel Insights:\n${funnelInsights}\n\n${currentContext}`.trim();
+
+      // Get agent response using the full context
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: fullContext },
+            { role: 'user', content: newMessage },
+          ],
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
         
-        // Get agent response using the full context
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: [
-              { 
-                role: 'system', 
-                content: `${agentContext}\n\n${currentContext}`.trim()
-              },
-              { 
-                role: 'user', 
-                content: newMessage 
-              },
-            ],
-          }),
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          
-          // Create agent message
-          const agentMessage = {
-            content: result.reply,
-            conversationName: conversationName,
-            from: agentId,
-            isDefault: isDefault,
-            timestamp: serverTimestamp(),
-            type: 'agent',
-            ...(projectId && { projectId }),
-            ...(agentId && { agentId })
-          };
-
-          // Add agent message to Firestore
-          await addDoc(messagesRef, agentMessage);
-
-          // If we're at a milestone or significant point, update the chat summary
-          if (result.reply.toLowerCase().includes('complete') || 
-              result.reply.toLowerCase().includes('finished') ||
-              result.reply.toLowerCase().includes('next step')) {
-            try {
-              await fetch('/api/analyze-chat-history', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, agentId })
-              });
-
-              // Update conversation context
-              const newContext = await getConversationContext();
-              setCurrentConversationContext(newContext);
-            } catch (error) {
-              console.error('Error updating chat summary:', error);
-              // Non-blocking error - don't throw
-            }
-          }
-        } else {
-          console.error('Error getting agent response:', await response.text());
-          // Add error message to chat
-          const errorMessage = {
-            content: "I apologize, but I encountered an error processing your request. Please try again.",
-            conversationName: conversationName,
-            from: agentId,
-            isDefault: isDefault,
-            timestamp: serverTimestamp(),
-            type: 'agent',
-            error: true,
-            ...(projectId && { projectId }),
-            ...(agentId && { agentId })
-          };
-          await addDoc(messagesRef, errorMessage);
-        }
-      }
-    } catch (error) {
-      console.error('Error in handleSendMessage:', error);
-      
-      // Add error message to chat if there was a failure
-      try {
-        const messagesRef = collection(db, 'conversations');
-        const errorMessage = {
-          content: "I apologize, but something went wrong. Please try your message again.",
+        // Create agent message
+        const agentMessage = {
+          content: result.reply,
           conversationName: conversationName,
-          from: agentId || 'system',
+          from: agentId,
           isDefault: isDefault,
           timestamp: serverTimestamp(),
           type: 'agent',
-          error: true,
           ...(projectId && { projectId }),
-          ...(agentId && { agentId })
+          ...(agentId && { agentId }),
         };
-        await addDoc(messagesRef, errorMessage);
-      } catch (errorHandlingError) {
-        console.error('Error handling error message:', errorHandlingError);
+
+        // Add agent message to Firestore
+        await addDoc(messagesRef, agentMessage);
+      } else {
+        console.error('Error getting agent response:', await response.text());
       }
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (error) {
+    console.error('Error in handleSendMessage:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Function to Fetch Funnel Insights
+const fetchFunnelInsights = async (teamId) => {
+  try {
+    const response = await fetch('/api/funnelInsights', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teamId }),
+    });
+    if (response.ok) {
+      const { insights } = await response.json();
+      return insights || 'No relevant insights found.';
+    }
+  } catch (error) {
+    console.error('Error fetching funnel insights:', error);
+  }
+  return 'No insights available.';
+};
+
+
 
   // Render component
   return (
