@@ -497,71 +497,73 @@ const Dashboard = () => {
         onMouseDown={handleSidebarResize}
       />
 
+      
+
      {/* Main Content Area */}
-     <div className="flex-1 overflow-auto bg-slate-50">
-        {currentChat ? (
-          currentChat.agentId === 'shawn' ? (
-            <ChatWithShawn 
-              currentUser={userData} 
-              isNewUser={currentChat.isNewUser}
-            />
-          ) : (
-            <ChatInterface
-              chatId={currentChat.id}
-              agentId={currentChat.agentId}
-              userId={user.uid}
-              isDefault={currentChat.isDefault}
-              title={currentChat.title}
-              conversationName={currentChat.conversationName}
-              projectId={currentChat.projectId}
-              projectName={currentChat.projectName}
-            />
-          )
-        ) : currentTool ? (
-          <div className="h-full flex flex-col">
-            <header className="border-b bg-white shadow-sm">
-              <div className="px-6 py-4">
-                <h1 className="text-2xl font-semibold text-gray-900">
-                  {currentTool === 'buyer-persona' && 'Buyer Persona Tool'}
-                  {currentTool === 'success-wheel' && 'Success Wheel Tool'}
-                  {currentTool === 'positioning-factors' && 'Positioning Factors Tool'}
-                </h1>
-              </div>
-            </header>
-            <main className="flex-1 overflow-auto">
-              {currentTool === 'buyer-persona' && (
-                <BuyerPersona 
-                  onComplete={() => setCurrentTool(null)}
-                  currentUser={userData}
-                />
-              )}
-              {currentTool === 'success-wheel' && (
-                <SuccessWheel 
-                  onComplete={() => setCurrentTool(null)}
-                  currentUser={userData}
-                />
-              )}
-              {currentTool === 'positioning-factors' && (
-                <PositioningFactors 
-                  onComplete={() => setCurrentTool(null)}
-                  currentUser={userData}
-                />
-              )}
-            </main>
-          </div>
-        ) : (
-          <DashboardContent
+<div className="flex-1 overflow-auto bg-slate-50">
+  {currentChat ? (
+    currentChat.agentId === 'shawn' ? (
+      <ChatWithShawn 
+        currentUser={userData} 
+        isNewUser={currentChat.isNewUser}
+      />
+    ) : (
+      <ChatInterface
+        chatId={currentChat.id}
+        agentId={currentChat.agentId}
+        userId={user.uid}
+        isDefault={currentChat.isDefault}
+        title={currentChat.title}
+        conversationName={currentChat.conversationName}
+        projectId={currentChat.projectId}
+        projectName={currentChat.projectName}
+      />
+    )
+  ) : currentTool ? (
+    <div className="h-full flex flex-col">
+      <header className="border-b bg-white shadow-sm">
+        <div className="px-6 py-4">
+          <h1 className="text-2xl font-semibold text-gray-900">
+            {currentTool === 'buyer-persona' && "Buyer Persona Tool"}
+            {currentTool === 'success-wheel' && "Marketing Success Wheel"}
+            {currentTool === 'positioning-factors' && "Positioning Factors"}
+          </h1>
+        </div>
+      </header>
+      <main className="flex-1 overflow-auto">
+        {currentTool === 'buyer-persona' && (
+          <BuyerPersona 
+            onComplete={() => setCurrentTool(null)} 
             currentUser={userData}
-            currentTool={currentTool}
-            setCurrentTool={setCurrentTool}
-            onToolComplete={() => setCurrentTool(null)}
-            currentChat={currentChat}
-            setCurrentChat={setCurrentChat}
           />
         )}
-      </div>
-    </div>  /* Closing div for the flex h-screen container */
-  );
+        {currentTool === 'success-wheel' && (
+          <SuccessWheel 
+            onComplete={() => setCurrentTool(null)} 
+            currentUser={userData}
+          />
+        )}
+        {currentTool === 'positioning-factors' && (
+          <PositioningFactors 
+            onComplete={() => setCurrentTool(null)} 
+            currentUser={userData}
+          />
+        )}
+      </main>
+    </div>
+  ) : (
+    <DashboardContent
+      currentUser={userData}
+      currentTool={currentTool}
+      setCurrentTool={setCurrentTool}
+      onToolComplete={() => setCurrentTool(null)}
+      currentChat={currentChat}
+      setCurrentChat={setCurrentChat}
+    />
+  )}
+</div>
+      </div>  {/* Closing div for the flex h-screen container */}
+    );
 };
 
 export default Dashboard;

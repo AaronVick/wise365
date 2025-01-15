@@ -255,6 +255,11 @@ const DashboardContent = ({
                     <Button 
                       onClick={async () => {
                         try {
+                          if (!currentUser?.uid) {
+                            console.error('No user ID available');
+                            return;
+                          }
+
                           const namesRef = collection(db, 'conversationNames');
                           const defaultNameQuery = query(
                             namesRef,
@@ -267,34 +272,36 @@ const DashboardContent = ({
                           let chatId;
 
                           if (querySnapshot.empty) {
-                            // Only create new chat if one doesn't exist
+                            // Create new conversation name document
                             const nameDoc = await addDoc(namesRef, {
                               agentId: 'shawn',
                               conversationName: 'Chat with Shawn',
                               userId: currentUser.uid,
                               isDefault: true,
                               projectName: '',
-                              timestamp: serverTimestamp()
+                              timestamp: serverTimestamp(),
+                              participants: [currentUser.uid, 'shawn'] // Add participants field
                             });
 
                             chatId = nameDoc.id;
 
-                            // Create initial welcome message
-                            await addDoc(collection(db, 'conversations'), {
+                            // Create initial conversation document
+                            const conversationsRef = collection(db, 'conversations');
+                            await addDoc(conversationsRef, {
                               agentId: 'shawn',
                               content: "Hi! I'm Shawn, your personal guide to Business Wise365. I'll help you navigate our platform and connect you with the right experts for your business needs. Are you ready to get started?",
                               conversationName: chatId,
                               from: 'shawn',
                               isDefault: true,
                               timestamp: serverTimestamp(),
-                              type: 'agent'
+                              type: 'agent',
+                              participants: [currentUser.uid, 'shawn'] // Add participants field
                             });
                           } else {
-                            // Use existing chat
                             chatId = querySnapshot.docs[0].id;
                           }
 
-                          // Set the current chat in either case
+                          // Set the current chat with all required fields
                           setCurrentChat({
                             id: chatId,
                             agentId: 'shawn',
@@ -303,8 +310,15 @@ const DashboardContent = ({
                             isDefault: true,
                             conversationName: chatId
                           });
+
+                          // Update hasShawnChat state
+                          setHasShawnChat(true);
                         } catch (error) {
                           console.error('Error handling Shawn chat:', error);
+                          // Handle the error appropriately
+                          if (error.code === 'permission-denied') {
+                            console.error('Permission denied to access Firestore');
+                          }
                         }
                       }}
                       className="bg-blue-600 hover:bg-blue-700 text-white"

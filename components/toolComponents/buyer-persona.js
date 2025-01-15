@@ -11,85 +11,80 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import Textarea from '../ui/textarea';
+import { Textarea } from '../ui/textarea';
 import { Select, SelectItem } from '../ui/select';
 import { Card } from '../ui/card';
 import FormChat from './FormChat';
 
-const BuyerPersona = ({ onComplete }) => {
-  const { currentUser } = useAuth() || {};
+const TEMPLATE_NAME = "Worlds Best Buyer Persona";  // Removed apostrophe to match Firebase
+
+const BuyerPersona = ({ onComplete, currentUser }) => {
   const [template, setTemplate] = useState(null);
   const [formData, setFormData] = useState({});
   const [lastUpdated, setLastUpdated] = useState(null);
   const [shared, setShared] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [formId] = useState(() => `bp_${Date.now()}`); // Unique ID for this form instance
+  const [formId] = useState(() => `bp_${Date.now()}`);
 
-  // Fetch the template and previous answers
   useEffect(() => {
-    const fetchTemplate = async () => {
+    const fetchTemplateAndAnswers = async () => {
       try {
-        const q = query(
+        console.log('Fetching template:', TEMPLATE_NAME); // Debug log
+        // Fetch template
+        const templateQuery = query(
           collection(db, 'resources'),
-          where('templateName', '==', "World's Best Buyer Persona")
+          where('templateName', '==', TEMPLATE_NAME)
         );
-        const querySnapshot = await getDocs(q);
+        const templateSnapshot = await getDocs(templateQuery);
+        console.log('Template query result:', templateSnapshot.size); // Debug log
 
-        if (!querySnapshot.empty) {
-          const templateData = querySnapshot.docs[0].data();
+        if (!templateSnapshot.empty) {
+          const templateData = templateSnapshot.docs[0].data();
           setTemplate(templateData);
+
+          // Fetch previous answers if user exists
+          if (currentUser?.uid) {
+            const answersQuery = query(
+              collection(db, 'resourcesData'),
+              where('templateName', '==', TEMPLATE_NAME),
+              where('userId', '==', currentUser.uid),
+              orderBy('timestamp', 'desc')
+            );
+            const answersSnapshot = await getDocs(answersQuery);
+
+            if (!answersSnapshot.empty) {
+              const lastSubmission = answersSnapshot.docs[0].data();
+              setFormData(lastSubmission.answers || {});
+              setLastUpdated(lastSubmission.timestamp?.toDate());
+            }
+          }
         } else {
-          console.warn('Template not found in Firestore');
+          console.warn('Template not found in Firestore:', TEMPLATE_NAME);
         }
       } catch (error) {
-        console.error('Error fetching template:', error);
+        console.error('Error fetching template or prior responses:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    const fetchPreviousAnswers = async () => {
-      if (!currentUser?.uid) return;
-
-      try {
-        const q = query(
-          collection(db, 'resourcesData'),
-          where('userId', '==', currentUser.uid),
-          where('templateName', '==', "World's Best Buyer Persona"),
-          orderBy('timestamp', 'desc')
-        );
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          const lastAnswer = querySnapshot.docs[0].data();
-          setFormData(lastAnswer.answers || {});
-          setLastUpdated(lastAnswer.timestamp?.toDate());
-        }
-      } catch (error) {
-        console.error('Error fetching previous answers:', error);
-      }
-    };
-
-    fetchTemplate();
-    if (currentUser) {
-      fetchPreviousAnswers();
-    }
-  }, [currentUser]);
+    fetchTemplateAndAnswers();
+  }, [currentUser?.uid]);
 
   const handleInputChange = (question, value) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       [question]: value,
     }));
   };
 
   const handleSubmit = async () => {
-    if (!template || !currentUser) return;
+    if (!template || !currentUser?.uid) return;
 
-    const allQuestionsAnswered = template.sections.every((section) =>
-      formData[section.question]?.trim()
+    const allQuestionsAnswered = template.sections.every(
+      section => formData[section.question]?.trim()
     );
 
     if (!allQuestionsAnswered) {
@@ -101,15 +96,15 @@ const BuyerPersona = ({ onComplete }) => {
       await addDoc(collection(db, 'resourcesData'), {
         userId: currentUser.uid,
         teamId: currentUser.teamId || '',
-        templateName: template.templateName,
+        templateName: TEMPLATE_NAME,
         answers: formData,
         shared,
         timestamp: serverTimestamp(),
       });
 
-      alert('Form saved successfully!');
-      setFormData({}); // Clear the form
-      onComplete(); // Return to main dashboard
+      alert('Form submitted successfully!');
+      setFormData({});
+      onComplete();
     } catch (error) {
       console.error('Error saving form data:', error);
       alert('Error saving form data. Please try again.');
@@ -132,6 +127,75 @@ const BuyerPersona = ({ onComplete }) => {
     );
   }
 
+  const renderField = (section) => {
+    const { question, options } = section;
+
+    // For Maslow's Hierarchy questions or other select options
+    if (options) {
+      return (
+        <Select
+          value={formData[question] || ''}
+          onValueChange={(value) => handleInputChange(question, value)}
+        >
+          <SelectItem value="">Select an option</SelectItem>
+          {options.map((option, idx) => (
+            <SelectItem key={idx} value={option}>
+              {option}
+            </SelectItem>
+          ))}
+        </Select>
+      );
+    }
+
+    // For URL input
+    if (question.toLowerCase().includes('url')) {
+      return (
+        <Input
+          type="url"
+          value={formData[question] || ''}
+          onChange={(e) => handleInputChange(question, e.target.value)}
+          placeholder="https://example.com"
+        />
+      );
+    }
+
+    // For age input
+    if (question.includes('old is your persona')) {
+      return (
+        <Input
+          type="number"
+          value={formData[question] || ''}
+          onChange={(e) => handleInputChange(question, e.target.value)}
+          placeholder="Age"
+          min="1"
+          max="120"
+        />
+      );
+    }
+
+    // For income input
+    if (question.includes('annual income')) {
+      return (
+        <Input
+          type="text"
+          value={formData[question] || ''}
+          onChange={(e) => handleInputChange(question, e.target.value)}
+          placeholder="Annual Income"
+        />
+      );
+    }
+
+    // Default to textarea for longer form answers
+    return (
+      <Textarea
+        value={formData[question] || ''}
+        onChange={(e) => handleInputChange(question, e.target.value)}
+        placeholder="Your answer"
+        rows={4}
+      />
+    );
+  };
+
   const formContent = (
     <div className="max-w-4xl mx-auto p-6">
       <Card className="p-6">
@@ -150,26 +214,15 @@ const BuyerPersona = ({ onComplete }) => {
               <label className="block text-sm font-medium">
                 {section.question}
               </label>
-
-              {section.options ? (
-                <Select
-                  value={formData[section.question] || ''}
-                  onValueChange={(value) => handleInputChange(section.question, value)}
-                >
-                  <SelectItem value="">Select an option</SelectItem>
-                  {section.options.map((option, idx) => (
-                    <SelectItem key={idx} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </Select>
-              ) : (
-                <Textarea
-                  value={formData[section.question] || ''}
-                  onChange={(e) => handleInputChange(section.question, e.target.value)}
-                  placeholder="Your answer"
-                />
+              {section.definition && (
+                <p className="text-sm text-gray-500 mb-2">{section.definition}</p>
               )}
+              {section.evaluationCriteria && (
+                <p className="text-sm text-gray-400 italic mb-2">
+                  {section.evaluationCriteria}
+                </p>
+              )}
+              {renderField(section)}
             </div>
           ))}
 
@@ -197,10 +250,11 @@ const BuyerPersona = ({ onComplete }) => {
 
   return (
     <FormChat
-      formName="World's Best Buyer Persona"
+      formName={TEMPLATE_NAME}
       formId={formId}
       projectId={currentUser?.teamId}
       projectName={template?.templateName}
+      currentUser={currentUser}
     >
       {formContent}
     </FormChat>
