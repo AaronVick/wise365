@@ -39,6 +39,10 @@ import { useDashboard } from '../contexts/DashboardContext';
 import { agents } from '../data/agents';
 import dynamic from 'next/dynamic';
 const MilestonesSection = dynamic(() => import('./MilestonesSection'));
+import { evaluateUserFunnels } from '../components/funnelEvaluator';
+import { useProgressAnalyzer } from '../components/ProgressAnalyzer';
+import { createFunnelProject } from '../components/FunnelActionHandler';
+
 
 
 
@@ -203,6 +207,108 @@ const DashboardContent = ({
       console.error('Error handling agent click:', error);
     }
   };
+
+  const getOnboardingFunnel = async (user) => {
+    try {
+      const funnelsRef = collection(db, 'funnels');
+      const funnelSnapshot = await getDocs(funnelsRef);
+      const allFunnels = funnelSnapshot.docs.map(doc => doc.data());
+      
+      const userFunnelData = {}; // Initialize with user's funnel data if needed
+      const evaluatedFunnels = evaluateUserFunnels(allFunnels, user, userFunnelData);
+      
+      return evaluatedFunnels.inProgress.find(
+        funnel => funnel.name.toLowerCase() === 'onboarding funnel'
+      ) || null;
+    } catch (error) {
+      console.error('Error getting onboarding funnel:', error);
+      return null;
+    }
+  };
+  
+  const gatherFunnelInsights = async (user, funnel) => {
+    try {
+      if (!funnel?.milestones?.[0]) {
+        return { nextSteps: [], insights: [], blockers: [] };
+      }
+  
+      // Instead of using the hook directly, call the API endpoint
+      const response = await fetch('/api/analyze-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.authenticationID,
+          funnel: funnel,
+          milestone: funnel.milestones[0]
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to analyze progress');
+      }
+  
+      const analysis = await response.json();
+      return analysis || { nextSteps: [], insights: [], blockers: [] };
+    } catch (error) {
+      console.error('Error gathering funnel insights:', error);
+      return { nextSteps: [], insights: [], blockers: [] };
+    }
+  };
+
+  
+  
+  const analyzeUserContext = async (user) => {
+    try {
+      // Fetch conversation history
+      const conversationsRef = collection(db, 'conversations');
+      const q = query(
+        conversationsRef,
+        where('participants', 'array-contains', user.authenticationID),
+        orderBy('timestamp', 'asc')
+      );
+      const querySnapshot = await getDocs(q);
+      const conversations = querySnapshot.docs.map(doc => doc.data());
+  
+      // Analyze chat history
+      const response = await fetch('/api/analyze-chat-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.authenticationID, conversations }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to analyze chat history');
+      }
+  
+      const analysis = await response.json();
+  
+      // Generate recommendations
+      const recommendationsResponse = await fetch('/api/analyze-user-context', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.authenticationID,
+          groupedData: analysis.groupedData,
+        }),
+      });
+  
+      if (!recommendationsResponse.ok) {
+        throw new Error('Failed to analyze user context');
+      }
+  
+      const recommendations = await recommendationsResponse.json();
+  
+      return {
+        insights: analysis.insights || [],
+        blockers: recommendations.blockers || [],
+        nextSteps: recommendations.nextSteps || [],
+      };
+    } catch (error) {
+      console.error('Error analyzing user context:', error);
+      return { insights: [], blockers: [], nextSteps: [] };
+    }
+  };
+
 
   useEffect(() => {
     let mounted = true;
