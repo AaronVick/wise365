@@ -1,266 +1,48 @@
-// /pages/admin/training.js
+// pages/admin/training.js
+// Section 1: Agent Selection
 
-// Section 1: Imports and Initial State Setup
-import { useEffect, useState, useCallback } from 'react';
-
+import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
-import PropTypes from 'prop-types';
-import dynamic from 'next/dynamic';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
-
-// Define PropTypes for the component
-const trainingDataPropTypes = {
-  id: PropTypes.string.isRequired,
-  description: PropTypes.string,
-  URL: PropTypes.string,
-  milestone: PropTypes.bool,
-  details: PropTypes.arrayOf(PropTypes.string),
-  traits: PropTypes.arrayOf(PropTypes.string),
-  tone: PropTypes.string,
-  datatype: PropTypes.string.isRequired,
-};
-
-// Constants
-const LLM_OPTIONS = [
-  { value: 'gpt-4', label: 'GPT-4' },
-  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-  { value: 'claude-3-opus', label: 'Claude 3 Opus' },
-  { value: 'claude-3-sonnet', label: 'Claude 3 Sonnet' },
-  { value: 'claude-3-haiku', label: 'Claude 3 Haiku' }
-];
-
-const DATA_TYPE_FIELDS = {
-  instructions: ['title', 'details', 'priority'],
-  personality: ['tone', 'traits', 'description'],
-  milestone: ['title', 'description', 'date', 'impact'],
-  knowledge: ['category', 'content', 'source']
-};
-
-// Main Training Component
 export default function Training() {
-  // Core data states
-  const [data, setData] = useState({});  // Changed to object for better key-based access
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
-  const [selectedLLM, setSelectedLLM] = useState('');
-  
-  // UI states
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // Form and data management states
-  const [dataTypeOptions, setDataTypeOptions] = useState([]);
-  const [editingItem, setEditingItem] = useState(null);
-  const [newKnowledge, setNewKnowledge] = useState({
-    dataType: '',
-    fields: {},
-  });
+  const [trainingData, setTrainingData] = useState([]);
+  const [loadingTrainingData, setLoadingTrainingData] = useState(false);
 
-  Training.propTypes = {
-    initialAgents: PropTypes.arrayOf(PropTypes.shape({
-      agentId: PropTypes.string.isRequired,
-      agentName: PropTypes.string.isRequired,
-      role: PropTypes.string.isRequired
-    })),
-    onError: PropTypes.func
-  };
-  
-  
-   // Section 2: Fetching Agents from Firestore
-useEffect(() => {
-  let isSubscribed = true;
-  
-  const fetchAgents = async () => {
-    if (!isSubscribed) return;
-    
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Get agents collection from Firestore
-      const agentsSnapshot = await getDocs(collection(db, 'agents'));
-      
-      if (agentsSnapshot.empty) {
-        throw new Error('No agents found in the database');
-      }
-
-      // Transform Firestore data
-      const validatedAgents = agentsSnapshot.docs
-        .map(doc => ({
+  // Fetch agents from Firestore
+  useEffect(() => {
+    const fetchAgents = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'agents'));
+        const agentList = querySnapshot.docs.map((doc) => ({
           agentId: doc.get('agentId') || doc.id,
-          agentName: doc.get('agentName') || '',
-          role: doc.get('Role') || '',
-          type: doc.get('Type') || 'Administrative'
-        }))
-        .filter(agent => agent.agentName && agent.role); // Only include agents with name and role
-
-      if (validatedAgents.length === 0) {
-        throw new Error('No valid agents found');
+          agentName: doc.get('agentName') || 'Unnamed Agent',
+          role: doc.get('Role') || 'No Role',
+        }));
+        setAgents(agentList);
+      } catch (err) {
+        console.error('Error fetching agents:', err);
+        setError('Failed to load agents.');
       }
+    };
 
-      if (isSubscribed) {
-        setAgents(validatedAgents);
-        console.debug('Fetched agents:', validatedAgents.length);
-      }
-    } catch (error) {
-      console.error('Error fetching agents:', error);
-      if (isSubscribed) {
-        setError('Failed to load agents. Please try again.');
-        setAgents([]);
-      }
-    } finally {
-      if (isSubscribed) {
-        setLoading(false);
-      }
-    }
-  };
+    fetchAgents();
+  }, []);
 
-  fetchAgents();
-  return () => { isSubscribed = false; };
-}, [db]); // Add db as dependency
-
-
-
-// Section 3: Agent Selection and Training Data Fetch
-const handleAgentSelection = async (agentId) => {
-  if (!agentId) return;
-
-  setSelectedAgent(agentId);
-  setLoading(true);
-  setError(null);
-
-  try {
-    const response = await fetch(`/api/admin/training/${agentId}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch training data');
-    }
-
-    const trainingData = await response.json();
-
-    if (!Array.isArray(trainingData?.records)) {
-      throw new Error('Invalid training data format');
-    }
-
-    // Aggregate data and update state
-    const aggregatedData = aggregateDataByType(trainingData.records);
-    setData(aggregatedData);
-
-    if (Object.keys(aggregatedData).length === 0) {
-      setError('No training data available for this agent.');
-    }
-  } catch (error) {
-    console.error('Error fetching training data:', error);
-    setError('Failed to load training data.');
-    setData({});
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-const generateDataTypeOptions = (records) => {
-  const dataTypes = new Set();
-  
-  // Add predefined types first
-  Object.keys(DATA_TYPE_FIELDS).forEach(type => dataTypes.add(type));
-  
-  // Add any additional types from existing records
-  records.forEach(record => {
-    if (record.datatype) {
-      dataTypes.add(record.datatype);
-    }
-  });
-
-  return Array.from(dataTypes).map(type => ({
-    value: type,
-    label: type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-  }));
-};
-
-const aggregateDataByType = (records) => {
-  return records.reduce((acc, record) => {
-    const { datatype } = record;
-    if (!acc[datatype]) {
-      acc[datatype] = [];
-    }
-
-    
-    // Sort records by date if available
-    acc[datatype].push(record);
-    acc[datatype].sort((a, b) => {
-      if (a.createdAt && b.createdAt) {
-        return new Date(b.createdAt) - new Date(a.createdAt);
-      }
-      return 0;
-    });
-    
-    return acc;
-  }, {});
-};
-
-
-const handleGenerateContent = async () => {
-  if (!selectedAgent || !selectedLLM) {
-    setError('Please select both an agent and an LLM model');
-    return;
-  }
-
-  setLoading(true);
-  try {
-    const response = await fetch('/api/admin/generate-training', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        agentId: selectedAgent,
-        model: selectedLLM
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to generate training content');
-    }
-
-    const result = await response.json();
-    // Refresh the training data after generation
-    await handleAgentSelection(selectedAgent);
-    setError(null);
-  } catch (error) {
-    console.error('Error generating content:', error);
-    setError('Failed to generate training content. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-// Section 4: Displaying Aggregated Data
-
-const renderAgentSelection = () => {
-  return (
+  // Render agent selection dropdown
+  const renderAgentSelection = () => (
     <div className="mb-6">
       <label className="block text-sm font-medium text-gray-700 mb-2">
         Select Agent
       </label>
       <select
         value={selectedAgent || ''}
-        onChange={(e) => handleAgentSelection(e.target.value)}
-        className="w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        disabled={loading || agents.length === 0}
+        onChange={(e) => setSelectedAgent(e.target.value)}
+        className="w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        disabled={agents.length === 0}
       >
         <option value="" disabled>
           {agents.length === 0 ? 'Loading agents...' : 'Select an Agent'}
@@ -271,394 +53,263 @@ const renderAgentSelection = () => {
           </option>
         ))}
       </select>
-      {!selectedAgent && (
+      {selectedAgent && (
         <p className="mt-2 text-sm text-gray-500">
-          Select an agent to view and manage their training data
+          Selected Agent ID: {selectedAgent}
         </p>
       )}
     </div>
   );
-};
 
+    // Section 2: Fetching and Displaying Training Data
 
-
-const renderAggregatedData = () => {
-  if (!selectedAgent) {
-    return (
-      <p className="text-gray-600">Select an agent to view their training data.</p>
-    );
-  }
-
-  if (!Object.keys(data).length) {
-    return (
-      <p className="text-gray-600">No training data available for the selected agent.</p>
-    );
-  }
-
-  return (
-    <div>
-      {Object.entries(data).map(([dataType, records]) => (
-        <div key={dataType} className="mb-6">
-          <h3 className="text-lg font-bold mb-2">
-            {dataType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {records.map((record) => (
-              <Card key={record.id} className="bg-white shadow rounded border border-gray-200">
-                <CardHeader>
-                  <h4 className="font-bold">
-                    {record.description || 'No Description Available'}
-                  </h4>
-                </CardHeader>
-                <CardContent>
-                  {record.URL && (
-                    <a
-                      href={record.URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:text-blue-700"
-                    >
-                      Learn More
-                    </a>
-                  )}
-
-                  <div className="mt-2">
-                    {record.milestone && (
-                      <p className="text-green-600 font-semibold">Milestone</p>
-                    )}
-
-                    {record.details &&
-                      Array.isArray(record.details) &&
-                      record.details.map((detail, index) => (
-                        <p key={index} className="text-sm mt-1">
-                          - {detail}
-                        </p>
-                      ))}
-
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {record.traits &&
-                        Array.isArray(record.traits) &&
-                        record.traits.map((trait, index) => (
-                          <span
-                            key={index}
-                            className="inline-block bg-gray-100 text-sm text-gray-800 px-2 py-1 rounded"
-                          >
-                            {trait}
-                          </span>
-                        ))}
-                    </div>
-
-                    {record.tone && (
-                      <p className="mt-2 italic text-gray-600">Tone: {record.tone}</p>
-                    )}
-                  </div>
-
-                  <div className="mt-4 flex justify-end">
-                    <Button
-                      onClick={() => setEditingItem(record)}
-                      className="text-sm bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+    useEffect(() => {
+      if (!selectedAgent) return;
+  
+      const fetchTrainingData = async () => {
+        setLoadingTrainingData(true);
+        try {
+          const querySnapshot = await getDocs(
+            query(collection(db, 'agentData'), where('agentId', '==', selectedAgent))
+          );
+          const records = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setTrainingData(records);
+        } catch (err) {
+          console.error('Error fetching training data:', err);
+          setError('Failed to load training data.');
+        } finally {
+          setLoadingTrainingData(false);
+        }
+      };
+  
+      fetchTrainingData();
+    }, [selectedAgent]);
+  
+    const renderTrainingData = () => {
+      if (loadingTrainingData) {
+        return (
+          <div className="text-center py-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+            <p>Loading training data...</p>
           </div>
+        );
+      }
+  
+      if (trainingData.length === 0) {
+        return <p className="text-gray-600">No training data available for this agent.</p>;
+      }
+  
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {trainingData.map((record) => (
+            <div key={record.id} className="bg-white shadow rounded border border-gray-200 p-4">
+              <h3 className="text-lg font-bold mb-2">{record.datatype || 'Unknown Type'}</h3>
+              <p className="text-sm text-gray-600 mb-2">{record.description || 'No description available.'}</p>
+              {record.details && Array.isArray(record.details) && (
+                <ul className="list-disc list-inside text-sm text-gray-600">
+                  {record.details.map((detail, idx) => (
+                    <li key={idx}>{detail}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
-  );
-};
+      );
+    };
 
-// Section 5: Adding New Records
+    
 
-const renderAddKnowledgeForm = () => {
-  const [newRecord, setNewRecord] = useState({ dataType: '', fields: {} });
 
-  const handleDataTypeChange = (event) => {
-    const selectedType = event.target.value;
-    setNewRecord({
-      dataType: selectedType,
-      fields: {},
-    });
-  };
+  // Section 3: Adding New Training Data
 
-  const handleFieldChange = (field, value) => {
-    setNewRecord((prev) => ({
-      ...prev,
-      fields: {
-        ...prev.fields,
-        [field]: value,
-      },
-    }));
-  };
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [availableDataTypes, setAvailableDataTypes] = useState([]);
+  const [selectedDataType, setSelectedDataType] = useState('');
+  const [dynamicFields, setDynamicFields] = useState([]);
+  const [newRecordFields, setNewRecordFields] = useState({});
+  const [saving, setSaving] = useState(false);
 
-  const handleAddRecord = async () => {
-    if (!newRecord.dataType || !Object.keys(newRecord.fields).length) {
-      setError('Please complete all required fields.');
-      return;
-    }
+  // Aggregate data types and fields from agentData
+  useEffect(() => {
+    const aggregateDataTypes = () => {
+      const dataTypeMap = {};
 
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/admin?tab=addRecord&agentId=${selectedAgent}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newRecord),
+      trainingData.forEach((record) => {
+        const { datatype, ...fields } = record;
+
+        if (!dataTypeMap[datatype]) {
+          dataTypeMap[datatype] = new Set();
+        }
+
+        Object.keys(fields).forEach((field) => dataTypeMap[datatype].add(field));
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to add the record');
-      }
+      const aggregatedDataTypes = Object.entries(dataTypeMap).map(([type, fields]) => ({
+        type,
+        fields: Array.from(fields),
+      }));
 
-      // Reset form and refresh data
-      setNewRecord({ dataType: '', fields: {} });
-      await handleAgentSelection(selectedAgent);
-      setError(null);
-    } catch (error) {
-      console.error('Error adding record:', error);
-      setError(error.message || 'Failed to add the record. Please try again.');
-    } finally {
-      setLoading(false);
+      setAvailableDataTypes(aggregatedDataTypes);
+    };
+
+    if (trainingData.length > 0) {
+      aggregateDataTypes();
     }
+  }, [trainingData]);
+
+  const handleDataTypeSelection = (event) => {
+    const selectedType = event.target.value;
+    setSelectedDataType(selectedType);
+
+    const selectedTypeFields = availableDataTypes.find((type) => type.type === selectedType)?.fields || [];
+    setDynamicFields(selectedTypeFields);
+
+    // Reset fields for the new record
+    setNewRecordFields({});
   };
-
-  const renderDynamicFields = () => {
-    if (!newRecord.dataType) {
-      return <p className="text-gray-600">Select a data type to see available fields.</p>;
-    }
-
-    const fields = DATA_TYPE_FIELDS[newRecord.dataType] || [];
-
-    if (!fields.length) {
-      return <p className="text-gray-600">No predefined fields available for this data type.</p>;
-    }
-
-    return fields.map((field) => (
-      <div key={field} className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {field.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-        </label>
-        <Input
-          type="text"
-          value={newRecord.fields[field] || ''}
-          onChange={(e) => handleFieldChange(field, e.target.value)}
-          className="w-full"
-        />
-      </div>
-    ));
-  };
-
-  return (
-    <div className="mt-6 bg-white p-6 rounded-lg shadow">
-      <h3 className="text-lg font-bold mb-4">Add New Record</h3>
-
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Data Type</label>
-        <Select
-          value={newRecord.dataType}
-          onChange={handleDataTypeChange}
-          className="w-full"
-        >
-          <option value="" disabled>Select a Data Type</option>
-          {dataTypeOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-      </div>
-
-      {renderDynamicFields()}
-
-      <div className="mt-6">
-        <Button
-          onClick={handleAddRecord}
-          className="w-full bg-blue-500 text-white disabled:opacity-50"
-          disabled={loading}
-        >
-          {loading ? 'Adding...' : 'Add Record'}
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-// Section 6: Editing Existing Records
-
-const renderEditModal = () => {
-  const [editedRecord, setEditedRecord] = useState(null);
-
-  useEffect(() => {
-    if (editingItem) {
-      setEditedRecord({ ...editingItem });
-    }
-  }, [editingItem]);
 
   const handleFieldChange = (field, value) => {
-    setEditedRecord((prev) => ({
+    setNewRecordFields((prev) => ({
       ...prev,
       [field]: value,
     }));
   };
 
-  const handleSaveChanges = async () => {
-    if (!editedRecord) {
-      setError('No changes to save.');
+  const handleSaveRecord = async () => {
+    if (!selectedAgent || !selectedDataType) {
+      setError('Please select an agent and a data type.');
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
     try {
-      const response = await fetch(`/api/admin?tab=editRecord&agentId=${selectedAgent}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(editedRecord),
-      });
+      const newRecord = {
+        agentId: selectedAgent,
+        datatype: selectedDataType,
+        ...newRecordFields,
+      };
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update the record');
-      }
+      const docRef = collection(db, 'agentData');
+      await docRef.add(newRecord);
 
-      setEditingItem(null);
-      await handleAgentSelection(selectedAgent);
+      // Refresh training data after saving
+      setTrainingData((prev) => [...prev, newRecord]);
+      setIsFormOpen(false);
       setError(null);
-    } catch (error) {
-      console.error('Error updating record:', error);
-      setError(error.message || 'Failed to update the record. Please try again.');
+    } catch (err) {
+      console.error('Error saving new record:', err);
+      setError('Failed to save new record.');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  const renderDynamicFields = () => {
-    if (!editedRecord) return null;
+  const renderAddForm = () => {
+    if (!isFormOpen) return null;
 
-    const fields = Object.keys(editedRecord).filter(
-      (key) => !['id', 'agentId', 'dataType', 'createdAt', 'updatedAt'].includes(key)
-    );
+    return (
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-bold mb-4">Add New Training Data</h3>
 
-    return fields.map((field) => (
-      <div key={field} className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {field.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-        </label>
-        {Array.isArray(editedRecord[field]) ? (
-          <div className="space-y-2">
-            {editedRecord[field].map((item, index) => (
-              <Input
-                key={index}
-                type="text"
-                value={item}
-                onChange={(e) => {
-                  const updatedArray = [...editedRecord[field]];
-                  updatedArray[index] = e.target.value;
-                  handleFieldChange(field, updatedArray);
-                }}
-                className="w-full"
-              />
-            ))}
-            <Button
-              onClick={() => {
-                const updatedArray = [...editedRecord[field], ''];
-                handleFieldChange(field, updatedArray);
-              }}
-              className="text-sm bg-gray-100 hover:bg-gray-200"
-            >
-              Add Item
-            </Button>
-          </div>
-        ) : (
-          <Input
-            type="text"
-            value={editedRecord[field] || ''}
-            onChange={(e) => handleFieldChange(field, e.target.value)}
-            className="w-full"
-          />
-        )}
-      </div>
-    ));
-  };
-
-  return (
-    <div className={`fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center ${
-      editingItem ? 'visible' : 'hidden'
-    }`}>
-      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold">Edit Record</h3>
-          <Button
-            onClick={() => setEditingItem(null)}
-            className="text-gray-500 hover:text-gray-700"
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Data Type</label>
+          <select
+            value={selectedDataType}
+            onChange={handleDataTypeSelection}
+            className="w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm"
           >
-            ×
-          </Button>
+            <option value="" disabled>
+              Select a Data Type
+            </option>
+            {availableDataTypes.map(({ type }) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
-          {renderDynamicFields()}
-        </div>
+        {dynamicFields.length > 0 && (
+          <div>
+            {dynamicFields.map((field) => (
+              <div key={field} className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">{field}</label>
+                <input
+                  type="text"
+                  value={newRecordFields[field] || ''}
+                  onChange={(e) => handleFieldChange(field, e.target.value)}
+                  className="w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm"
+                />
+              </div>
+            ))}
+          </div>
+        )}
 
-        <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
-          <Button
-            onClick={() => setEditingItem(null)}
-            className="bg-gray-100 hover:bg-gray-200"
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={() => setIsFormOpen(false)}
+            className="px-4 py-2 bg-gray-200 rounded shadow"
           >
             Cancel
-          </Button>
-          <Button
-            onClick={handleSaveChanges}
-            className="bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
-            disabled={loading}
+          </button>
+          <button
+            onClick={handleSaveRecord}
+            className="px-4 py-2 bg-blue-500 text-white rounded shadow"
+            disabled={saving}
           >
-            {loading ? 'Saving...' : 'Save Changes'}
-          </Button>
+            {saving ? 'Saving...' : 'Save'}
+          </button>
         </div>
       </div>
-    </div>
+    );
+  };
+
+  const renderAddButton = () => (
+    <button
+      onClick={() => setIsFormOpen(true)}
+      className="px-4 py-2 bg-green-500 text-white rounded shadow mb-6"
+    >
+      Add New Training Data
+    </button>
   );
-};
 
-// Section 7: Final Component Render
 
-return (
-  <div className="p-6">
-    <div className="flex justify-between items-center mb-6">
-      <h2 className="text-2xl font-bold">Agent Training Data</h2>
-      
-    </div>
+    // Final Render Section
 
-    {error && (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-        {error}
+    return (
+      <div className="p-6">
+        <h2 className="text-2xl font-bold mb-4">Agent Training Data</h2>
+  
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+  
+        {/* Agent Selection Dropdown */}
+        {renderAgentSelection()}
+  
+        {/* Training Data Display */}
+        {selectedAgent && (
+          <>
+            <div className="mt-6">
+              <h3 className="text-xl font-semibold mb-4">Training Data</h3>
+              {renderTrainingData()}
+            </div>
+  
+            {/* Add New Training Data */}
+            <div className="mt-6">
+              {renderAddButton()}
+              {renderAddForm()}
+            </div>
+          </>
+        )}
       </div>
-    )}
-
-    {renderAgentSelection()}
-
-    {loading && (
-      <div className="text-center py-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-      </div>
-    )}
-
-    {!loading && selectedAgent && (
-      <>
-        {renderAggregatedData()}
-        {renderAddKnowledgeForm()}
-        {editingItem && renderEditModal()}
-      </>
-    )}
-  </div>
-);
-
-} // End of Training component export default Training;
+    );
+  }
+  
