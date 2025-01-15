@@ -212,6 +212,7 @@ export default function Prompts() {
       <h2 className="text-xl font-bold mb-4">Manage Prompts</h2>
       {error && <div className="text-red-500">{error}</div>}
   
+      {/* Dropdown for selecting an agent */}
       <select
         className="p-2 border rounded w-full mb-4"
         value={selectedAgent || ''}
@@ -225,6 +226,7 @@ export default function Prompts() {
         ))}
       </select>
   
+      {/* Dropdown for selecting LLM */}
       <select
         className="p-2 border rounded w-full mb-4"
         value={selectedLLM}
@@ -236,6 +238,7 @@ export default function Prompts() {
         <option value="OpenAI">OpenAI (ChatGPT)</option>
       </select>
   
+      {/* Section for generating new prompt */}
       <div className="mb-8 bg-white shadow rounded p-6">
         <h3 className="text-xl font-semibold mb-4">Prompt Management</h3>
         <div className="grid grid-cols-1 gap-4">
@@ -266,6 +269,7 @@ export default function Prompts() {
         </div>
       </div>
   
+      {/* Section for displaying existing prompts */}
       {selectedAgent && prompts && (
         <div className="mt-8 bg-white shadow rounded p-6">
           <h3 className="text-lg font-semibold mb-4">
