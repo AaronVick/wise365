@@ -95,50 +95,7 @@ export default function Prompts() {
     }
   };
 
-  const handlePromptUpdate = async (llmType, newPrompt) => {
-    if (!selectedAgent || !llmType) return; // Ensure valid agent and LLM type
-    setLoading(true);
-
-    try {
-      // Fetch existing data for the selected agent
-      const agentDoc = doc(db, 'agentsDefined', selectedAgent);
-      const currentData = await getDoc(agentDoc);
-      const existingPrompts = currentData.exists() ? currentData.data().prompt || {} : {};
-
-      // Update or add the prompt for the specific LLM
-      const updatedPrompts = {
-        ...existingPrompts,
-        [llmType]: {
-          description: newPrompt,
-          version: getLLMVersion(llmType), // Ensure version consistency for the LLM
-        },
-      };
-
-      if (currentData.exists()) {
-        // Update the existing Firestore document
-        await updateDoc(agentDoc, { 
-          prompt: updatedPrompts,
-          lastUpdated: new Date(),
-        });
-      } else {
-        // Create a new document if it doesn't exist
-        await setDoc(agentDoc, {
-          agentId: agents.find((a) => a.id === selectedAgent)?.agentName,
-          prompt: updatedPrompts,
-          lastUpdated: new Date(),
-        });
-      }
-
-      setPrompts(updatedPrompts); // Update the state to reflect the changes
-      alert(`Prompt for ${llmType} updated successfully!`);
-    } catch (err) {
-      console.error('Error updating prompt:', err);
-      alert('Failed to update prompt. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  
 
 
   const fetchAgentData = async (selectedDocId) => {
