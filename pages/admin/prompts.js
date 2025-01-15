@@ -299,10 +299,8 @@ export default function Prompts() {
             ) : (
               <div className="text-gray-500">No prompts available for this agent.</div>
             )}
-          </div>
-        )}
+            </div>
+          )}
         </div>
-      )}
-    </div>
-  );
-}
+      );
+    }
