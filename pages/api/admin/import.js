@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       existingData.add(key);
     });
 
-    const batch = db.batch();
+    let currentBatch = db.batch();
     let importCount = 0;
     let skipCount = 0;
 
@@ -54,9 +54,9 @@ export default async function handler(req, res) {
       const docRef = db.collection('agentData').doc();
       const timestamp = new Date().toISOString();
 
-      batch.set(docRef, {
+      currentBatch.set(docRef, {  // Changed from batch.set to currentBatch.set
         ...record,
-        agentId, // Use the mapped agent ID instead of the name
+        agentId,
         createdAt: timestamp,
         updatedAt: timestamp,
       });
@@ -66,15 +66,15 @@ export default async function handler(req, res) {
 
       // Firebase has a limit of 500 operations per batch
       if (importCount % 400 === 0) {
-        await batch.commit();
+        await currentBatch.commit();  // Changed from batch.commit to currentBatch.commit
         console.log(`Committed batch of ${importCount} records`);
-        batch = db.batch(); // Start a new batch
+        currentBatch = db.batch();  // Reassign to new batch
       }
     }
 
     // Commit any remaining records
     if (importCount % 400 !== 0) {
-      await batch.commit();
+      await currentBatch.commit();  // Changed from batch.commit to currentBatch.commit
     }
 
     console.log('Import completed successfully.');
