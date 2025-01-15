@@ -270,8 +270,8 @@ export default function Prompts() {
         </div>
       </div>
   
-      {/* Section for displaying existing prompts */}
-      {selectedAgent && prompts && (
+   {/* Section for displaying existing prompts */}
+   {selectedAgent && prompts && (
         <div className="mt-8 bg-white shadow rounded p-6">
           <h3 className="text-lg font-semibold mb-4">
             Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
@@ -294,5 +294,5 @@ export default function Prompts() {
         </div>
       )}
     </div>
-  );  
-  
+  );
+}
