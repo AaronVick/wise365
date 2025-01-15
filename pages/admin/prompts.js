@@ -95,58 +95,45 @@ export default function Prompts() {
     }
   };
 
-
   const handlePromptUpdate = async (llmType, newPrompt) => {
-    if (!selectedAgent || !llmType) return;
+    if (!selectedAgent || !llmType) return; // Ensure valid agent and LLM type
     setLoading(true);
 
     try {
-      const agent = agents.find(a => a.id === selectedAgent);
-      if (!agent) throw new Error('Agent not found');
+      // Fetch existing data for the selected agent
+      const agentDoc = doc(db, 'agentsDefined', selectedAgent);
+      const currentData = await getDoc(agentDoc);
+      const existingPrompts = currentData.exists() ? currentData.data().prompt || {} : {};
 
-      // Query for existing document with matching agentId
-      const querySnapshot = await getDocs(collection(db, 'agentsDefined'));
-      const existingDoc = querySnapshot.docs.find(doc => doc.data().agentId === agent.agentName);
-
-      const promptData = {
-        description: newPrompt,
-        version: llmType === 'Anthropic' ? 'Claude-3_5-Sonet' : 'ChatGPT-4',
+      // Update or add the prompt for the specific LLM
+      const updatedPrompts = {
+        ...existingPrompts,
+        [llmType]: {
+          description: newPrompt,
+          version: getLLMVersion(llmType), // Ensure version consistency for the LLM
+        },
       };
 
-      if (existingDoc) {
-        // Update existing document
-        const currentData = existingDoc.data();
-        const updatedPrompts = {
-          ...currentData.prompt,
-          [llmType]: promptData,
-        };
-
-        await updateDoc(doc(db, 'agentsDefined', existingDoc.id), {
+      if (currentData.exists()) {
+        // Update the existing Firestore document
+        await updateDoc(agentDoc, { 
           prompt: updatedPrompts,
           lastUpdated: new Date(),
         });
       } else {
-        // Create new document
-        const docRef = doc(collection(db, 'agentsDefined'));
-        await setDoc(docRef, {
-          agentId: agent.agentName,
-          prompt: {
-            [llmType]: promptData,
-          },
+        // Create a new document if it doesn't exist
+        await setDoc(agentDoc, {
+          agentId: agents.find((a) => a.id === selectedAgent)?.agentName,
+          prompt: updatedPrompts,
           lastUpdated: new Date(),
         });
       }
 
-      // Update local state
-      setPrompts(prevPrompts => ({
-        ...prevPrompts,
-        [llmType]: promptData,
-      }));
-
+      setPrompts(updatedPrompts); // Update the state to reflect the changes
       alert(`Prompt for ${llmType} updated successfully!`);
     } catch (err) {
       console.error('Error updating prompt:', err);
-      setError('Failed to update prompt. Please try again.');
+      alert('Failed to update prompt. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -271,6 +258,50 @@ export default function Prompts() {
         </div>
       )}
 
+      {/* Dropdown for selecting LLM */}
+      <select
+        className="p-2 border rounded w-full mb-4"
+        value={selectedLLM}
+        onChange={(e) => setSelectedLLM(e.target.value)}
+        disabled={!selectedAgent}
+      >
+        <option value="" disabled>
+          Select LLM
+        </option>
+        <option value="Anthropic">Anthropic (Claude)</option>
+        <option value="OpenAI">OpenAI (ChatGPT)</option>
+      </select>
+
+      {/* Section for generating new prompt */}
+      <div className="mb-8 bg-white shadow rounded p-6">
+        <h3 className="text-xl font-semibold mb-4">Prompt Management</h3>
+        <div className="grid grid-cols-1 gap-4">
+          <div className="flex gap-4">
+            <button
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+              onClick={handleGeneratePrompt}
+              disabled={!selectedAgent || !selectedLLM || generatingPrompt}
+            >
+              {generatingPrompt ? 'Generating...' : 'Generate New Prompt'}
+            </button>
+          </div>
+
+          {generatedPrompt && (
+            <div className="mt-4">
+              <h4 className="font-medium mb-2">Generated Prompt:</h4>
+              <div className="bg-gray-50 p-4 rounded mb-4 whitespace-pre-wrap">
+                {generatedPrompt}
+              </div>
+              <button
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                onClick={() => handlePromptUpdate(selectedLLM, generatedPrompt)}
+              >
+                Save & Update Agent Prompt
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
       {selectedAgent && prompts && (
         <div className="mt-8 bg-white shadow rounded p-6">
           <h3 className="text-lg font-semibold mb-4">
