@@ -1,6 +1,9 @@
 // pages/api/updateAgentData.js
 
-import { db } from "@/lib/firebase";
+import { getFirestore } from 'firebase-admin/firestore';
+import "@/lib/firebaseAdmin"; // Ensure Admin SDK is initialized
+
+const db = getFirestore();
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -22,7 +25,9 @@ export default async function handler(req, res) {
     let query = db.collection('agentData').orderBy('__name__').limit(batchSize);
     if (lastProcessedId) {
       const lastDoc = await db.collection('agentData').doc(lastProcessedId).get();
-      query = query.startAfter(lastDoc);
+      if (lastDoc.exists) {
+        query = query.startAfter(lastDoc);
+      }
     }
 
     const snapshot = await query.get();
@@ -30,7 +35,7 @@ export default async function handler(req, res) {
     let lastId = null;
 
     // Process each document in the batch
-    for (const doc of snapshot.docs) {
+    snapshot.forEach((doc) => {
       const data = doc.data();
       const agentId = data.agentId;
       lastId = doc.id;
@@ -44,11 +49,11 @@ export default async function handler(req, res) {
         });
 
         // Update the document
-        await db.collection('agentData').doc(doc.id).update({
+        db.collection('agentData').doc(doc.id).update({
           agentId: newAgentId,
         });
       }
-    }
+    });
 
     // Return the results
     return res.status(200).json({
