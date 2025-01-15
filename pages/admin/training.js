@@ -2,6 +2,10 @@
 
 // Section 1: Imports and Initial State Setup
 import { useEffect, useState, useCallback } from 'react';
+
+import { db } from '@/lib/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+
 import PropTypes from 'prop-types';
 import dynamic from 'next/dynamic';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
