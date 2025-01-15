@@ -269,6 +269,65 @@ const handleGenerateContent = async () => {
 
 // Section 4: Displaying Aggregated Data
 
+const renderAgentSelection = () => {
+  return (
+    <div className="grid gap-6 mb-6 md:grid-cols-2">
+      {/* Agent Selection */}
+      <div className="w-full">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Select Agent
+        </label>
+        <Select
+          value={selectedAgent || ''}
+          onChange={(e) => handleAgentSelection(e.target.value)}
+          className="w-full"
+          disabled={loading || agents.length === 0}
+        >
+          <option value="" disabled>
+            {agents.length === 0 ? 'Loading agents...' : 'Select an Agent'}
+          </option>
+          {agents.map((agent) => (
+            <option key={agent.agentId} value={agent.agentId}>
+              {agent.agentName}: {agent.role}
+            </option>
+          ))}
+        </Select>
+        {!selectedAgent && (
+          <p className="mt-2 text-sm text-gray-500">
+            Select an agent to view and manage their training data
+          </p>
+        )}
+      </div>
+
+      {/* LLM Selection */}
+      <div className="w-full">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Select LLM for Generation
+        </label>
+        <Select
+          value={selectedLLM}
+          onChange={(e) => setSelectedLLM(e.target.value)}
+          className="w-full"
+          disabled={!selectedAgent}
+        >
+          <option value="" disabled>
+            Select an LLM
+          </option>
+          {LLM_OPTIONS.map((llm) => (
+            <option key={llm.value} value={llm.value}>
+              {llm.label}
+            </option>
+          ))}
+        </Select>
+        <p className="mt-2 text-sm text-gray-500">
+          Choose an LLM to generate training content
+        </p>
+      </div>
+    </div>
+  );
+};
+
+
 const renderAggregatedData = () => {
   if (!selectedAgent) {
     return (
