@@ -239,158 +239,180 @@ const DashboardContent = ({
         <div className="space-y-6 max-w-5xl mx-auto">
 
 
-          {/* Welcome Card */}
-            {!hasShawnChat && (
-              <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                    <span className="text-blue-600 font-semibold">S</span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Welcome to Business Wise365!</h3>
-                    <p className="text-gray-600 mb-4">
-                      Hi, I'm Shawn, your personal guide to our AI team. I'll help you navigate our
-                      platform and connect you with the right experts for your business needs.
-                    </p>
-                    <Button 
-                      onClick={async () => {
-                        try {
-                          if (!currentUser?.uid) {
-                            console.error('No user ID available');
-                            return;
-                          }
+         {/* Welcome Card */}
+{!hasShawnChat && (
+  <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
+    <div className="flex items-start space-x-4">
+      <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+        <span className="text-blue-600 font-semibold">S</span>
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold mb-2">Welcome to Business Wise365!</h3>
+        <p className="text-gray-600 mb-4">
+          Hi, I'm Shawn, your personal guide to our AI team. I'll help you navigate our
+          platform and connect you with the right experts for your business needs.
+        </p>
+        <Button 
+          onClick={async () => {
+            try {
+              console.log('Starting Shawn chat initialization...'); // Debug log
+              
+              // Check if we have the required user data
+              if (!currentUser?.uid && !currentUser?.id) {
+                console.error('No user identifier available:', currentUser);
+                return;
+              }
 
-                          // Create or get conversation name
-                          const namesRef = collection(db, 'conversationNames');
-                          const defaultNameQuery = query(
-                            namesRef,
-                            where('agentId', '==', 'shawn'),
-                            where('userId', '==', currentUser.uid),
-                            where('isDefault', '==', true)
-                          );
-                          
-                          const querySnapshot = await getDocs(defaultNameQuery);
-                          let chatId;
-                          let isNewUser = false;
+              // Use the appropriate user identifier (either Firebase UID or custom ID)
+              const userId = currentUser.uid || currentUser.id;
+              
+              // Create or get conversation name
+              const namesRef = collection(db, 'conversationNames');
+              console.log('Checking for existing Shawn chat...'); // Debug log
+              
+              const defaultNameQuery = query(
+                namesRef,
+                where('agentId', '==', 'shawn'),
+                where('userId', '==', userId),
+                where('isDefault', '==', true)
+              );
+              
+              const querySnapshot = await getDocs(defaultNameQuery);
+              let chatId;
+              let isNewUser = false;
 
-                          if (querySnapshot.empty) {
-                            isNewUser = true;
-                            // Create new conversation name document
-                            const nameDoc = await addDoc(namesRef, {
-                              agentId: 'shawn',
-                              conversationName: 'Chat with Shawn',
-                              userId: currentUser.uid,
-                              isDefault: true,
-                              projectName: '',
-                              timestamp: serverTimestamp(),
-                              participants: [currentUser.uid, 'shawn']
-                            });
+              if (querySnapshot.empty) {
+                console.log('No existing chat found, creating new one...'); // Debug log
+                isNewUser = true;
 
-                            chatId = nameDoc.id;
+                // Create new conversation name document
+                const nameDoc = await addDoc(namesRef, {
+                  agentId: 'shawn',
+                  conversationName: 'Chat with Shawn',
+                  userId: userId,
+                  isDefault: true,
+                  projectName: '',
+                  timestamp: serverTimestamp(),
+                  participants: [userId, 'shawn'],
+                  teamId: currentUser.teamId, // Include team ID if present
+                  userRole: currentUser.role // Include user role if present
+                });
 
-                            // Get onboarding funnel analysis
-                            const onboardingFunnel = await getOnboardingFunnel(currentUser);
-                            const insights = await gatherFunnelInsights(currentUser, onboardingFunnel);
-                            const userContext = await analyzeUserContext(currentUser);
+                chatId = nameDoc.id;
+                console.log('Created new chat with ID:', chatId); // Debug log
 
-                            // Prepare context for LLM
-                            const contextPayload = {
-                              user: {
-                                name: currentUser.name,
-                                role: currentUser.role || "team member",
-                              },
-                              funnel: {
-                                name: onboardingFunnel?.name,
-                                milestones: onboardingFunnel?.milestones?.map(m => m.name) || [],
-                                insights: insights?.nextSteps || [],
-                                blockers: insights?.blockers || [],
-                              },
-                              userContext: {
-                                insights: userContext?.insights || [],
-                                blockers: userContext?.blockers || [],
-                                nextSteps: userContext?.nextSteps || [],
-                              },
-                              agent: {
-                                name: "Shawn",
-                                role: "Tool Guidance Assistant",
-                              },
-                            };
+                // Get onboarding funnel analysis
+                const onboardingFunnel = await getOnboardingFunnel(currentUser);
+                const insights = await gatherFunnelInsights(currentUser, onboardingFunnel);
+                const userContext = await analyzeUserContext(currentUser);
 
-                            // Get LLM-generated opening message
-                            const llmResponse = await fetch('/api/chat', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                messages: [
-                                  {
-                                    role: 'system',
-                                    content: `You are Shawn, the guidance assistant for Business Wise365. Based on the following context, generate a personalized welcome message and initial guidance for the user. Consider their role, any identified needs or blockers, and suggest relevant next steps or tools that would be most beneficial for them.
+                // Prepare context for LLM
+                const contextPayload = {
+                  user: {
+                    name: currentUser.name,
+                    role: currentUser.role,
+                    teamId: currentUser.teamId,
+                    // Include other relevant user data but not sensitive info
+                  },
+                  funnel: {
+                    name: onboardingFunnel?.name,
+                    milestones: onboardingFunnel?.milestones?.map(m => m.name) || [],
+                    insights: insights?.nextSteps || [],
+                    blockers: insights?.blockers || [],
+                  },
+                  userContext: {
+                    insights: userContext?.insights || [],
+                    blockers: userContext?.blockers || [],
+                    nextSteps: userContext?.nextSteps || [],
+                  },
+                  agent: {
+                    name: "Shawn",
+                    role: "Tool Guidance Assistant",
+                  },
+                };
 
-            Context:
-            ${JSON.stringify(contextPayload, null, 2)}
+                // Get LLM-generated opening message
+                const llmResponse = await fetch('/api/chat', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    messages: [
+                      {
+                        role: 'system',
+                        content: `You are Shawn, the guidance assistant for Business Wise365. Based on the following context, generate a personalized welcome message and initial guidance for the user. Consider their role, any identified needs or blockers, and suggest relevant next steps or tools that would be most beneficial for them.
 
-            Focus on being helpful and specific while maintaining a friendly, conversational tone. If there are clear next steps or tools that would benefit the user, mention them specifically.`
-                                  },
-                                  {
-                                    role: 'user',
-                                    content: 'Generate an appropriate welcome message and initial guidance based on the provided context.'
-                                  }
-                                ]
-                              }),
-                            });
+Context:
+${JSON.stringify(contextPayload, null, 2)}
 
-                            if (!llmResponse.ok) {
-                              throw new Error('Failed to generate welcome message');
-                            }
+Focus on being helpful and specific while maintaining a friendly, conversational tone. If there are clear next steps or tools that would benefit the user, mention them specifically.`
+                      },
+                      {
+                        role: 'user',
+                        content: 'Generate an appropriate welcome message and initial guidance based on the provided context.'
+                      }
+                    ]
+                  }),
+                });
 
-                            const { reply: welcomeContent } = await llmResponse.json();
+                if (!llmResponse.ok) {
+                  throw new Error('Failed to generate welcome message');
+                }
 
-                            // Create initial message with LLM-generated content
-                            const welcomeMessage = {
-                              agentId: 'shawn',
-                              content: welcomeContent,
-                              conversationName: chatId,
-                              from: 'shawn',
-                              isDefault: true,
-                              timestamp: serverTimestamp(),
-                              type: 'agent',
-                              participants: [currentUser.uid, 'shawn']
-                            };
+                const { reply: welcomeContent } = await llmResponse.json();
 
-                            const messagesRef = collection(db, 'conversations');
-                            await addDoc(messagesRef, welcomeMessage);
-                          } else {
-                            chatId = querySnapshot.docs[0].id;
-                          }
+                // Create initial message with LLM-generated content
+                const messagesRef = collection(db, 'conversations');
+                await addDoc(messagesRef, {
+                  agentId: 'shawn',
+                  content: welcomeContent,
+                  conversationName: chatId,
+                  from: 'shawn',
+                  isDefault: true,
+                  timestamp: serverTimestamp(),
+                  type: 'agent',
+                  participants: [userId, 'shawn'],
+                  teamId: currentUser.teamId,
+                  userRole: currentUser.role
+                });
+              } else {
+                console.log('Found existing chat'); // Debug log
+                chatId = querySnapshot.docs[0].id;
+              }
 
-                          // Set the current chat using the existing ChatInterface structure
-                          setCurrentChat({
-                            id: chatId,
-                            agentId: 'shawn',
-                            title: 'Chat with Shawn',
-                            participants: [currentUser.uid, 'shawn'],
-                            isDefault: true,
-                            conversationName: chatId
-                          });
+              // Set the current chat
+              const chatData = {
+                id: chatId,
+                agentId: 'shawn',
+                title: 'Chat with Shawn',
+                participants: [userId, 'shawn'],
+                isDefault: true,
+                conversationName: chatId,
+                teamId: currentUser.teamId
+              };
+              
+              console.log('Setting current chat with data:', chatData); // Debug log
+              setCurrentChat(chatData);
+              setHasShawnChat(true);
 
-                          // Update hasShawnChat state
-                          setHasShawnChat(true);
+            } catch (error) {
+              console.error('Error in Shawn chat initialization:', error);
+              console.error('Error details:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+                code: error.code
+              });
+            }
+          }}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          Chat with Shawn
+        </Button>
+      </div>
+    </div>
+  </Card>
+)}
 
-                        } catch (error) {
-                          console.error('Error handling Shawn chat:', error);
-                          if (error.code === 'permission-denied') {
-                            console.error('Permission denied to access Firestore');
-                          }
-                        }
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      Chat with Shawn
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            )}
 
 
 
