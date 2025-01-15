@@ -306,8 +306,7 @@ export default function Prompts() {
         </div>
       )}
          
-        </div>
-      )}
+      
     </div>
   );
 } 
