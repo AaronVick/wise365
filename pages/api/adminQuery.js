@@ -49,7 +49,7 @@ async function validateWithLLM(codeSnippet) {
   try {
     const prompt = `
       Validate the following JavaScript code snippet for securely performing Firebase operations. Check for:
-      - Proper use of Firebase Firestore APIs (collection, doc, getDocs, updateDoc, etc.).
+      - Proper use of Firebase Firestore APIs (collection, doc, getDocs, updateDoc, query, limit, startAfter, etc.).
       - Syntax correctness.
       - Logical completeness of the operations.
 
