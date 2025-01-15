@@ -23,6 +23,7 @@ export default function Prompts() {
           id: doc.id,
           ...doc.data(),
         }));
+        console.log('Fetched agents:', agentList); // Debug log
         setAgents(agentList);
       } catch (err) {
         console.error('Error fetching agents:', err);
@@ -39,27 +40,23 @@ export default function Prompts() {
     try {
       console.log(`Fetching agent definition for agentId: ${agentId}`);
       
-      // First, find the agent record to get the correct agentId value
-      const agent = agents.find(a => a.id === agentId);
-      if (!agent) {
-        console.warn('Agent not found');
+      // Get the specific document from agentsDefined collection
+      const docRef = doc(db, 'agentsDefined', agentId);
+      const docSnap = await getDoc(docRef);
+      
+      console.log('Document exists:', docSnap.exists()); // Debug log
+      
+      if (!docSnap.exists()) {
+        console.warn(`No document found for ID: ${agentId}`);
         return null;
       }
 
-      // Query agentsDefined collection using the agent's name as the agentId field
-      const querySnapshot = await getDocs(collection(db, 'agentsDefined'));
-      const agentDef = querySnapshot.docs.find(doc => doc.data().agentId === agent.agentName);
-
-      if (!agentDef) {
-        console.warn(`No record found for agentId: ${agent.agentName}`);
-        return null;
-      }
-
-      const data = agentDef.data();
-      console.log(`Fetched data:`, data);
+      const data = docSnap.data();
+      console.log('Raw document data:', data); // Debug log
+      console.log('Prompt field:', data.prompt); // Debug log
 
       return {
-        id: agentDef.id,
+        id: docSnap.id,
         ...data,
         prompt: data.prompt || {},
       };
@@ -70,29 +67,23 @@ export default function Prompts() {
   };
 
   const handleAgentSelection = async (agentId) => {
+    console.log('Selected agent ID:', agentId); // Debug log
     setSelectedAgent(agentId);
     setLoading(true);
     setError(null);
 
     try {
       const agentDefinition = await fetchAgentDefinition(agentId);
+      console.log('Fetched agent definition:', agentDefinition); // Debug log
 
       if (agentDefinition && agentDefinition.prompt) {
-        // Convert prompt data to expected format if necessary
-        const formattedPrompts = {};
+        console.log('Raw prompts data:', agentDefinition.prompt); // Debug log
         
-        // Handle both lowercase and proper case LLM names
-        if (agentDefinition.prompt.Anthropic || agentDefinition.prompt.anthropic) {
-          formattedPrompts.Anthropic = agentDefinition.prompt.Anthropic || agentDefinition.prompt.anthropic;
-        }
-        
-        if (agentDefinition.prompt.OpenAI || agentDefinition.prompt.openAI) {
-          formattedPrompts.OpenAI = agentDefinition.prompt.OpenAI || agentDefinition.prompt.openAI;
-        }
-
-        console.log('Formatted prompts:', formattedPrompts);
-        setPrompts(formattedPrompts);
+        // Directly use the prompt object as is
+        setPrompts(agentDefinition.prompt);
+        console.log('Setting prompts state to:', agentDefinition.prompt); // Debug log
       } else {
+        console.log('No prompts found, setting empty object'); // Debug log
         setPrompts({});
       }
     } catch (err) {
@@ -257,7 +248,6 @@ export default function Prompts() {
       <h2 className="text-xl font-bold mb-4">Manage Prompts</h2>
       {error && <div className="text-red-500">{error}</div>}
 
-      {/* Dropdown for selecting an agent */}
       <select
         className="p-2 border rounded w-full mb-4"
         value={selectedAgent || ''}
@@ -268,62 +258,20 @@ export default function Prompts() {
         </option>
         {agents.map((agent) => (
           <option key={agent.id} value={agent.id}>
-            {agent.agentName}
+            {agent.agentName} ({agent.id})
           </option>
         ))}
       </select>
 
-      {/* Dropdown for selecting LLM */}
-      <select
-        className="p-2 border rounded w-full mb-4"
-        value={selectedLLM}
-        onChange={(e) => setSelectedLLM(e.target.value)}
-        disabled={!selectedAgent}
-      >
-        <option value="" disabled>
-          Select LLM
-        </option>
-        <option value="Anthropic">Anthropic (Claude)</option>
-        <option value="OpenAI">OpenAI (ChatGPT)</option>
-      </select>
-
-      {/* Section for generating new prompt */}
-      <div className="mb-8 bg-white shadow rounded p-6">
-        <h3 className="text-xl font-semibold mb-4">Prompt Management</h3>
-        <div className="grid grid-cols-1 gap-4">
-          <div className="flex gap-4">
-            <button
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
-              onClick={handleGeneratePrompt}
-              disabled={!selectedAgent || !selectedLLM || generatingPrompt}
-            >
-              {generatingPrompt ? 'Generating...' : 'Generate New Prompt'}
-            </button>
-          </div>
-
-          {generatedPrompt && (
-            <div className="mt-4">
-              <h4 className="font-medium mb-2">Generated Prompt:</h4>
-              <div className="bg-gray-50 p-4 rounded mb-4 whitespace-pre-wrap">
-                {generatedPrompt}
-              </div>
-              <button
-                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-                onClick={() => handlePromptUpdate(selectedLLM, generatedPrompt)}
-              >
-                Save & Update Agent Prompt
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Section for displaying existing prompts */}
+      {/* Display current prompts section */}
       {selectedAgent && prompts && (
         <div className="mt-8 bg-white shadow rounded p-6">
           <h3 className="text-lg font-semibold mb-4">
             Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
           </h3>
+          <div className="text-sm mb-2">Debug Info - Selected Agent ID: {selectedAgent}</div>
+          <div className="text-sm mb-4">Debug Info - Prompts Object: {JSON.stringify(prompts)}</div>
+          
           {Object.keys(prompts).length > 0 ? (
             Object.entries(prompts).map(([llmType, promptData]) => (
               <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
