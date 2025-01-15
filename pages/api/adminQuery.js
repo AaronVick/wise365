@@ -1,6 +1,6 @@
 // pages/api/adminQuery.js
 
-import { collection, doc, getDocs, updateDoc, deleteDoc, setDoc } from "firebase/firestore";
+import { collection, doc, getDocs, updateDoc, query, limit, startAfter } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default async function handler(req, res) {
@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Step 1: Validate the code snippet using an LLM
+    // Step 1: Validate the code snippet using the LLM
     const validationResponse = await validateWithLLM(codeSnippet);
 
     if (!validationResponse.valid) {
@@ -28,8 +28,11 @@ export default async function handler(req, res) {
     // Step 2: Dynamically execute the code snippet
     let result;
     try {
-      const executeSnippet = new Function("db", "collection", "getDocs", "updateDoc", "doc", "setDoc", "deleteDoc", codeSnippet);
-      result = await executeSnippet(db, collection, getDocs, updateDoc, doc, setDoc, deleteDoc);
+      const executeSnippet = new Function(
+        "db", "collection", "doc", "getDocs", "updateDoc", "query", "limit", "startAfter",
+        codeSnippet
+      );
+      result = await executeSnippet(db, collection, doc, getDocs, updateDoc, query, limit, startAfter);
     } catch (executionError) {
       throw new Error(`Error executing code snippet: ${executionError.message}`);
     }
