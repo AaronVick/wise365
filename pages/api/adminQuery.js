@@ -48,18 +48,72 @@ export default async function handler(req, res) {
 async function validateWithLLM(codeSnippet) {
   try {
     const prompt = `
-  Validate the following JavaScript code snippet for securely performing Firebase operations. Check for:
-  - Proper use of Firebase Firestore APIs (collection, doc, getDocs, updateDoc, query, limit, startAfter, etc.).
-  - Syntax correctness.
-  - Logical completeness of the operations, including batching and pagination.
-  - Ensure it adheres to best practices for async/await in Firestore operations.
+  You are validating JavaScript code snippets for securely performing Firebase operations. 
+  These snippets are executed within a pre-configured API environment that already provides:
+  - An initialized Firebase Firestore instance (\`db\`).
+  - Imported Firestore utilities: \`collection\`, \`getDocs\`, \`updateDoc\`, \`doc\`, \`query\`, \`limit\`, \`startAfter\`.
+  - The environment ensures secure and proper connections to the Firestore database.
 
-  Allow snippets to:
-  - Define constants like BATCH_SIZE.
-  - Use pagination techniques with startAfter and limit.
+  The code snippet does not need to include:
+  - Firebase initialization or imports.
+  - Any direct database connection logic.
+
+  Your job is to validate the following:
+  - Proper use of Firestore utilities.
+  - Logical correctness of the operations (e.g., batching, pagination, updates).
+  - Syntax correctness.
+  - That the snippet can perform the described task without external dependencies beyond the provided utilities.
+
+An example of as snippet we may use to do things like update reocrds would look like this:
+async function updateAgentDataRecords(db, collection, getDocs, updateDoc, doc, query, limit, startAfter) {
+  const BATCH_SIZE = 10;
+
+  try {
+    const agentsSnapshot = await getDocs(collection(db, "agents"));
+    const agentsMap = {};
+    agentsSnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      agentsMap[data.agentId] = data.agentName;
+    });
+    console.log("Agents Mapping:", agentsMap);
+
+    let lastDoc = null;
+    let hasMoreRecords = true;
+
+    while (hasMoreRecords) {
+      const agentDataQuery = query(
+        collection(db, "agentData"),
+        ...(lastDoc ? [startAfter(lastDoc)] : []),
+        limit(BATCH_SIZE)
+      );
+
+      const agentDataSnapshot = await getDocs(agentDataQuery);
+
+      if (agentDataSnapshot.empty) {
+        hasMoreRecords = false;
+        break;
+      }
+
+      const updatePromises = agentDataSnapshot.docs.map(async (docSnap) => {
+        const data = docSnap.data();
+        if (agentsMap[data.agentId]) {
+          await updateDoc(doc(db, "agentData", docSnap.id), { agentId: agentsMap[data.agentId] });
+        }
+      });
+
+      await Promise.all(updatePromises);
+      lastDoc = agentDataSnapshot.docs[agentDataSnapshot.docs.length - 1];
+    }
+
+    return "Agent data updated successfully.";
+  } catch (error) {
+    console.error("Error updating agent data:", error);
+    throw new Error("Failed to update agent data records.");
+  }
+}
 
   Return:
-  - "valid": true/false
+  - \`valid\`: true/false
   - A short explanation if invalid
   - Suggested corrections if possible
 
@@ -68,6 +122,7 @@ async function validateWithLLM(codeSnippet) {
   ${codeSnippet}
   \`\`\`
 `;
+
 
 
     const payload = {
