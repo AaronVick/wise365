@@ -255,64 +255,55 @@ const DashboardContent = ({
         <Button 
           onClick={async () => {
             try {
-              console.log('Starting Shawn chat initialization...'); // Debug log
+              console.log('Starting Shawn chat initialization...'); 
               
-              // Check if we have the required user data
-              if (!currentUser?.uid && !currentUser?.id) {
-                console.error('No user identifier available:', currentUser);
+              if (!currentUser?.authenticationID) {
+                console.error('No authentication ID available:', currentUser);
                 return;
               }
-
-              // Use the appropriate user identifier (either Firebase UID or custom ID)
-              const userId = currentUser.uid || currentUser.id;
-              
-              // Create or get conversation name
+          
               const namesRef = collection(db, 'conversationNames');
-              console.log('Checking for existing Shawn chat...'); // Debug log
+              console.log('Checking for existing Shawn chat...'); 
               
               const defaultNameQuery = query(
                 namesRef,
                 where('agentId', '==', 'shawn'),
-                where('userId', '==', userId),
+                where('userId', '==', currentUser.authenticationID),
                 where('isDefault', '==', true)
               );
               
               const querySnapshot = await getDocs(defaultNameQuery);
               let chatId;
               let isNewUser = false;
-
+          
               if (querySnapshot.empty) {
-                console.log('No existing chat found, creating new one...'); // Debug log
+                console.log('No existing chat found, creating new one...'); 
                 isNewUser = true;
-
+          
                 // Create new conversation name document
                 const nameDoc = await addDoc(namesRef, {
                   agentId: 'shawn',
                   conversationName: 'Chat with Shawn',
-                  userId: userId,
+                  userId: currentUser.authenticationID,
                   isDefault: true,
                   projectName: '',
-                  timestamp: serverTimestamp(),
-                  participants: [userId, 'shawn'],
-                  teamId: currentUser.teamId, // Include team ID if present
-                  userRole: currentUser.role // Include user role if present
+                  timestamp: serverTimestamp()
                 });
-
+          
                 chatId = nameDoc.id;
-                console.log('Created new chat with ID:', chatId); // Debug log
-
-                // Get onboarding funnel analysis
+                console.log('Created new chat with ID:', chatId);
+          
+                // Get onboarding funnel analysis and context
                 const onboardingFunnel = await getOnboardingFunnel(currentUser);
                 const insights = await gatherFunnelInsights(currentUser, onboardingFunnel);
                 const userContext = await analyzeUserContext(currentUser);
-
+          
                 // Prepare context for LLM
                 const contextPayload = {
                   user: {
                     name: currentUser.name,
                     role: currentUser.role,
-                    teamId: currentUser.teamId,
-                    // Include other relevant user data but not sensitive info
+                    authenticationID: currentUser.authenticationID
                   },
                   funnel: {
                     name: onboardingFunnel?.name,
@@ -330,7 +321,7 @@ const DashboardContent = ({
                     role: "Tool Guidance Assistant",
                   },
                 };
-
+          
                 // Get LLM-generated opening message
                 const llmResponse = await fetch('/api/chat', {
                   method: 'POST',
@@ -340,11 +331,11 @@ const DashboardContent = ({
                       {
                         role: 'system',
                         content: `You are Shawn, the guidance assistant for Business Wise365. Based on the following context, generate a personalized welcome message and initial guidance for the user. Consider their role, any identified needs or blockers, and suggest relevant next steps or tools that would be most beneficial for them.
-
-Context:
-${JSON.stringify(contextPayload, null, 2)}
-
-Focus on being helpful and specific while maintaining a friendly, conversational tone. If there are clear next steps or tools that would benefit the user, mention them specifically.`
+          
+          Context:
+          ${JSON.stringify(contextPayload, null, 2)}
+          
+          Focus on being helpful and specific while maintaining a friendly, conversational tone. If there are clear next steps or tools that would benefit the user, mention them specifically.`
                       },
                       {
                         role: 'user',
@@ -353,14 +344,15 @@ Focus on being helpful and specific while maintaining a friendly, conversational
                     ]
                   }),
                 });
-
+          
                 if (!llmResponse.ok) {
                   throw new Error('Failed to generate welcome message');
                 }
-
+          
                 const { reply: welcomeContent } = await llmResponse.json();
-
-                // Create initial message with LLM-generated content
+          
+                // Create initial message in conversations collection
+                // Matching exact structure from your Firebase
                 const messagesRef = collection(db, 'conversations');
                 await addDoc(messagesRef, {
                   agentId: 'shawn',
@@ -369,31 +361,38 @@ Focus on being helpful and specific while maintaining a friendly, conversational
                   from: 'shawn',
                   isDefault: true,
                   timestamp: serverTimestamp(),
-                  type: 'agent',
-                  participants: [userId, 'shawn'],
-                  teamId: currentUser.teamId,
-                  userRole: currentUser.role
+                  type: 'agent'
+                });
+          
+                // Add user's first automatic message to maintain conversation flow
+                await addDoc(messagesRef, {
+                  agentId: 'shawn',
+                  content: "Hi, I'd like to learn more about Business Wise365.",
+                  conversationName: chatId,
+                  from: currentUser.authenticationID,
+                  isDefault: true,
+                  timestamp: serverTimestamp(),
+                  type: 'user'
                 });
               } else {
-                console.log('Found existing chat'); // Debug log
+                console.log('Found existing chat');
                 chatId = querySnapshot.docs[0].id;
               }
-
-              // Set the current chat
+          
+              // Set the current chat with minimal required data
               const chatData = {
                 id: chatId,
                 agentId: 'shawn',
                 title: 'Chat with Shawn',
-                participants: [userId, 'shawn'],
+                participants: [currentUser.authenticationID, 'shawn'],
                 isDefault: true,
-                conversationName: chatId,
-                teamId: currentUser.teamId
+                conversationName: chatId
               };
               
-              console.log('Setting current chat with data:', chatData); // Debug log
+              console.log('Setting current chat with data:', chatData);
               setCurrentChat(chatData);
               setHasShawnChat(true);
-
+          
             } catch (error) {
               console.error('Error in Shawn chat initialization:', error);
               console.error('Error details:', {
