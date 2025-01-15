@@ -38,27 +38,28 @@ export default function Prompts() {
   
   const fetchAgentDefinition = async (agentId) => {
     try {
+      console.log(`Fetching agent definition for agentId: ${agentId}`); // Debug
+  
       const docRef = doc(db, 'agentsDefined', agentId);
       const docSnap = await getDoc(docRef);
   
       if (!docSnap.exists()) {
-        console.log(`No record found in agentsDefined for agentId: ${agentId}`); // Debug log
+        console.warn(`No record found for agentId: ${agentId}`);
         return null;
       }
   
       const data = docSnap.data();
-      console.log(`Record fetched from agentsDefined:`, data); // Debug log
+      console.log(`Fetched data for agentId: ${agentId}`, data);
   
       return {
         ...data,
-        prompt: data.prompt || {}, // Ensure prompt is always an object
+        prompt: data.prompt || {}, // Always return a prompt object
       };
     } catch (err) {
-      console.error('Error fetching agent definition:', err);
+      console.error(`Error fetching agent definition for agentId: ${agentId}`, err);
       return null;
     }
   };
-
   
 
   
@@ -67,18 +68,24 @@ export default function Prompts() {
     setLoading(true);
   
     try {
-      console.log(`Selected Agent ID: ${agentId}`); // Debug log
+      console.log(`Selected agentId: ${agentId}`); // Debug
       const agentDefinition = await fetchAgentDefinition(agentId);
-      console.log(`Fetched Agent Definition:`, agentDefinition); // Debug log
   
-      setPrompts(agentDefinition?.prompt || {}); // Set the prompt field or an empty object
+      if (agentDefinition) {
+        console.log(`Prompts for agentId ${agentId}:`, agentDefinition.prompt);
+        setPrompts(agentDefinition.prompt); // Set the fetched prompts
+      } else {
+        console.warn(`No prompts found for agentId: ${agentId}`);
+        setPrompts({});
+      }
     } catch (err) {
-      console.error('Error fetching prompts:', err);
+      console.error(`Error handling agent selection for agentId: ${agentId}`, err);
       setError('Failed to fetch prompts for the selected agent.');
     } finally {
       setLoading(false);
     }
   };
+  
 
   
 
@@ -287,29 +294,29 @@ export default function Prompts() {
 
       {/* Section for displaying existing prompts */}
       {selectedAgent && prompts && (
-          <div className="mt-8 bg-white shadow rounded p-6">
-            <h3 className="text-lg font-semibold mb-4">
-              Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
-            </h3>
-            {Object.keys(prompts).length > 0 ? (
-              Object.entries(prompts).map(([llmType, promptData]) => (
-                <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
-                  <h4 className="font-bold text-lg">
-                    {llmType} ({promptData.version})
-                  </h4>
-                  <textarea
-                    className="w-full p-2 border rounded mt-2"
-                    rows="6"
-                    value={promptData.description || 'No description available'}
-                    readOnly
-                  />
-                </div>
-              ))
-            ) : (
-              <div className="text-gray-500">No prompts available for this agent.</div>
-            )}
-          </div>
-        )}
+        <div className="mt-8 bg-white shadow rounded p-6">
+          <h3 className="text-lg font-semibold mb-4">
+            Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
+          </h3>
+          {Object.keys(prompts).length > 0 ? (
+            Object.entries(prompts).map(([llmType, promptData]) => (
+              <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
+                <h4 className="font-bold text-lg">
+                  {llmType} ({promptData.version || 'Unknown Version'})
+                </h4>
+                <textarea
+                  className="w-full p-2 border rounded mt-2"
+                  rows="6"
+                  value={promptData.description || 'No description provided.'}
+                  readOnly
+                />
+              </div>
+            ))
+          ) : (
+            <div className="text-gray-500">No prompts available for this agent.</div>
+          )}
+        </div>
+      )}
          
       
     </div>
