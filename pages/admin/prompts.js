@@ -216,21 +216,180 @@ export default function Prompts() {
   };
 
 
-  const fetchAgentData = async (agentId) => {
+  const fetchAgentData = async (selectedDocId) => {
     try {
-      const querySnapshot = await getDocs(collection(db, 'agentData'));
-      return querySnapshot.docs
-        .map((doc) => doc.data())
-        .filter((data) => data.agentId === agentId);
+      // First get the agentId from the selected agent
+      const selectedAgent = agents.find(agent => agent.id === selectedDocId);
+      if (!selectedAgent) {
+        console.error('Selected agent not found');
+        return [];
+      }
+  
+      const agentId = selectedAgent.agentId;
+      console.log('Fetching data for agentId:', agentId);
+  
+      // Query agentData collection using agentId
+      const querySnapshot = await getDocs(
+        query(collection(db, 'agentData'), 
+        where('agentId', '==', agentId))
+      );
+  
+      const data = querySnapshot.docs.map(doc => doc.data());
+      console.log('Found agent data:', data);
+      return data;
     } catch (err) {
       console.error('Error fetching agent data:', err);
       return [];
     }
   };
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  
+  const handleGeneratePrompt = async () => {
+    if (!selectedAgent || !selectedLLM) {
+      alert('Please select an agent and LLM before generating a prompt.');
+      return;
+    }
+  
+    setGeneratingPrompt(true);
+    try {
+      // Get selected agent info
+      const selectedAgentInfo = agents.find((a) => a.id === selectedAgent);
+      if (!selectedAgentInfo) {
+        throw new Error('Selected agent info not found');
+      }
+  
+      // Fetch agent data using agentId
+      const agentData = await fetchAgentData(selectedAgent);
+      console.log('Agent Info:', selectedAgentInfo);
+      console.log('Agent Data:', agentData);
+  
+      // Prepare system message based on agent role and data
+      const systemMessage = `You are an AI prompt engineer. Your task is to create an optimized system prompt for an AI agent with the following characteristics:
+  Role: ${selectedAgentInfo.Role || selectedAgentInfo.agentName}
+  Description: ${selectedAgentInfo.About || selectedAgentInfo.RoleInfo}
+  Additional context from user interactions: ${JSON.stringify(agentData)}
+  
+  Create a detailed system prompt that will help the AI embody this role effectively.`;
+  
+      let prompt;
+      if (selectedLLM === 'Anthropic') {
+        // Call Claude API
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: 'claude-3-opus-20240229',
+            max_tokens: 1000,
+            messages: [{
+              role: 'user',
+              content: systemMessage
+            }]
+          })
+        });
+  
+        if (!response.ok) {
+          throw new Error(`Anthropic API error: ${response.statusText}`);
+        }
+  
+        const data = await response.json();
+        prompt = data.content[0].text;
+  
+      } else if (selectedLLM === 'OpenAI') {
+        // Call OpenAI API
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are an expert prompt engineer.'
+              },
+              {
+                role: 'user',
+                content: systemMessage
+              }
+            ],
+            max_tokens: 1000
+          })
+        });
+  
+        if (!response.ok) {
+          throw new Error(`OpenAI API error: ${response.statusText}`);
+        }
+  
+        const data = await response.json();
+        prompt = data.choices[0].message.content;
+      }
+  
+      setGeneratedPrompt(prompt);
+  
+    } catch (err) {
+      console.error('Error generating prompt:', err);
+      alert(`Failed to generate prompt: ${err.message}`);
+    } finally {
+      setGeneratingPrompt(false);
+    }
+  };
+  
+  const handlePromptUpdate = async (llmType, newPrompt) => {
+    if (!selectedAgent || !llmType) return;
+    setLoading(true);
+  
+    try {
+      // First get the agent definition using agentId
+      const selectedAgentInfo = agents.find(a => a.id === selectedAgent);
+      if (!selectedAgentInfo) throw new Error('Selected agent not found');
+  
+      // Query for the existing agent definition
+      const querySnapshot = await getDocs(
+        query(collection(db, 'agentsDefined'), 
+        where('agentId', '==', selectedAgentInfo.agentId))
+      );
+  
+      let docRef;
+      let existingPrompts = {};
+  
+      if (!querySnapshot.empty) {
+        // Update existing document
+        docRef = doc(db, 'agentsDefined', querySnapshot.docs[0].id);
+        existingPrompts = querySnapshot.docs[0].data().prompt || {};
+      } else {
+        // Create new document
+        docRef = doc(collection(db, 'agentsDefined'));
+      }
+  
+      // Update or add the prompt for the specific LLM
+      const updatedPrompts = {
+        ...existingPrompts,
+        [llmType]: {
+          description: newPrompt,
+          version: llmType === 'Anthropic' ? 'Claude-3_5-Sonet' : 'ChatGPT-4',
+        },
+      };
+  
+      await setDoc(docRef, {
+        agentId: selectedAgentInfo.agentId,
+        prompt: updatedPrompts,
+        lastUpdated: new Date(),
+      }, { merge: true });
+  
+      setPrompts(updatedPrompts);
+      alert(`Prompt for ${llmType} updated successfully!`);
+    } catch (err) {
+      console.error('Error updating prompt:', err);
+      alert(`Failed to update prompt: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="p-6">
