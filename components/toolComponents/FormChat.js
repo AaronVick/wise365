@@ -1,7 +1,8 @@
 // components/toolComponents/FormChat.js
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthState } from 'react-firebase-hooks/auth'; // Add this import
+import { auth } from '../../lib/firebase';
 import FormChatInterface from './FormChatInterface';
 import FormChatButton from './FormChatButton';
 import { ChatState } from './FormChatTypes';
@@ -15,16 +16,16 @@ const FormChat = ({
   projectId = '',
   projectName = '' 
 }) => {
+  const [user, loading] = useAuthState(auth); // Replace useAuth with useAuthState
   const [chatState, setChatState] = useState(ChatState.CLOSED);
   const [conversationName, setConversationName] = useState(null);
   const [formContext, setFormContext] = useState(null);
   const [selectedAgent, setSelectedAgent] = useState(null);
-  const { currentUser } = useAuth();
 
   // Fetch all necessary context when chat opens
   useEffect(() => {
     const fetchContextAndAgent = async () => {
-      if (chatState !== ChatState.OPEN || !formName || !currentUser?.uid) return;
+      if (chatState !== ChatState.OPEN || !formName || !user?.uid) return;
       
       try {
         setChatState(ChatState.LOADING);
@@ -47,7 +48,7 @@ const FormChat = ({
         setSelectedAgent(agent);
         
         // Generate conversation name
-        const newConversationName = `${formName}_${formId}_${currentUser.uid}`;
+        const newConversationName = `${formName}_${formId}_${user.uid}`;
         setConversationName(newConversationName);
         
         setChatState(ChatState.OPEN);
@@ -58,7 +59,7 @@ const FormChat = ({
     };
 
     fetchContextAndAgent();
-  }, [chatState, formName, currentUser]);
+  }, [chatState, formName, user]);
 
   // Fetch form template from resources
   const fetchFormTemplate = async () => {
@@ -190,7 +191,7 @@ const FormChat = ({
   };
 
   // Show loading state
-  if (chatState === ChatState.LOADING) {
+  if (loading) {
     return (
       <div className="relative flex w-full min-h-screen">
         <div className={formContainerClass}>
@@ -198,7 +199,7 @@ const FormChat = ({
         </div>
         <div className={chatContainerClass}>
           <div className="flex items-center justify-center h-full">
-            <p>Loading chat assistance...</p>
+            <p>Loading...</p>
           </div>
         </div>
       </div>
@@ -217,12 +218,12 @@ const FormChat = ({
       </div>
 
       {/* Chat Container */}
-      {chatState === ChatState.OPEN && conversationName && currentUser && selectedAgent && (
+      {chatState === ChatState.OPEN && conversationName && user && selectedAgent && (
         <div className={chatContainerClass}>
           <FormChatInterface
             chatId={`form_${formId}`}
             agentId={selectedAgent.agentId}
-            userId={currentUser.uid}
+            userId={user.uid}
             title={`Help with ${formName}`}
             conversationName={conversationName}
             projectId={projectId}

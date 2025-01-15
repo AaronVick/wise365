@@ -68,7 +68,7 @@ export default function Training() {
   };
   
   
-    // Section 2: Fetching Agents from Database
+   // Section 2: Fetching Agents from Firestore
 useEffect(() => {
   let isSubscribed = true;
   
@@ -79,44 +79,26 @@ useEffect(() => {
     setError(null);
 
     try {
-      // Fetch agents from the agents table
-      const response = await fetch('/api/admin/agents', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-
-      const agentsData = await response.json();
+      // Get agents collection from Firestore
+      const agentsSnapshot = await getDocs(collection(db, 'agents'));
       
-      // Ensure we have an array of agents
-      if (!Array.isArray(agentsData?.agents)) {
-        throw new Error('Invalid data format: Expected an array of agents');
+      if (agentsSnapshot.empty) {
+        throw new Error('No agents found in the database');
       }
 
-      // Validate and format agent data
-      const validatedAgents = agentsData.agents
-        .filter(agent => (
-          agent?.id && 
-          agent?.name && 
-          agent?.role && 
-          typeof agent.id === 'string' && 
-          typeof agent.name === 'string' && 
-          typeof agent.role === 'string'
-        ))
-        .map(agent => ({
-          agentId: agent.id,
-          agentName: agent.name,
-          role: agent.role,
-          isActive: agent.isActive ?? true
+      // Transform Firestore data
+      const validatedAgents = agentsSnapshot.docs
+        .map(doc => ({
+          agentId: doc.get('agentId') || doc.id,
+          agentName: doc.get('agentName') || '',
+          role: doc.get('Role') || '',
+          type: doc.get('Type') || 'Administrative'
         }))
-        .filter(agent => agent.isActive); // Only show active agents
+        .filter(agent => agent.agentName && agent.role); // Only include agents with name and role
+
+      if (validatedAgents.length === 0) {
+        throw new Error('No valid agents found');
+      }
 
       if (isSubscribed) {
         setAgents(validatedAgents);
@@ -137,7 +119,54 @@ useEffect(() => {
 
   fetchAgents();
   return () => { isSubscribed = false; };
-}, []);
+}, [db]); // Add db as dependency
+
+// Modify handleAgentSelection to handle Firestore data
+const handleAgentSelection = async (agentId) => {
+  if (!agentId) return;
+  
+  setSelectedAgent(agentId);
+  setLoading(true);
+  setError(null);
+  setSelectedLLM(''); // Reset LLM selection when agent changes
+
+  try {
+    // Query agentData collection for the selected agent
+    const agentDataQuery = query(
+      collection(db, 'agentData'),
+      where('agentId', '==', agentId)
+    );
+    
+    const agentDataSnapshot = await getDocs(agentDataQuery);
+    
+    if (agentDataSnapshot.empty) {
+      setData({});
+      setError('No training data available for this agent. Use the LLM generator to create initial training data.');
+      return;
+    }
+
+    // Transform Firestore data
+    const records = agentDataSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt || null,
+    }));
+
+    // Generate options and aggregate data
+    const dynamicOptions = generateDataTypeOptions(records);
+    setDataTypeOptions(dynamicOptions);
+
+    const aggregatedData = aggregateDataByType(records);
+    setData(aggregatedData);
+
+  } catch (error) {
+    console.error('Error fetching training data:', error);
+    setError('Failed to load training data. Please try again.');
+    setData({});
+  } finally {
+    setLoading(false);
+  }
+};
 
 // Section 3: Agent Selection and Training Data Fetch
 const handleAgentSelection = async (agentId) => {
@@ -277,10 +306,10 @@ const renderAgentSelection = () => {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Select Agent
         </label>
-        <Select
+        <select
           value={selectedAgent || ''}
           onChange={(e) => handleAgentSelection(e.target.value)}
-          className="w-full"
+          className="w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           disabled={loading || agents.length === 0}
         >
           <option value="" disabled>
@@ -291,7 +320,7 @@ const renderAgentSelection = () => {
               {agent.agentName}: {agent.role}
             </option>
           ))}
-        </Select>
+        </select>
         {!selectedAgent && (
           <p className="mt-2 text-sm text-gray-500">
             Select an agent to view and manage their training data
@@ -304,10 +333,10 @@ const renderAgentSelection = () => {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Select LLM for Generation
         </label>
-        <Select
+        <select
           value={selectedLLM}
           onChange={(e) => setSelectedLLM(e.target.value)}
-          className="w-full"
+          className="w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           disabled={!selectedAgent}
         >
           <option value="" disabled>
@@ -318,7 +347,7 @@ const renderAgentSelection = () => {
               {llm.label}
             </option>
           ))}
-        </Select>
+        </select>
         <p className="mt-2 text-sm text-gray-500">
           Choose an LLM to generate training content
         </p>
