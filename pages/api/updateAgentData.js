@@ -13,15 +13,7 @@ export default async function handler(req, res) {
   try {
     const { lastProcessedId, batchSize = 10 } = req.body;
 
-    // Step 1: Fetch all agents into a map
-    const agentsSnapshot = await db.collection('agents').get();
-    const agentsMap = {};
-    agentsSnapshot.forEach((doc) => {
-      const data = doc.data();
-      agentsMap[data.agentId] = data.agentName;
-    });
-
-    // Step 2: Query `agentData` in batches
+    // Step 1: Query `agentData` in batches
     let query = db.collection('agentData').orderBy('__name__').limit(batchSize);
     if (lastProcessedId) {
       const lastDoc = await db.collection('agentData').doc(lastProcessedId).get();
@@ -44,34 +36,34 @@ export default async function handler(req, res) {
     const updates = [];
     let lastId = null;
 
-    // Step 3: Process each record in the batch
+    // Step 2: Process each record in the batch
     for (const doc of snapshot.docs) {
-      const data = doc.data();
-      const agentId = data.agentId; // Current agentId in `agentData`
+      const agentData = doc.data();
+      const agentId = agentData.agentId; // Current `agentId` in `agentData`
       lastId = doc.id;
 
-      // If the agentId is already a name, skip it
-      if (Object.values(agentsMap).includes(agentId)) {
-        continue;
-      }
+      // Fetch corresponding agent record
+      const agentDoc = await db.collection('agents').doc(agentId).get();
 
-      // If agentId matches an entry in `agents`, update it
-      const newAgentId = agentsMap[agentId];
-      if (newAgentId) {
-        updates.push({
-          id: doc.id,
-          oldAgentId: agentId,
-          newAgentId,
-        });
+      // If the agent record exists, update `agentId` to the `agentName`
+      if (agentDoc.exists) {
+        const agent = agentDoc.data();
+        if (agent.agentName) {
+          updates.push({
+            id: doc.id,
+            oldAgentId: agentId,
+            newAgentId: agent.agentName,
+          });
 
-        // Update the document in Firestore
-        await db.collection('agentData').doc(doc.id).update({
-          agentId: newAgentId,
-        });
+          // Update the `agentData` record
+          await db.collection('agentData').doc(doc.id).update({
+            agentId: agent.agentName,
+          });
+        }
       }
     }
 
-    // Step 4: Return results
+    // Step 3: Return results
     return res.status(200).json({
       success: true,
       lastProcessedId: lastId,
