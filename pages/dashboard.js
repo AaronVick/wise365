@@ -259,10 +259,6 @@ const Dashboard = () => {
     return null;
   }
 
-
-
-  // main return & UI
-
   return (
     <div className="flex h-screen bg-slate-50">
       {/* Sidebar */}
@@ -272,19 +268,17 @@ const Dashboard = () => {
       >
         {/* Logo and Home */}
         <div className="p-4 border-b border-gray-700 flex items-center space-x-4">
-        <Button
-          variant="ghost"
-          className="text-white hover:text-white"
-          onClick={() => {
-            // Clear any active tools or chats
-            setCurrentChat(null);
-            setCurrentTool(null);
-            // Navigate to the dashboard
-            router.push('/dashboard');
-          }}
-        >
-          <Home className="h-5 w-5" />
-        </Button>
+          <Button
+            variant="ghost"
+            className="text-white hover:text-white"
+            onClick={() => {
+              setCurrentChat(null);
+              setCurrentTool(null);
+              router.push('/dashboard');
+            }}
+          >
+            <Home className="h-5 w-5" />
+          </Button>
           <h1 className="text-lg font-bold">Business Wise365</h1>
         </div>
 
@@ -407,8 +401,8 @@ const Dashboard = () => {
               </Accordion>
             </div>
 
-      {/* Projects Section */}
-      <div className="space-y-1">
+            {/* Projects Section */}
+            <div className="space-y-1">
               <div className="flex items-center justify-between px-3 mb-2">
                 <h2 className="text-sm font-semibold text-muted-foreground">Projects</h2>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white">
@@ -462,8 +456,6 @@ const Dashboard = () => {
                 Add New Goal
               </Button>
             </div>
-
-            
           </div>
         </ScrollArea>
 
@@ -497,72 +489,70 @@ const Dashboard = () => {
         onMouseDown={handleSidebarResize}
       />
 
-      
-
-     {/* Main Content Area */}
-<div className="flex-1 overflow-auto bg-slate-50">
-  {currentChat ? (
-    currentChat.agentId === 'shawn' ? (
-      <ChatWithShawn 
-        currentUser={userData} 
-        isNewUser={currentChat.isNewUser}
-      />
-    ) : (
-      <ChatInterface
-        chatId={currentChat.id}
-        agentId={currentChat.agentId}
-        userId={user.uid}
-        isDefault={currentChat.isDefault}
-        title={currentChat.title}
-        conversationName={currentChat.conversationName}
-        projectId={currentChat.projectId}
-        projectName={currentChat.projectName}
-      />
-    )
-  ) : currentTool ? (
-    <div className="h-full flex flex-col">
-      <header className="border-b bg-white shadow-sm">
-        <div className="px-6 py-4">
-          <h1 className="text-2xl font-semibold text-gray-900">
-            {currentTool === 'buyer-persona' && "Buyer Persona Tool"}
-            {currentTool === 'success-wheel' && "Marketing Success Wheel"}
-            {currentTool === 'positioning-factors' && "Positioning Factors"}
-          </h1>
-        </div>
-      </header>
-      <main className="flex-1 overflow-auto">
-        {currentTool === 'buyer-persona' && (
-          <BuyerPersona 
-            onComplete={() => setCurrentTool(null)} 
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-auto bg-slate-50">
+        {currentChat ? (
+          currentChat.agentId === 'shawn' ? (
+            <ChatWithShawn 
+              currentUser={userData} 
+              isNewUser={currentChat.isNewUser}
+            />
+          ) : (
+            <ChatInterface
+              chatId={currentChat.id}
+              agentId={currentChat.agentId}
+              userId={user.uid}
+              isDefault={currentChat.isDefault}
+              title={currentChat.title}
+              conversationName={currentChat.conversationName}
+              projectId={currentChat.projectId}
+              projectName={currentChat.projectName}
+            />
+          )
+        ) : currentTool ? (
+          <div className="h-full flex flex-col">
+            <header className="border-b bg-white shadow-sm">
+              <div className="px-6 py-4">
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  {currentTool === 'buyer-persona' && "Buyer Persona Tool"}
+                  {currentTool === 'success-wheel' && "Marketing Success Wheel"}
+                  {currentTool === 'positioning-factors' && "Positioning Factors"}
+                </h1>
+              </div>
+            </header>
+            <main className="flex-1 overflow-auto">
+              {currentTool === 'buyer-persona' && (
+                <BuyerPersona 
+                  onComplete={() => setCurrentTool(null)} 
+                  currentUser={userData}
+                />
+              )}
+              {currentTool === 'success-wheel' && (
+                <SuccessWheel 
+                  onComplete={() => setCurrentTool(null)} 
+                  currentUser={userData}
+                />
+              )}
+              {currentTool === 'positioning-factors' && (
+                <PositioningFactors 
+                  onComplete={() => setCurrentTool(null)} 
+                  currentUser={userData}
+                />
+              )}
+            </main>
+          </div>
+        ) : (
+          <DashboardContent
             currentUser={userData}
+            currentTool={currentTool}
+            setCurrentTool={setCurrentTool}
+            onToolComplete={() => setCurrentTool(null)}
+            currentChat={currentChat}
+            setCurrentChat={setCurrentChat}
           />
         )}
-        {currentTool === 'success-wheel' && (
-          <SuccessWheel 
-            onComplete={() => setCurrentTool(null)} 
-            currentUser={userData}
-          />
-        )}
-        {currentTool === 'positioning-factors' && (
-          <PositioningFactors 
-            onComplete={() => setCurrentTool(null)} 
-            currentUser={userData}
-          />
-        )}
-      </main>
+      </div>
     </div>
-  ) : (
-    <DashboardContent
-      currentUser={userData}
-      currentTool={currentTool}
-      setCurrentTool={setCurrentTool}
-      onToolComplete={() => setCurrentTool(null)}
-      currentChat={currentChat}
-      setCurrentChat={setCurrentChat}
-    />
-  )}
-</div>
-    </div>  {/* Closing div for the flex h-screen container */}
   );
 };
 
