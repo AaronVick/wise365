@@ -597,3 +597,4 @@ return (
     )}
   </div>
 );
+} // End of Training component export default Training;
