@@ -4,7 +4,7 @@
 import { useEffect, useState, useCallback } from 'react';
 
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 
 import PropTypes from 'prop-types';
 import dynamic from 'next/dynamic';
