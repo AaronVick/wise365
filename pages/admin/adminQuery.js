@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 export default function AdminQueryPage() {
-  const [query, setQuery] = useState("");
+  const [codeSnippet, setCodeSnippet] = useState("");
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -17,7 +17,7 @@ export default function AdminQueryPage() {
       const res = await fetch("/api/adminQuery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ codeSnippet }),
       });
 
       const data = await res.json();
@@ -40,14 +40,14 @@ export default function AdminQueryPage() {
       <textarea
         className="w-full p-4 border rounded mb-4"
         rows="10"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Enter your query here (JSON format)"
+        value={codeSnippet}
+        onChange={(e) => setCodeSnippet(e.target.value)}
+        placeholder="Enter your code snippet here"
       />
       <button
         onClick={handleQuerySubmit}
         className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
-        disabled={!query || loading}
+        disabled={!codeSnippet || loading}
       >
         {loading ? "Executing..." : "Execute Query"}
       </button>
