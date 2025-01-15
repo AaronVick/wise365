@@ -48,21 +48,27 @@ export default async function handler(req, res) {
 async function validateWithLLM(codeSnippet) {
   try {
     const prompt = `
-      Validate the following JavaScript code snippet for securely performing Firebase operations. Check for:
-      - Proper use of Firebase Firestore APIs (collection, doc, getDocs, updateDoc, query, limit, startAfter, etc.).
-      - Syntax correctness.
-      - Logical completeness of the operations.
+  Validate the following JavaScript code snippet for securely performing Firebase operations. Check for:
+  - Proper use of Firebase Firestore APIs (collection, doc, getDocs, updateDoc, query, limit, startAfter, etc.).
+  - Syntax correctness.
+  - Logical completeness of the operations, including batching and pagination.
+  - Ensure it adheres to best practices for async/await in Firestore operations.
 
-      Return:
-      - "valid": true/false
-      - A short explanation if invalid
-      - Suggested corrections if possible
+  Allow snippets to:
+  - Define constants like BATCH_SIZE.
+  - Use pagination techniques with startAfter and limit.
 
-      Code Snippet:
-      \`\`\`
-      ${codeSnippet}
-      \`\`\`
-    `;
+  Return:
+  - "valid": true/false
+  - A short explanation if invalid
+  - Suggested corrections if possible
+
+  Code Snippet:
+  \`\`\`
+  ${codeSnippet}
+  \`\`\`
+`;
+
 
     const payload = {
       model: "gpt-4",
