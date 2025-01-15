@@ -36,55 +36,51 @@ export default function Prompts() {
   }, []);
 
   const fetchAgentDefinition = async (agentId) => {
-    const fetchAgentDefinition = async (agentId) => {
-      try {
-        const docRef = doc(db, 'agentsDefined', agentId);
-        const docSnap = await getDoc(docRef);
-    
-        if (!docSnap.exists()) return null; // No record found
-    
-        const data = docSnap.data();
-    
-        // Return the prompt field as part of the state
-        return {
-          ...data,
-          prompt: data.prompt || {}, // Ensure prompt is always an object
-        };
-      } catch (err) {
-        console.error('Error fetching agent definition:', err);
-        return null;
-      }
-    };
-    
-  
+    try {
+      const docRef = doc(db, 'agentsDefined', agentId);
+      const docSnap = await getDoc(docRef);
 
-    const handleAgentSelection = async (agentId) => {
-      setSelectedAgent(agentId);
-      setLoading(true);
-    
-      try {
-        const agentDefinition = await fetchAgentDefinition(agentId);
-        setPrompts(agentDefinition?.prompt || {}); // Set the prompt field or an empty object
-      } catch (err) {
-        console.error('Error fetching prompts:', err);
-        setError('Failed to fetch prompts for the selected agent.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-  
+      if (!docSnap.exists()) return null; // No record found
+
+      const data = docSnap.data();
+
+      // Return the prompt field as part of the state
+      return {
+        ...data,
+        prompt: data.prompt || {}, // Ensure prompt is always an object
+      };
+    } catch (err) {
+      console.error('Error fetching agent definition:', err);
+      return null;
+    }
+  };
+
+
+  const handleAgentSelection = async (agentId) => {
+    setSelectedAgent(agentId);
+    setLoading(true);
+
+    try {
+      const agentDefinition = await fetchAgentDefinition(agentId);
+      setPrompts(agentDefinition?.prompt || {}); // Set the prompt field or an empty object
+    } catch (err) {
+      console.error('Error fetching prompts:', err);
+      setError('Failed to fetch prompts for the selected agent.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handlePromptUpdate = async (llmType, newPrompt) => {
     if (!selectedAgent || !llmType) return; // Ensure valid agent and LLM type
     setLoading(true);
-  
+
     try {
       // Fetch existing data for the selected agent
       const agentDoc = doc(db, 'agentsDefined', selectedAgent);
       const currentData = await getDoc(agentDoc);
       const existingPrompts = currentData.exists() ? currentData.data().prompt || {} : {};
-  
+
       // Update or add the prompt for the specific LLM
       const updatedPrompts = {
         ...existingPrompts,
@@ -93,7 +89,7 @@ export default function Prompts() {
           version: getLLMVersion(llmType), // Ensure version consistency for the LLM
         },
       };
-  
+
       if (currentData.exists()) {
         // Update the existing Firestore document
         await updateDoc(agentDoc, { 
@@ -108,7 +104,7 @@ export default function Prompts() {
           lastUpdated: new Date(),
         });
       }
-  
+
       setPrompts(updatedPrompts); // Update the state to reflect the changes
       alert(`Prompt for ${llmType} updated successfully!`);
     } catch (err) {
@@ -119,19 +115,18 @@ export default function Prompts() {
     }
   };
 
-  
   const handleGeneratePrompt = async () => {
     if (!selectedAgent || !selectedLLM) {
       alert('Please select an agent and LLM before generating a prompt.');
       return;
     }
-  
+
     setGeneratingPrompt(true);
     try {
       // Fetch all agent data
       const agentData = await fetchAgentData(selectedAgent);
       const selectedAgentInfo = agents.find((a) => a.id === selectedAgent);
-  
+
       // Determine API endpoint and key based on selected LLM
       let endpoint = '';
       let headers = {};
@@ -150,7 +145,7 @@ export default function Prompts() {
       } else {
         throw new Error('Unsupported LLM selected');
       }
-  
+
       // Prepare the API request payload
       const payload =
         selectedLLM === 'Anthropic'
@@ -169,24 +164,24 @@ export default function Prompts() {
               ],
               max_tokens: 1000,
             };
-  
+
       // Send the API request
       const response = await fetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
       });
-  
+
       if (!response.ok) {
         throw new Error('Failed to generate prompt');
       }
-  
+
       const data = await response.json();
       const prompt =
         selectedLLM === 'Anthropic'
           ? data.completion // Anthropic response key
           : data.choices?.[0]?.message?.content; // OpenAI response key
-  
+
       setGeneratedPrompt(prompt);
     } catch (err) {
       console.error('Error generating prompt:', err);
@@ -196,14 +191,13 @@ export default function Prompts() {
     }
   };
 
-  
 
   const fetchAgentData = async (agentId) => {
     try {
       const querySnapshot = await getDocs(collection(db, 'agentData'));
       return querySnapshot.docs
-        .map(doc => doc.data())
-        .filter(data => data.agentId === agentId);
+        .map((doc) => doc.data())
+        .filter((data) => data.agentId === agentId);
     } catch (err) {
       console.error('Error fetching agent data:', err);
       return [];
@@ -214,27 +208,27 @@ export default function Prompts() {
     return <div>Loading...</div>;
   }
 
-  
-  
   return (
     <div className="p-6">
       <h2 className="text-xl font-bold mb-4">Manage Prompts</h2>
       {error && <div className="text-red-500">{error}</div>}
-  
+
       {/* Dropdown for selecting an agent */}
       <select
         className="p-2 border rounded w-full mb-4"
         value={selectedAgent || ''}
         onChange={(e) => handleAgentSelection(e.target.value)}
       >
-        <option value="" disabled>Select an Agent</option>
+        <option value="" disabled>
+          Select an Agent
+        </option>
         {agents.map((agent) => (
           <option key={agent.id} value={agent.id}>
             {agent.agentName}
           </option>
         ))}
       </select>
-  
+
       {/* Dropdown for selecting LLM */}
       <select
         className="p-2 border rounded w-full mb-4"
@@ -242,11 +236,13 @@ export default function Prompts() {
         onChange={(e) => setSelectedLLM(e.target.value)}
         disabled={!selectedAgent}
       >
-        <option value="" disabled>Select LLM</option>
+        <option value="" disabled>
+          Select LLM
+        </option>
         <option value="Anthropic">Anthropic (Claude)</option>
         <option value="OpenAI">OpenAI (ChatGPT)</option>
       </select>
-  
+
       {/* Section for generating new prompt */}
       <div className="mb-8 bg-white shadow rounded p-6">
         <h3 className="text-xl font-semibold mb-4">Prompt Management</h3>
@@ -260,7 +256,7 @@ export default function Prompts() {
               {generatingPrompt ? 'Generating...' : 'Generate New Prompt'}
             </button>
           </div>
-  
+
           {generatedPrompt && (
             <div className="mt-4">
               <h4 className="font-medium mb-2">Generated Prompt:</h4>
@@ -277,31 +273,32 @@ export default function Prompts() {
           )}
         </div>
       </div>
-  
-   {/* Section for displaying existing prompts */}
-          {selectedAgent && prompts && (
-          <div className="mt-8 bg-white shadow rounded p-6">
-            <h3 className="text-lg font-semibold mb-4">
-              Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
-            </h3>
-            {Object.keys(prompts).length > 0 ? ( // Check if there are prompts
-              Object.entries(prompts).map(([llmType, promptData]) => (
-                <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
-                  <h4 className="font-bold text-lg">{llmType} ({promptData.version})</h4>
-                  <textarea
-                    className="w-full p-2 border rounded mt-2"
-                    rows="6"
-                    value={promptData.description}
-                    readOnly
-                  />
-                </div>
-              ))
-            ) : (
-              <div className="text-gray-500">No prompts available for this agent.</div>
-            )}
-          </div>
-        )}
-      </div>
+
+      {/* Section for displaying existing prompts */}
+      {selectedAgent && prompts && (
+        <div className="mt-8 bg-white shadow rounded p-6">
+          <h3 className="text-lg font-semibold mb-4">
+            Current Prompts for Agent: {agents.find((a) => a.id === selectedAgent)?.agentName}
+          </h3>
+          {Object.keys(prompts).length > 0 ? (
+            Object.entries(prompts).map(([llmType, promptData]) => (
+              <div key={llmType} className="p-4 bg-gray-100 rounded shadow mb-4">
+                <h4 className="font-bold text-lg">
+                  {llmType} ({promptData.version})
+                </h4>
+                <textarea
+                  className="w-full p-2 border rounded mt-2"
+                  rows="6"
+                  value={promptData.description}
+                  readOnly
+                />
+              </div>
+            ))
+          ) : (
+            <div className="text-gray-500">No prompts available for this agent.</div>
+          )}
+        </div>
+      )}
     </div>
   );
-}
+} 
