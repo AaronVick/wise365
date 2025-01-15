@@ -207,6 +207,7 @@ export default function Prompts() {
   }
 
   
+  
   return (
     <div className="p-6">
       <h2 className="text-xl font-bold mb-4">Manage Prompts</h2>
@@ -293,5 +294,5 @@ export default function Prompts() {
         </div>
       )}
     </div>
-  );
+  );  
   
