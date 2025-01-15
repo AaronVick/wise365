@@ -1,7 +1,8 @@
 // pages/api/funnelAnalyzer.js
 
 import { collection, getDocs, query, where, updateDoc, doc, setDoc } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { db } from "../../lib/firebase";
+
 
 /**
  * Fetches funnel data for a team and maps it against global funnel definitions.
