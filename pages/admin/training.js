@@ -101,7 +101,7 @@ useEffect(() => {
       const normalizedAgentId = selectedAgent.trim();
       const trainingQuery = query(
         collection(db, 'agentData'),
-        where('agentId', '==', normalizedAgentId)
+        where('agentName', '==', normalizedAgentId)
       );
       
       const querySnapshot = await getDocs(trainingQuery);
