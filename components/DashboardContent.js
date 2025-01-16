@@ -1,7 +1,6 @@
 // components/DashboardContent.js
 
 import React, { useState, useEffect } from 'react';
-import { useResources } from '../hooks/useFirebaseData';
 import { useRouter } from 'next/router';
 import { 
   collection, 
@@ -47,7 +46,8 @@ const MilestonesSection = dynamic(() => import('./MilestonesSection'));
 import { evaluateUserFunnels } from '../components/funnelEvaluator';
 import { useProgressAnalyzer } from '../components/ProgressAnalyzer';
 import { createFunnelProject } from '../components/FunnelActionHandler';
-import { useResources, useGoals, useRecentActivity } from '../hooks/useFirebaseData';
+import { useGoals, useRecentActivity, useResources } from '../hooks/useFirebaseData';
+
 
 // Badge component definition
 const badgeVariants = cva(
