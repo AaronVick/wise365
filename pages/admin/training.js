@@ -94,25 +94,26 @@ export default function Training() {
   // Section 3: Training Data Fetching
 useEffect(() => {
   const fetchTrainingData = async () => {
-    console.log('Selected Agent ID:', selectedAgent);
+    console.log('Selected Agent Name:', selectedAgent);
     setLoadingTrainingData(true);
-    
+  
     try {
-      const normalizedAgentId = selectedAgent.trim();
+      const normalizedAgentName = selectedAgent.trim(); // Ensure agentName is properly trimmed
       const trainingQuery = query(
         collection(db, 'agentData'),
-        where('agentName', '==', normalizedAgentId)
+        where('agentName', '==', normalizedAgentName) // Query with agentName
       );
-      
+  
       const querySnapshot = await getDocs(trainingQuery);
-      const records = querySnapshot.docs.map(doc => ({
+      const records = querySnapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
-      
+  
+      console.log('Fetched Records:', records);
       setTrainingData(records);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching training data:', error);
       setError('Failed to fetch training data');
     } finally {
       setLoadingTrainingData(false);
