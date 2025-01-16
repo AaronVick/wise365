@@ -31,6 +31,7 @@ import TenantManagement from './tenantManagement';
 import AdminManagement from './adminManagement';
 import AuditLogs from './auditLogs';
 import BillingManagement from './billingManagement';
+import TenantCustomization from './tenantCustomization';
 
 const AdminDashboard = () => {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -44,27 +45,43 @@ const AdminDashboard = () => {
     </div>
   );
 
+  // Define all available components
+  const componentMap = {
+    'Manage Agents': ManageAgents,
+    'Training': Training,
+    'Prompts': Prompts,
+    'Chat Interface': Chat,
+    'Agent Stats': AgentStats,
+    'Usage Statistics': UsageStats,
+    'Tenant Management': TenantManagement,
+    'Admin Management': AdminManagement,
+    'Billing Management': BillingManagement,
+    'Audit Logs': AuditLogs,
+    'System Settings': SystemSettings,
+    'Tenant Customization': TenantCustomization
+  };
+
   const navigation = {
     agentManagement: [
-      { name: 'Manage Agents', icon: Bot, component: ManageAgents, description: 'Create and configure AI agents' },
-      { name: 'Training', icon: BookOpen, component: Training, description: 'Train and fine-tune agent models' },
-      { name: 'Prompts', icon: Code, component: Prompts, description: 'Manage agent prompts and behaviors' },
-      { name: 'Chat Interface', icon: MessageCircle, component: Chat, description: 'Test and monitor agent conversations' },
-      { name: 'Agent Stats', icon: BarChart3, component: AgentStats, description: 'View agent performance metrics' }
+      { name: 'Manage Agents', icon: Bot, description: 'Create and configure AI agents' },
+      { name: 'Training', icon: BookOpen, description: 'Train and fine-tune agent models' },
+      { name: 'Prompts', icon: Code, description: 'Manage agent prompts and behaviors' },
+      { name: 'Chat Interface', icon: MessageCircle, description: 'Test and monitor agent conversations' },
+      { name: 'Agent Stats', icon: BarChart3, description: 'View agent performance metrics' }
     ],
     systemManagement: [
-      { name: 'Usage Statistics', icon: BarChart3, component: UsageStats, description: 'System-wide usage metrics' },
-      { name: 'Tenant Management', icon: Building2, component: TenantManagement, description: 'Manage organization tenants' },
-      { name: 'Admin Management', icon: Users, component: AdminManagement, description: 'Manage system administrators' },
-      { name: 'Billing Management', icon: Receipt, component: BillingManagement, description: 'Manage subscriptions and billing' },
-      { name: 'Audit Logs', icon: ClipboardList, component: AuditLogs, description: 'View system audit trails' },
-      { name: 'System Settings', icon: Settings, component: SystemSettings, description: 'Configure system-wide settings' }
+      { name: 'Usage Statistics', icon: BarChart3, description: 'System-wide usage metrics' },
+      { name: 'Tenant Management', icon: Building2, description: 'Manage organization tenants' },
+      { name: 'Admin Management', icon: Users, description: 'Manage system administrators' },
+      { name: 'Billing Management', icon: Receipt, description: 'Manage subscriptions and billing' },
+      { name: 'Audit Logs', icon: ClipboardList, description: 'View system audit trails' },
+      { name: 'System Settings', icon: Settings, description: 'Configure system-wide settings' },
+      { name: 'Tenant Customization', icon: Settings, description: 'Customize tenant settings' }
     ]
   };
 
   const renderNavigationCard = (item) => {
     if (!item || !item.name) return null;
-
     const IconComponent = item.icon || Settings;
 
     return (
@@ -74,7 +91,7 @@ const AdminDashboard = () => {
             <IconComponent className="h-5 w-5" />
             <CardTitle className="text-lg">{item.name}</CardTitle>
           </div>
-          <CardDescription>{item.description || ''}</CardDescription>
+          <CardDescription>{item.description}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button 
@@ -136,8 +153,6 @@ const AdminDashboard = () => {
                       <div className="text-sm">New tenant onboarded: Acme Corp</div>
                       <div className="text-sm">Agent configuration updated: Support Bot</div>
                       <div className="text-sm">System backup completed</div>
-                      <div className="text-sm">Subscription updated: Enterprise Plan</div>
-                      <div className="text-sm">New audit log: User permission change</div>
                     </div>
                   </ScrollArea>
                 </CardContent>
@@ -156,12 +171,9 @@ const AdminDashboard = () => {
       );
     }
 
-    // Find the component to render from navigation
-    const allItems = [...navigation.agentManagement, ...navigation.systemManagement];
-    const currentItem = allItems.find(item => item.name === currentView);
-    
-    if (currentItem?.component) {
-      const ComponentToRender = currentItem.component;
+    // Find the component to render from componentMap
+    const ComponentToRender = componentMap[currentView];
+    if (ComponentToRender) {
       return <ComponentToRender />;
     }
     
