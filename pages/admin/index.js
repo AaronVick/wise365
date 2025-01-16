@@ -1,8 +1,24 @@
+// pages/admin/index.js
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import dynamic from 'next/dynamic';
-import { Box, Flex, Grid, Text, Button, Heading, IconButton } from '@chakra-ui/react'; // Import Chakra components
+import { 
+  Box, 
+  Flex, 
+  Grid, 
+  Text, 
+  Button, 
+  Heading, 
+  IconButton,
+  useColorModeValue,
+  Container,
+  SimpleGrid,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText
+} from '@chakra-ui/react';
 import { 
   Bot, 
   MessageCircle, 
@@ -18,17 +34,66 @@ import {
   LineChart
 } from 'lucide-react';
 
-// Lazy load components
-const ManageAgents = dynamic(() => import('./manage'), { ssr: false });
-const Chat = dynamic(() => import('./chat'), { ssr: false });
-const Training = dynamic(() => import('./training'), { ssr: false });
-const Prompts = dynamic(() => import('./prompts'), { ssr: false });
-const AgentStats = dynamic(() => import('./agentStats'), { ssr: false });
-const AdminManagement = dynamic(() => import('./adminManagement'), { ssr: false });
-const UsageStats = dynamic(() => import('./usageStats'), { ssr: false });
-const BillingManagement = dynamic(() => import('./billingManagement'), { ssr: false });
-const AuditLogs = dynamic(() => import('./auditLogs'), { ssr: false });
-const TenantManagement = dynamic(() => import('./tenantManagement'), { ssr: false });
+// Lazy load components with error boundaries
+const DynamicComponent = ({ importFunc, loadingText = 'Loading...' }) => {
+  const Component = dynamic(importFunc, {
+    ssr: false,
+    loading: () => (
+      <Box p={4} textAlign="center">
+        <Text>{loadingText}</Text>
+      </Box>
+    )
+  });
+  
+  return (
+    <ErrorBoundary
+      fallback={<Box p={4} color="red.500">Error loading component</Box>}
+    >
+      <Component />
+    </ErrorBoundary>
+  );
+};
+
+const ManageAgents = () => (
+  <DynamicComponent importFunc={() => import('./manage')} />
+);
+
+const Chat = () => (
+  <DynamicComponent importFunc={() => import('./chat')} />
+);
+
+const Training = () => (
+  <DynamicComponent importFunc={() => import('./training')} />
+);
+
+const Prompts = () => (
+  <DynamicComponent importFunc={() => import('./prompts')} />
+);
+
+const AgentStats = () => (
+  <DynamicComponent importFunc={() => import('./agentStats')} />
+);
+
+const AdminManagement = () => (
+  <DynamicComponent importFunc={() => import('./adminManagement')} />
+);
+
+const UsageStats = () => (
+  <DynamicComponent importFunc={() => import('./usageStats')} />
+);
+
+const BillingManagement = () => (
+  <DynamicComponent importFunc={() => import('./billingManagement')} />
+);
+
+const AuditLogs = () => (
+  <DynamicComponent importFunc={() => import('./auditLogs')} />
+);
+
+const TenantManagement = () => (
+  <DynamicComponent importFunc={() => import('./tenantManagement')} />
+);
+
 
 const AdminDashboard = () => {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -38,6 +103,8 @@ const AdminDashboard = () => {
     totalConversations: 0,
   });
   const [error, setError] = useState(null);
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -45,7 +112,7 @@ const AdminDashboard = () => {
         const [agentsSnap, usersSnap, conversationsSnap] = await Promise.all([
           getDocs(collection(db, 'agents')),
           getDocs(collection(db, 'users')),
-          getDocs(collection(db, 'conversations')),
+          getDocs(collection(db, 'conversations'))
         ]);
 
         setStats({
@@ -53,9 +120,9 @@ const AdminDashboard = () => {
           totalUsers: usersSnap.size,
           totalConversations: conversationsSnap.size,
         });
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-        setError('Failed to load stats');
+      } catch (err) {
+        console.error('Error fetching stats:', err);
+        setError('Failed to load dashboard statistics');
       }
     };
 
@@ -125,63 +192,169 @@ const AdminDashboard = () => {
   const renderContent = () => {
     if (currentView === 'dashboard') {
       return (
-        <>
-          <Grid templateColumns={{ base: 'repeat(1, 1fr)', md: 'repeat(3, 1fr)' }} gap={6} mb={8}>
-            <Box p={4} borderWidth={1} borderRadius="md" boxShadow="md">
-              <Text>Total Agents</Text>
-              <Heading size="lg">{stats.totalAgents}</Heading>
-            </Box>
-            <Box p={4} borderWidth={1} borderRadius="md" boxShadow="md">
-              <Text>Active Users</Text>
-              <Heading size="lg">{stats.totalUsers}</Heading>
-            </Box>
-            <Box p={4} borderWidth={1} borderRadius="md" boxShadow="md">
-              <Text>Total Conversations</Text>
-              <Heading size="lg">{stats.totalConversations}</Heading>
-            </Box>
-          </Grid>
-          {renderNavigationSection(navigationSections.agentManagement)}
-          {renderNavigationSection(navigationSections.systemManagement)}
-        </>
+        <Container maxW="container.xl" py={6}>
+          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
+            <Stat
+              px={6}
+              py={4}
+              bg={useColorModeValue('white', 'gray.800')}
+              borderRadius="lg"
+              borderWidth="1px"
+              borderColor={useColorModeValue('gray.200', 'gray.700')}
+              boxShadow="sm"
+              transition="all 0.3s"
+              _hover={{ boxShadow: 'md' }}
+            >
+              <StatLabel fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
+                Total Agents
+              </StatLabel>
+              <StatNumber fontSize="3xl" fontWeight="bold">
+                {stats.totalAgents}
+              </StatNumber>
+              <StatHelpText>
+                <Flex align="center" color={useColorModeValue('gray.600', 'gray.400')}>
+                  <Bot size={14} style={{ marginRight: '6px' }} />
+                  Active AI Agents
+                </Flex>
+              </StatHelpText>
+            </Stat>
+  
+            <Stat
+              px={6}
+              py={4}
+              bg={useColorModeValue('white', 'gray.800')}
+              borderRadius="lg"
+              borderWidth="1px"
+              borderColor={useColorModeValue('gray.200', 'gray.700')}
+              boxShadow="sm"
+              transition="all 0.3s"
+              _hover={{ boxShadow: 'md' }}
+            >
+              <StatLabel fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
+                Active Users
+              </StatLabel>
+              <StatNumber fontSize="3xl" fontWeight="bold">
+                {stats.totalUsers}
+              </StatNumber>
+              <StatHelpText>
+                <Flex align="center" color={useColorModeValue('gray.600', 'gray.400')}>
+                  <Users size={14} style={{ marginRight: '6px' }} />
+                  Total Platform Users
+                </Flex>
+              </StatHelpText>
+            </Stat>
+  
+            <Stat
+              px={6}
+              py={4}
+              bg={useColorModeValue('white', 'gray.800')}
+              borderRadius="lg"
+              borderWidth="1px"
+              borderColor={useColorModeValue('gray.200', 'gray.700')}
+              boxShadow="sm"
+              transition="all 0.3s"
+              _hover={{ boxShadow: 'md' }}
+            >
+              <StatLabel fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
+                Total Conversations
+              </StatLabel>
+              <StatNumber fontSize="3xl" fontWeight="bold">
+                {stats.totalConversations}
+              </StatNumber>
+              <StatHelpText>
+                <Flex align="center" color={useColorModeValue('gray.600', 'gray.400')}>
+                  <MessageCircle size={14} style={{ marginRight: '6px' }} />
+                  Active Interactions
+                </Flex>
+              </StatHelpText>
+            </Stat>
+          </SimpleGrid>
+  
+          <Box mb={8}>
+            {renderNavigationSection(navigationSections.agentManagement)}
+          </Box>
+          <Box>
+            {renderNavigationSection(navigationSections.systemManagement)}
+          </Box>
+        </Container>
       );
     }
-
+  
     const selectedItem = [
       ...navigationSections.agentManagement.items,
       ...navigationSections.systemManagement.items,
     ].find((item) => item.path === currentView);
-
+  
     if (selectedItem?.component) {
       const Component = selectedItem.component;
-      return <Component />;
+      return (
+        <Box p={4}>
+          <Component />
+        </Box>
+      );
     }
-
-    return <Text>Page not found</Text>;
+  
+    return (
+      <Box p={4} textAlign="center">
+        <Heading size="md" color="gray.500">Page not found</Heading>
+      </Box>
+    );
   };
-
+  
+  // Error handling component
   if (error) {
     return (
-      <Box p={4} bg="red.50" borderWidth={1} borderColor="red.200" borderRadius="md">
-        <Heading size="sm" color="red.600">Error</Heading>
-        <Text color="red.500">{error}</Text>
+      <Box
+        p={6}
+        m={4}
+        bg={useColorModeValue('red.50', 'red.900')}
+        borderWidth={1}
+        borderColor={useColorModeValue('red.200', 'red.700')}
+        borderRadius="lg"
+        textAlign="center"
+      >
+        <Heading size="md" color={useColorModeValue('red.600', 'red.200')} mb={2}>
+          Error
+        </Heading>
+        <Text color={useColorModeValue('red.500', 'red.300')}>
+          {error}
+        </Text>
       </Box>
     );
   }
 
   return (
-    <Box maxW="7xl" mx="auto" py={8} px={4}>
-      <Flex align="center" mb={8}>
-        {currentView !== 'dashboard' && (
-          <IconButton
-            icon={<ArrowLeft />}
-            aria-label="Go back"
-            onClick={() => handleNavigation('dashboard')}
-            mr={4}
-          />
-        )}
-        <Heading>{currentView === 'dashboard' ? 'Admin Dashboard' : navigationSections.agentManagement.items.find((item) => item.path === currentView)?.name || 'Not Found'}</Heading>
+    <Box minH="100vh" bg={useColorModeValue('gray.50', 'gray.900')}>
+      <Flex direction="column">
+        {/* Navigation Header */}
+        <Box
+          bg={bgColor}
+          px={4}
+          borderBottom="1px"
+          borderColor={borderColor}
+        >
+          <Flex h={16} alignItems="center" justifyContent="space-between">
+            <Heading size="md">Admin Dashboard</Heading>
+            {currentView !== 'dashboard' && (
+              <IconButton
+                icon={<ArrowLeft />}
+                onClick={() => setCurrentView('dashboard')}
+                variant="ghost"
+                aria-label="Return to dashboard"
+              />
+            )}
+          </Flex>
+        </Box>
+
+        {/* Main Content */}
+        <Box flex="1" p={4}>
+          {error ? (
+            <Text color="red.500">{error}</Text>
+          ) : (
+            renderContent()
+          )}
+        </Box>
       </Flex>
-      {renderContent()}
     </Box>
   );
 };
