@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../lib/firebase';
+import { ChakraProvider } from '@chakra-ui/react'; // Import ChakraProvider
 
 const inter = Inter({ subsets: ['latin'], fallback: ['sans-serif'] });
 
@@ -57,11 +58,13 @@ const MyApp = ({ Component, pageProps }) => {
       FallbackComponent={ErrorFallback}
       onError={(error, info) => console.error("ErrorBoundary caught an error", error, info)}
     >
-      <DashboardProvider>
-        <main className={inter.className}>
-          <Component {...pageProps} />
-        </main>
-      </DashboardProvider>
+      <ChakraProvider> {/* Wrap ChakraProvider */}
+        <DashboardProvider>
+          <main className={inter.className}>
+            <Component {...pageProps} />
+          </main>
+        </DashboardProvider>
+      </ChakraProvider>
     </ErrorBoundary>
   );
 }
