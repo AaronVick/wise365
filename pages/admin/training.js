@@ -32,65 +32,58 @@ export default function Training() {
       agentId: doc.data().agentId
     })));
   };
+
   
-  // Call this in your fetchTrainingData function
-  await checkAllRecords();
   // Section 2: Agent Fetching
   useEffect(() => {
-    const fetchAgents = async () => {
+    const fetchData = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, 'agents'));
-        const agentList = querySnapshot.docs.map(doc => ({
-          agentId: doc.get('agentId') || doc.id,
-          agentName: doc.get('agentName') || 'Unnamed Agent',
-          role: doc.get('Role') || 'No Role',
-        }));
-        setAgents(agentList);
-      } catch (err) {
-        console.error('Error fetching agents:', err);
-        setError('Failed to load agents.');
+        // First check all records
+        await checkAllRecords();
+        
+        // Then fetch agents
+        const fetchAgents = async () => {
+          const agentsQuery = query(collection(db, 'agents'));
+          const snapshot = await getDocs(agentsQuery);
+          const agentsList = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setAgents(agentsList);
+        };
+        
+        await fetchAgents();
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError('Failed to load data');
       }
     };
-
-    fetchAgents();
+  
+    fetchData();
   }, []);
 
   // Section 3: Training Data Fetching
-  useEffect(() => {
-    if (!selectedAgent) return;
-
-    const fetchTrainingData = async () => {
-      console.log('Selected Agent ID:', selectedAgent); 
-      setLoadingTrainingData(true);
-      try {
-        // Convert selectedAgent to match the case in database
-        const normalizedAgentId = selectedAgent.trim();
-        
-        const trainingQuery = query(
-          collection(db, 'agentData'), 
-          where('agentId', '==', normalizedAgentId)
-        );
-        
-        console.log('Normalized Agent ID:', normalizedAgentId);
-        const querySnapshot = await getDocs(trainingQuery);
-        
-        if (querySnapshot.size === 0) {
-          console.warn('No records found for agent:', normalizedAgentId);
-        }
-        
-        const records = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        
-        setTrainingData(records);
-      } catch (err) {
-        console.error('Error fetching training data:', err);
-        setError('Failed to load training data.');
-      } finally {
-        setLoadingTrainingData(false);
-      }
-    };
+  const fetchTrainingData = async () => {
+    console.log('Selected Agent ID:', selectedAgent);
+    setLoadingTrainingData(true);
+    try {
+      await checkAllRecords(); // Now this is inside an async function
+      
+      const normalizedAgentId = selectedAgent.trim();
+      const trainingQuery = query(
+        collection(db, 'agentData'),
+        where('agentId', '==', normalizedAgentId)
+      );
+      
+      const querySnapshot = await getDocs(trainingQuery);
+      // ... rest of your function
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Failed to fetch training data');
+    } finally {
+      setLoadingTrainingData(false);
+    }
+  };
 
     fetchTrainingData();
   }, [selectedAgent]);
