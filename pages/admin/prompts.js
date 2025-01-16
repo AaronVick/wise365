@@ -152,66 +152,24 @@ export default function Prompts() {
   
   Create a detailed system prompt that will help the AI embody this role effectively.`;
   
-      let prompt;
-      if (selectedLLM === 'Anthropic') {
-        // Call Claude API
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY,
-            'anthropic-version': '2023-06-01'
-          },
-          body: JSON.stringify({
-            model: 'claude-3-opus-20240229',
-            max_tokens: 1000,
-            messages: [{
-              role: 'user',
-              content: systemMessage
-            }]
-          })
-        });
+      // Call our API route instead of directly calling LLM APIs
+      const response = await fetch('/api/generate-prompt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          llmType: selectedLLM,
+          systemMessage
+        })
+      });
   
-        if (!response.ok) {
-          throw new Error(`Anthropic API error: ${response.statusText}`);
-        }
-  
-        const data = await response.json();
-        prompt = data.content[0].text;
-  
-      } else if (selectedLLM === 'OpenAI') {
-        // Call OpenAI API
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-4',
-            messages: [
-              {
-                role: 'system',
-                content: 'You are an expert prompt engineer.'
-              },
-              {
-                role: 'user',
-                content: systemMessage
-              }
-            ],
-            max_tokens: 1000
-          })
-        });
-  
-        if (!response.ok) {
-          throw new Error(`OpenAI API error: ${response.statusText}`);
-        }
-  
-        const data = await response.json();
-        prompt = data.choices[0].message.content;
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
       }
   
-      setGeneratedPrompt(prompt);
+      const data = await response.json();
+      setGeneratedPrompt(data.prompt);
   
     } catch (err) {
       console.error('Error generating prompt:', err);
@@ -220,6 +178,8 @@ export default function Prompts() {
       setGeneratingPrompt(false);
     }
   };
+
+  
   
   const handlePromptUpdate = async (llmType, newPrompt) => {
     if (!selectedAgent || !llmType) return;

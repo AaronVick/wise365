@@ -1,5 +1,4 @@
 // pages/admin/training.js
-
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { 
@@ -18,11 +17,13 @@ export default function Training() {
   const [trainingData, setTrainingData] = useState([]);
   const [loadingTrainingData, setLoadingTrainingData] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [availableDataTypes, setAvailableDataTypes] = useState([]);
+  const [dataTypes, setDataTypes] = useState([]); // Changed from availableDataTypes
   const [selectedDataType, setSelectedDataType] = useState('');
   const [dynamicFields, setDynamicFields] = useState([]);
   const [newRecordFields, setNewRecordFields] = useState({});
   const [saving, setSaving] = useState(false);
+
+  // Remove the nested Training function - it's causing the duplicate declarations
 
   const checkAllRecords = async () => {
     const allRecordsQuery = query(collection(db, 'agentData'));
@@ -32,6 +33,34 @@ export default function Training() {
       agentId: doc.data().agentId
     })));
   };
+
+  useEffect(() => {
+    const aggregateDataTypes = () => {
+      const dataTypeMap = {};
+
+      trainingData.forEach(record => {
+        const { datatype, ...fields } = record;
+        if (!datatype) return;
+
+        if (!dataTypeMap[datatype]) {
+          dataTypeMap[datatype] = new Set();
+        }
+
+        Object.keys(fields)
+          .filter(key => key !== 'agentId' && key !== 'id')
+          .forEach(field => dataTypeMap[datatype].add(field));
+      });
+
+      const aggregatedTypes = Object.entries(dataTypeMap).map(([type, fields]) => ({
+        type,
+        fields: Array.from(fields),
+      }));
+
+      setDataTypes(aggregatedTypes);
+    };
+
+    aggregateDataTypes();
+  }, [trainingData]);
 
   
   // Section 2: Agent Fetching
@@ -97,39 +126,40 @@ useEffect(() => {
 
 // Section 4: Data Type Aggregation
 useEffect(() => {
-  const aggregateDataTypes = () => {
-    const dataTypeMap = {};
+    const aggregateDataTypes = () => {
+      const dataTypeMap = {};
 
-    trainingData.forEach(record => {
-      const { datatype, ...fields } = record;
-      if (!datatype) return;
+      trainingData.forEach(record => {
+        const { datatype, ...fields } = record;
+        if (!datatype) return;
 
-      if (!dataTypeMap[datatype]) {
-        dataTypeMap[datatype] = new Set();
-      }
+        if (!dataTypeMap[datatype]) {
+          dataTypeMap[datatype] = new Set();
+        }
 
-      Object.keys(fields)
-        .filter(key => key !== 'agentId' && key !== 'id')
-        .forEach(field => dataTypeMap[datatype].add(field));
-    });
+        Object.keys(fields)
+          .filter(key => key !== 'agentId' && key !== 'id')
+          .forEach(field => dataTypeMap[datatype].add(field));
+      });
 
-    const aggregatedTypes = Object.entries(dataTypeMap).map(([type, fields]) => ({
-      type,
-      fields: Array.from(fields),
-    }));
+      const aggregatedTypes = Object.entries(dataTypeMap).map(([type, fields]) => ({
+        type,
+        fields: Array.from(fields),
+      }));
 
-    setDataTypes(aggregatedTypes);
-  };
+      setDataTypes(aggregatedTypes);
+    };
 
-  aggregateDataTypes();
-}, [trainingData]);
+    aggregateDataTypes();
+  }, [trainingData]);
+
 
   // Section 5: Form Handlers
   const handleDataTypeSelection = (event) => {
     const selectedType = event.target.value;
     setSelectedDataType(selectedType);
 
-    const typeFields = availableDataTypes.find(
+    const typeFields = dataTypes.find(
       type => type.type === selectedType
     )?.fields || [];
     setDynamicFields(typeFields);

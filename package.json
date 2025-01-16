@@ -10,6 +10,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@babel/parser": "^7.26.5",
+    "@babel/runtime": "^7.x.x",
+    "@babel/traverse": "^7.26.5",
     "@chakra-ui/react": "^3.3.0",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-alert-dialog": "^1.1.4",
@@ -22,7 +25,6 @@
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-tabs": "^1.1.2",
     "aws-sdk": "^2.1550.0",
-    "@babel/runtime": "^7.x.x",
     "class-variance-authority": "^0.7.1",
     "classnames": "^2.5.1",
     "clsx": "^2.1.1",
@@ -48,8 +50,8 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@babel/plugin-transform-runtime": "^7.x.x",
     "@babel/plugin-proposal-class-properties": "^7.x.x",
+    "@babel/plugin-transform-runtime": "^7.x.x",
     "@types/express": "^4.17.21",
     "@types/mongoose": "^5.11.97",
     "@types/node": "^20.11.16",

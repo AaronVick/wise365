@@ -100,97 +100,158 @@ const Dashboard = () => {
     }
   }, [user, loading, router]);
 
+  
   // Agent handlers
-  const handleAgentClick = async (agent) => {
-    if (!agent?.id || !user?.uid) {
-      console.error('Missing required agent or user data');
+const handleAgentClick = async (agent) => {
+  if (!agent?.id || !userData?.authenticationID) {
+    console.error('Missing required agent or user data:', { agent, userData });
+    return;
+  }
+
+  // First, fetch all chats for this agent (main and sub)
+  const allAgentChats = await firebaseService.queryCollection('conversationNames', {
+    where: [
+      { field: 'agentId', operator: '==', value: agent.id },
+      { field: 'userId', operator: '==', value: userData.authenticationID }
+    ]
+  });
+
+  // Find the default chat
+  const defaultChat = allAgentChats.find(chat => chat.isDefault);
+  
+  // Get subchats (non-default chats)
+  const subChats = allAgentChats.filter(chat => !chat.isDefault);
+
+  // Special handling for Shawn
+  if (agent.id === 'shawn') {
+    try {
+      let chatId;
+      let isNewUser = false;
+
+      if (!defaultChat) {
+        // Create new conversation with Shawn using firebaseService
+        const chatData = {
+          agentId: 'shawn',
+          conversationName: 'Chat with Shawn',
+          userId: userData.authenticationID,
+          isDefault: true,
+          projectName: '',
+          timestamp: serverTimestamp()
+        };
+
+        const newChat = await firebaseService.create('conversationNames', chatData);
+        chatId = newChat.id;
+        isNewUser = true;
+
+        // Create initial welcome message
+        const welcomeMessage = {
+          agentId: 'shawn',
+          content: `Hi! I'm Shawn, your personal guide to Business Wise365. I'll help you navigate our platform and connect you with the right experts for your business needs. Are you ready to get started?`,
+          conversationName: chatId,
+          from: 'shawn',
+          isDefault: true,
+          timestamp: serverTimestamp(),
+          type: 'agent'
+        };
+
+        await firebaseService.create('conversations', welcomeMessage);
+      } else {
+        chatId = defaultChat.id;
+      }
+
+      // Update nestedChats state with subchats
+      setNestedChats(prev => ({
+        ...prev,
+        [agent.id]: subChats
+      }));
+
+      setCurrentChat({
+        id: chatId,
+        agentId: 'shawn',
+        title: 'Chat with Shawn',
+        participants: [userData.authenticationID, 'shawn'],
+        isDefault: true,
+        conversationName: chatId,
+        isNewUser: isNewUser
+      });
+
+      return;
+    } catch (error) {
+      console.error('Error initializing Shawn chat:', error);
       return;
     }
+  }
 
-    // Special handling for Shawn
-    if (agent.id === 'shawn') {
-      try {
-        const conversationsRef = collection(db, 'conversations');
-        const q = query(
-          conversationsRef,
-          where('agentId', '==', 'shawn'),
-          where('participants', 'array-contains', user.uid),
-          where('isDefault', '==', true)
-        );
-        const querySnapshot = await getDocs(q);
+  // Regular agent handling
+  try {
+    let chatId;
+    let isNewUser = false;
 
-        let chatId;
-        let isNewUser = false;
+    if (!defaultChat) {
+      // Create new default conversation
+      const chatData = {
+        agentId: agent.id,
+        conversationName: `Chat with ${agent.name}`,
+        userId: userData.authenticationID,
+        isDefault: true,
+        projectName: '',
+        timestamp: serverTimestamp()
+      };
 
-        if (querySnapshot.empty) {
-          // Create new conversation with Shawn
-          const namesRef = collection(db, 'conversationNames');
-          const nameDoc = await addDoc(namesRef, {
-            agentId: 'shawn',
-            conversationName: 'Chat with Shawn',
-            userId: user.uid,
-            isDefault: true,
-            projectName: '',
-            timestamp: serverTimestamp()
-          });
+      const newChat = await firebaseService.create('conversationNames', chatData);
+      chatId = newChat.id;
+      isNewUser = true;
 
-          // Create initial welcome message
-          const welcomeMessage = {
-            agentId: 'shawn',
-            content: "Hi! I'm Shawn, your personal guide to Business Wise365. I'll help you navigate our platform and connect you with the right experts for your business needs. Are you ready to get started?",
-            conversationName: nameDoc.id,
-            from: 'shawn',
-            isDefault: true,
-            timestamp: serverTimestamp(),
-            type: 'agent'
-          };
-
-          const messagesRef = collection(db, 'conversations');
-          await addDoc(messagesRef, welcomeMessage);
-
-          chatId = nameDoc.id;
-          isNewUser = true;
-        } else {
-          chatId = querySnapshot.docs[0].id;
-        }
-
-        setCurrentChat({
-          id: chatId,
-          agentId: 'shawn',
-          title: 'Chat with Shawn',
-          participants: [user.authenticationID, 'shawn'],
-          isDefault: true,
-          conversationName: chatId,
-          isNewUser: isNewUser
-        });
-
-        return;
-      } catch (error) {
-        console.error('Error initializing Shawn chat:', error);
-        return;
-      }
+      // Create initial system message
+      await firebaseService.create('conversations', {
+        agentId: agent.id,
+        content: `Started conversation with ${agent.name}`,
+        conversationName: chatId,
+        from: userData.authenticationID,
+        isDefault: true,
+        timestamp: serverTimestamp(),
+        type: 'system'
+      });
+    } else {
+      chatId = defaultChat.id;
     }
 
-    // Regular agent handling using utility
-    try {
-      await handleAgentClickUtil(agent, user, db, setCurrentChat);
-    } catch (error) {
-      console.error('Error handling agent click:', error);
-    }
-  };
+    // Update nestedChats state with subchats
+    setNestedChats(prev => ({
+      ...prev,
+      [agent.id]: subChats
+    }));
 
-  // Handle subchat clicking
-  const handleSubChatClick = (agentId, subChat) => {
     setCurrentChat({
-      id: subChat.id,
-      agentId: agentId,
-      title: subChat.conversationName || 'Untitled Chat',
-      participants: subChat.participants || [user.uid],
-      isDefault: false,
-      conversationName: subChat.id
+      id: chatId,
+      agentId: agent.id,
+      title: `Chat with ${agent.name}`,
+      participants: [userData.authenticationID, agent.id],
+      isDefault: true,
+      conversationName: chatId,
+      isNewUser: isNewUser
     });
-    router.push(`/chat/${subChat.id}`);
-  };
+
+  } catch (error) {
+    console.error('Error handling agent click:', error);
+  }
+};
+
+// Handle subchat clicking
+const handleSubChatClick = (agentId, subChat) => {
+  setCurrentChat({
+    id: subChat.id,
+    agentId: agentId,
+    title: subChat.conversationName || 'Untitled Chat',
+    participants: subChat.participants || [userData.authenticationID], // Updated to use userData
+    isDefault: false,
+    conversationName: subChat.id
+  });
+  router.push(`/chat/${subChat.id}`);
+};
+
+
+
 
   // Project handlers
   const handleProjectClick = async (project) => {

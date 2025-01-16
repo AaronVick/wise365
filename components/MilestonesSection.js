@@ -32,6 +32,7 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
     selectedMilestone
   );
 
+  
   useEffect(() => {
     if (!currentUser?.uid) {
       setLoading(false);
@@ -43,6 +44,9 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
       setError(null);
 
       try {
+        // First check if user is new
+        const isNewUser = !userData || Object.keys(userData).length === 0;
+        
         // Fetch funnel definitions
         const funnelsRef = collection(db, 'funnels');
         const funnelsSnapshot = await getDocs(funnelsRef);
@@ -53,6 +57,24 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
         setFunnelDefinitions(funnelsData);
         console.log('Available funnel definitions:', funnelsData.map(f => f.name));
 
+        if (isNewUser) {
+          // For new users, just set up onboarding milestone
+          const onboardingMilestone = {
+            name: 'Getting Started',
+            description: 'Complete your initial business setup',
+            status: 'ready',
+            progress: 0,
+            funnelName: 'Onboarding Funnel',
+            priority: 1
+          };
+          setMilestones([onboardingMilestone]);
+          setFilteredMilestones([onboardingMilestone]);
+          setSelectedMilestone(onboardingMilestone);
+          setLoading(false);
+          return;
+        }
+
+        // For existing users, continue with normal flow
         // Fetch user's funnel progress data
         const funnelDataRef = collection(db, 'funnelData');
         const funnelDataQuery = query(
@@ -139,6 +161,7 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
 
     fetchFunnelsAndProgress();
   }, [currentUser?.uid, selectedMilestone]);
+
 
   const analyzeFunnelAvailability = async (funnels, userFunnelData) => {
     const result = {
@@ -249,17 +272,31 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
   };
 
   const applyFilter = (milestones, filter) => {
-    if (!Array.isArray(milestones)) {
-      setFilteredMilestones([]);
+  if (!Array.isArray(milestones)) {
+    setFilteredMilestones([]);
+    return;
+  }
+
+  // Always show onboarding milestone for new users
+  const isNewUser = !userData || Object.keys(userData).length === 0;
+  if (isNewUser) {
+    const onboardingMilestone = milestones.find(m => 
+      m.funnelName.toLowerCase() === 'onboarding funnel'
+    );
+    if (onboardingMilestone) {
+      setFilteredMilestones([onboardingMilestone]);
       return;
     }
+  }
 
-    const filtered = filter === 'all' 
-      ? milestones
-      : milestones.filter(milestone => milestone.status === filter);
-    
-    setFilteredMilestones(filtered);
-  };
+  const filtered = filter === 'all' 
+    ? milestones
+    : milestones.filter(milestone => milestone.status === filter);
+  
+  setFilteredMilestones(filtered);
+};
+
+
 
   const handleFilterChange = (filter) => {
     setActiveFilter(filter);
@@ -353,7 +390,11 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
         </div>
         <ScrollArea className="h-[300px]">
           <div className="space-y-4">
-            {filteredMilestones.length > 0 ? (
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              </div>
+            ) : filteredMilestones.length > 0 ? (
               filteredMilestones.map((milestone) => (
                 <MilestoneCard 
                   key={`${milestone.funnelName}-${milestone.name}`} 
@@ -368,7 +409,7 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
             ) : (
               <div className="text-center py-8">
                 <p className="text-gray-500">
-                  Loading available milestones...
+                  No milestones available at this time.
                 </p>
               </div>
             )}
