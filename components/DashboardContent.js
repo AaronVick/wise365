@@ -99,7 +99,8 @@ const DashboardContent = ({
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [resourcesData, setResourcesData] = useState([]); // New state for resource data
   const [userData, setUserData] = useState(null); // New state for user data
-
+  const { data: resourcesData, isLoading: resourcesLoading, error: resourcesError } = useResources(currentUser?.teamId);
+  
   const { 
     goals,
     setGoals,
@@ -308,8 +309,6 @@ const DashboardContent = ({
 
   // Resource data loading effect
 
-  const { data: resourcesData, isLoading: resourcesLoading, error: resourcesError } = useResources(currentUser?.teamId);
-  
   useEffect(() => {
     const loadResourceData = async () => {
       if (!currentUser?.uid) return;
@@ -543,33 +542,34 @@ const DashboardContent = ({
             </div>
           </Card>
 
-          {/* Resources Section */}
-          <Card className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Resources</h3>
-              {process.env.NODE_ENV === 'development' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      const response = await fetch('/api/seed', { 
-                        method: 'POST' 
-                      });
-                      const data = await response.json();
-                      alert('Templates seeded successfully!');
-                      console.log('Seed results:', data);
-                    } catch (error) {
-                      console.error('Error seeding templates:', error);
-                      alert('Error seeding templates');
-                    }
-                  }}
-                >
-                  Seed Templates
-                </Button>
-              )}
-            </div>
-            
+
+            {/* Resources Section */}
+            <Card className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Resources</h3>
+                {process.env.NODE_ENV === 'development' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/seed', { 
+                          method: 'POST' 
+                        });
+                        const data = await response.json();
+                        alert('Templates seeded successfully!');
+                        console.log('Seed results:', data);
+                      } catch (error) {
+                        console.error('Error seeding templates:', error);
+                        alert('Error seeding templates');
+                      }
+                    }}
+                  >
+                    Seed Templates
+                  </Button>
+                )}
+              </div>
+  
             <div className="text-sm text-gray-500">
               {isLoading ? (
                 <div className="text-center py-4">Loading resources...</div>
