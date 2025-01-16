@@ -1,4 +1,7 @@
+
 // pages/admin/index.js
+
+// Section 1: Imports
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -24,7 +27,7 @@ const debug = (area, message, data = '') => {
   console.log(`[Admin Dashboard][${area}] ${message}`, data ? JSON.stringify(data) : '');
 };
 
-// Lazy load agent management components
+// Section 2: Dynamic Component Imports
 const ManageAgents = dynamic(() => {
   debug('Load', 'Loading ManageAgents component');
   return import('./manage').catch(err => {
@@ -74,12 +77,14 @@ const AuditLogs = dynamic(() => {
   return import('./auditLogs');
 }, { loading: () => <div>Loading Audit Logs...</div>, ssr: false });
 
+
+// Section 3: Admin Dashboard Component
+
 const AdminDashboard = () => {
   debug('Init', 'Starting dashboard initialization');
-  
+
   const [currentView, setCurrentView] = useState('dashboard');
   const [error, setError] = useState(null);
-
 
   const [stats, setStats] = useState({
     totalAgents: 0,
@@ -87,7 +92,7 @@ const AdminDashboard = () => {
     totalConversations: 0,
   });
   const [systemHealth, setSystemHealth] = useState('Good'); // Placeholder logic for now
-  
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -96,23 +101,22 @@ const AdminDashboard = () => {
           getDocs(collection(db, 'users')),
           getDocs(collection(db, 'conversations')),
         ]);
-  
+
         setStats({
           totalAgents: agentsSnap.size,
           totalUsers: usersSnap.size,
           totalConversations: conversationsSnap.size,
         });
-  
+
         // Placeholder: Update system health logic here
         setSystemHealth('Good'); // Add real health check logic
       } catch (error) {
         console.error('Error fetching stats:', error);
       }
     };
-  
+
     fetchStats();
   }, []);
-
 
   // Define navigation sections
   const navigationSections = {
@@ -200,6 +204,12 @@ const AdminDashboard = () => {
     }
   };
 
+  // Consolidate all items for global access
+  const allItems = [
+    ...navigationSections.agentManagement.items,
+    ...navigationSections.systemManagement.items
+  ];
+
   // Safe navigation handler
   const handleNavigation = (view) => {
     debug('Navigation', `Navigating to: ${view}`);
@@ -248,118 +258,3 @@ const AdminDashboard = () => {
     );
   };
 
-  // Render main content
-  const renderContent = () => {
-    debug('Render', 'Rendering main content', { view: currentView });
-
-    if (currentView === 'dashboard') {
-      return (
-        <div className="space-y-12">
-          {/* Quick Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500">
-                  Total Agents
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalAgents}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500">
-                  Active Users
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalUsers}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500">
-                  Total Conversations
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalConversations}</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Navigation Sections */}
-          <div className="space-y-12">
-            {renderNavigationSection(navigationSections.agentManagement)}
-            {renderNavigationSection(navigationSections.systemManagement)}
-          </div>
-        </div>
-      );
-    }
-
-    // Find and render the selected component
-    const allItems = [
-      ...navigationSections.agentManagement.items,
-      ...navigationSections.systemManagement.items
-    ];
-    
-    const selectedItem = allItems.find(item => item.path === currentView);
-    if (selectedItem?.component) {
-      const Component = selectedItem.component;
-      return <Component />;
-    }
-
-    return <div>Page not found</div>;
-  };
-
-  if (error) {
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-        <h3 className="text-red-800 font-medium">Error</h3>
-        <p className="text-red-600">{error}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="container mx-auto p-6">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        {currentView !== 'dashboard' && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleNavigation('dashboard')}
-            className="mr-2"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => handleNavigation('dashboard')}
-        >
-          <Home className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">
-            {currentView === 'dashboard' ? 'Admin Dashboard' : 
-             allItems.find(item => item.path === currentView)?.name || 'Not Found'}
-          </h1>
-          {currentView !== 'dashboard' && (
-            <p className="text-gray-500">
-              {allItems.find(item => item.path === currentView)?.description}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Main Content */}
-      {renderContent()}
-    </div>
-  );
-};
-
-export default AdminDashboard;
