@@ -11,37 +11,66 @@ import {
   Code,
   Home,
   ArrowLeft,
+  Users,
+  Settings,
+  Receipt,
+  ClipboardList,
+  LineChart
 } from 'lucide-react';
 
 const debug = (area, message, data = '') => {
   console.log(`[Admin Dashboard][${area}] ${message}`, data ? JSON.stringify(data) : '');
 };
 
-// Lazy load components with error boundaries
-const ManageAgents = dynamic(() => import('./manage'), {
-  loading: () => <div>Loading Manage Agents...</div>,
-  ssr: false
-});
+// Lazy load agent management components
+const ManageAgents = dynamic(() => {
+  debug('Load', 'Loading ManageAgents component');
+  return import('./manage').catch(err => {
+    debug('Error', 'Failed to load ManageAgents', err);
+    return () => <div>Error loading Manage Agents</div>;
+  });
+}, { loading: () => <div>Loading Manage Agents...</div>, ssr: false });
 
-const Chat = dynamic(() => import('./chat'), {
-  loading: () => <div>Loading Chat Interface...</div>,
-  ssr: false
-});
+const Chat = dynamic(() => {
+  debug('Load', 'Loading Chat component');
+  return import('./chat');
+}, { loading: () => <div>Loading Chat Interface...</div>, ssr: false });
 
-const Training = dynamic(() => import('./training'), {
-  loading: () => <div>Loading Training Interface...</div>,
-  ssr: false
-});
+const Training = dynamic(() => {
+  debug('Load', 'Loading Training component');
+  return import('./training');
+}, { loading: () => <div>Loading Training Interface...</div>, ssr: false });
 
-const Prompts = dynamic(() => import('./prompts'), {
-  loading: () => <div>Loading Prompts Interface...</div>,
-  ssr: false
-});
+const Prompts = dynamic(() => {
+  debug('Load', 'Loading Prompts component');
+  return import('./prompts');
+}, { loading: () => <div>Loading Prompts Interface...</div>, ssr: false });
 
-const AgentStats = dynamic(() => import('./agentStats'), {
-  loading: () => <div>Loading Agent Stats...</div>,
-  ssr: false
-});
+const AgentStats = dynamic(() => {
+  debug('Load', 'Loading AgentStats component');
+  return import('./agentStats');
+}, { loading: () => <div>Loading Agent Stats...</div>, ssr: false });
+
+// Lazy load system management components
+const AdminManagement = dynamic(() => {
+  debug('Load', 'Loading AdminManagement component');
+  return import('./adminManagement');
+}, { loading: () => <div>Loading Admin Management...</div>, ssr: false });
+
+const UsageStats = dynamic(() => {
+  debug('Load', 'Loading UsageStats component');
+  return import('./usageStats');
+}, { loading: () => <div>Loading Usage Stats...</div>, ssr: false });
+
+const BillingManagement = dynamic(() => {
+  debug('Load', 'Loading BillingManagement component');
+  return import('./billingManagement');
+}, { loading: () => <div>Loading Billing Management...</div>, ssr: false });
+
+const AuditLogs = dynamic(() => {
+  debug('Load', 'Loading AuditLogs component');
+  return import('./auditLogs');
+}, { loading: () => <div>Loading Audit Logs...</div>, ssr: false });
 
 const AdminDashboard = () => {
   debug('Init', 'Starting dashboard initialization');
@@ -49,44 +78,91 @@ const AdminDashboard = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [error, setError] = useState(null);
 
-  // Only define agent management section initially
-  const agentManagementItems = [
-    { 
-      name: 'Agent Configuration',
-      icon: Bot,
-      component: ManageAgents,
-      description: 'Create and configure AI agents',
-      path: 'manage'
+  // Define navigation sections
+  const navigationSections = {
+    agentManagement: {
+      title: "Agent Management Hub",
+      description: "Manage and monitor AI agents",
+      items: [
+        { 
+          name: 'Agent Configuration',
+          icon: Bot,
+          component: ManageAgents,
+          description: 'Create and configure AI agents',
+          path: 'manage'
+        },
+        { 
+          name: 'Agent Training',
+          icon: BookBook,
+          component: Training,
+          description: 'Train and configure agent behaviors',
+          path: 'training'
+        },
+        {
+          name: 'Agent Prompts',
+          icon: Code,
+          component: Prompts,
+          description: 'Manage agent prompts and templates',
+          path: 'prompts'
+        },
+        { 
+          name: 'Chat Interface',
+          icon: MessageCircle,
+          component: Chat,
+          description: 'Test and monitor agent conversations',
+          path: 'chat'
+        },
+        { 
+          name: 'Performance Analytics',
+          icon: BarChart3,
+          component: AgentStats,
+          description: 'View agent interaction statistics',
+          path: 'agentStats'
+        }
+      ]
     },
-    { 
-      name: 'Agent Training',
-      icon: BookOpen,
-      component: Training,
-      description: 'Train and configure agent behaviors',
-      path: 'training'
-    },
-    {
-      name: 'Agent Prompts',
-      icon: Code,
-      component: Prompts,
-      description: 'Manage agent prompts and templates',
-      path: 'prompts'
-    },
-    { 
-      name: 'Chat Interface',
-      icon: MessageCircle,
-      component: Chat,
-      description: 'Test and monitor agent conversations',
-      path: 'chat'
-    },
-    { 
-      name: 'Performance Analytics',
-      icon: BarChart3,
-      component: AgentStats,
-      description: 'View agent interaction statistics',
-      path: 'agentStats'
+    systemManagement: {
+      title: "System Administration",
+      description: "Manage system settings and users",
+      items: [
+        {
+          name: 'Admin Management',
+          icon: Users,
+          component: AdminManagement,
+          description: 'Manage system administrators',
+          path: 'adminManagement'
+        },
+        {
+          name: 'Usage Statistics',
+          icon: LineChart,
+          component: UsageStats,
+          description: 'System-wide usage metrics',
+          path: 'usageStats'
+        },
+        {
+          name: 'Billing Management',
+          icon: Receipt,
+          component: BillingManagement,
+          description: 'Manage subscriptions and billing',
+          path: 'billingManagement'
+        },
+        {
+          name: 'Audit Logs',
+          icon: ClipboardList,
+          component: AuditLogs,
+          description: 'View system audit trails',
+          path: 'auditLogs'
+        },
+        {
+          name: 'System Settings',
+          icon: Settings,
+          component: () => <div>Settings coming soon...</div>,
+          description: 'Configure system-wide settings',
+          path: 'settings'
+        }
+      ]
     }
-  ];
+  };
 
   // Safe navigation handler
   const handleNavigation = (view) => {
@@ -94,28 +170,45 @@ const AdminDashboard = () => {
     setCurrentView(view);
   };
 
-  // Render navigation card
-  const renderNavigationCard = (item) => {
-    debug('Render', `Rendering navigation card: ${item.name}`);
+  // Render navigation section
+  const renderNavigationSection = (section) => {
+    debug('Render', `Rendering navigation section: ${section.title}`);
     
     return (
-      <Card key={item.name} className="hover:shadow-lg transition-shadow">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <item.icon className="h-5 w-5" />
-            <CardTitle className="text-lg">{item.name}</CardTitle>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold">{section.title}</h2>
+            <p className="text-gray-500">{section.description}</p>
           </div>
-          <CardDescription>{item.description}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button 
-            className="w-full"
-            onClick={() => handleNavigation(item.path)}
-          >
-            Access
-          </Button>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {section.items.map(item => (
+            <Card 
+              key={item.name} 
+              className="hover:shadow-lg transition-shadow border-l-4 border-l-primary"
+            >
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <item.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <CardTitle className="text-lg">{item.name}</CardTitle>
+                </div>
+                <CardDescription>{item.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  className="w-full"
+                  onClick={() => handleNavigation(item.path)}
+                >
+                  Access
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
     );
   };
 
@@ -125,28 +218,71 @@ const AdminDashboard = () => {
 
     if (currentView === 'dashboard') {
       return (
-        <div className="space-y-8">
-          <div>
-            <h2 className="text-2xl font-bold mb-6">Agent Management Hub</h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {agentManagementItems.map(renderNavigationCard)}
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-bold mb-6">System Administration</h2>
-            <Card className="bg-gray-50">
-              <CardContent className="p-6">
-                <p className="text-gray-600">System administration features will be added here.</p>
+        <div className="space-y-12">
+          {/* Quick Stats Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-500">
+                  Total Agents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">12</div>
+                <p className="text-xs text-gray-500">+2 this month</p>
               </CardContent>
             </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-500">
+                  Active Users
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">1,234</div>
+                <p className="text-xs text-gray-500">+15% from last month</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-500">
+                  Total Conversations
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">45,678</div>
+                <p className="text-xs text-gray-500">+5% this week</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-500">
+                  System Health
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-500">Good</div>
+                <p className="text-xs text-gray-500">All systems operational</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Navigation Sections */}
+          <div className="space-y-12">
+            {renderNavigationSection(navigationSections.agentManagement)}
+            {renderNavigationSection(navigationSections.systemManagement)}
           </div>
         </div>
       );
     }
 
     // Find and render the selected component
-    const selectedItem = agentManagementItems.find(item => item.path === currentView);
+    const allItems = [
+      ...navigationSections.agentManagement.items,
+      ...navigationSections.systemManagement.items
+    ];
+    
+    const selectedItem = allItems.find(item => item.path === currentView);
     if (selectedItem?.component) {
       const Component = selectedItem.component;
       return <Component />;
@@ -185,10 +321,17 @@ const AdminDashboard = () => {
         >
           <Home className="h-5 w-5" />
         </Button>
-        <h1 className="text-3xl font-bold">
-          {currentView === 'dashboard' ? 'Admin Dashboard' : 
-           agentManagementItems.find(item => item.path === currentView)?.name || 'Not Found'}
-        </h1>
+        <div>
+          <h1 className="text-3xl font-bold">
+            {currentView === 'dashboard' ? 'Admin Dashboard' : 
+             allItems.find(item => item.path === currentView)?.name || 'Not Found'}
+          </h1>
+          {currentView !== 'dashboard' && (
+            <p className="text-gray-500">
+              {allItems.find(item => item.path === currentView)?.description}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Main Content */}
