@@ -50,13 +50,20 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // New gradient colors
+        gradientPrimary: "hsl(var(--gradient-primary))",
+        gradientSecondary: "hsl(var(--gradient-secondary))",
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        title: "var(--font-title), sans-serif",
+        body: "var(--font-body), sans-serif",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
-}
+};
