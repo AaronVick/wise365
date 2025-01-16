@@ -1,5 +1,3 @@
-// components/toolComponents/buyer-persona.js
-
 import React, { useEffect, useState } from 'react';
 import {
   collection,
@@ -18,7 +16,7 @@ import { Select, SelectItem } from '../ui/select';
 import { Card } from '../ui/card';
 import FormChat from './FormChat';
 
-const TEMPLATE_NAME = "Worlds Best Buyer Persona";  // Removed apostrophe to match Firebase
+const TEMPLATE_NAME = "Worlds Best Buyer Persona";
 
 const BuyerPersona = ({ onComplete, currentUser }) => {
   const [template, setTemplate] = useState(null);
@@ -26,45 +24,57 @@ const BuyerPersona = ({ onComplete, currentUser }) => {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [shared, setShared] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [formId] = useState(() => `bp_${Date.now()}`);
 
   useEffect(() => {
     const fetchTemplateAndAnswers = async () => {
       try {
-        console.log('Fetching template:', TEMPLATE_NAME); // Debug log
+        setLoading(true);
+        setError(null);
+
+        // Validate currentUser
+        if (!currentUser?.uid) {
+          setError('User authentication required');
+          return;
+        }
+
         // Fetch template
         const templateQuery = query(
           collection(db, 'resources'),
           where('templateName', '==', TEMPLATE_NAME)
         );
+        
         const templateSnapshot = await getDocs(templateQuery);
-        console.log('Template query result:', templateSnapshot.size); // Debug log
 
-        if (!templateSnapshot.empty) {
-          const templateData = templateSnapshot.docs[0].data();
-          setTemplate(templateData);
-
-          // Fetch previous answers if user exists
-          if (currentUser?.uid) {
-            const answersQuery = query(
-              collection(db, 'resourcesData'),
-              where('templateName', '==', TEMPLATE_NAME),
-              where('userId', '==', currentUser.authenticationID),
-              orderBy('timestamp', 'desc')
-            );
-            const answersSnapshot = await getDocs(answersQuery);
-
-            if (!answersSnapshot.empty) {
-              const lastSubmission = answersSnapshot.docs[0].data();
-              setFormData(lastSubmission.answers || {});
-              setLastUpdated(lastSubmission.timestamp?.toDate());
-            }
-          }
-        } else {
-          console.warn('Template not found in Firestore:', TEMPLATE_NAME);
+        if (templateSnapshot.empty) {
+          setError('Template not found');
+          return;
         }
+
+        const templateData = templateSnapshot.docs[0].data();
+        setTemplate(templateData);
+
+        // Fetch previous answers
+        const answersQuery = query(
+          collection(db, 'resourcesData'),
+          where('templateName', '==', TEMPLATE_NAME),
+          where('userId', '==', currentUser.uid),
+          orderBy('timestamp', 'desc'),
+          limit(1)
+        );
+
+        const answersSnapshot = await getDocs(answersQuery);
+
+        if (!answersSnapshot.empty) {
+          const lastSubmission = answersSnapshot.docs[0].data();
+          setFormData(lastSubmission.answers || {});
+          setLastUpdated(lastSubmission.timestamp?.toDate());
+        }
+
       } catch (error) {
         console.error('Error fetching template or prior responses:', error);
+        setError('Failed to load form data');
       } finally {
         setLoading(false);
       }
@@ -80,15 +90,20 @@ const BuyerPersona = ({ onComplete, currentUser }) => {
     }));
   };
 
-  const handleSubmit = async () => {
-    if (!template || !currentUser?.uid) return;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!template || !currentUser?.uid) {
+      setError('Missing required data');
+      return;
+    }
 
-    const allQuestionsAnswered = template.sections.every(
+    const allQuestionsAnswered = template.sections?.every(
       section => formData[section.question]?.trim()
     );
 
     if (!allQuestionsAnswered) {
-      alert('Please answer all questions before saving.');
+      setError('Please answer all questions before saving.');
       return;
     }
 
@@ -102,12 +117,15 @@ const BuyerPersona = ({ onComplete, currentUser }) => {
         timestamp: serverTimestamp(),
       });
 
-      alert('Form submitted successfully!');
+      if (typeof onComplete === 'function') {
+        onComplete();
+      }
+      
       setFormData({});
-      onComplete();
+      
     } catch (error) {
       console.error('Error saving form data:', error);
-      alert('Error saving form data. Please try again.');
+      setError('Failed to save form data');
     }
   };
 
@@ -119,96 +137,45 @@ const BuyerPersona = ({ onComplete, currentUser }) => {
     );
   }
 
-  if (!template) {
+  if (error) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p>The required template was not found. Please contact support.</p>
+        <Card className="p-6">
+          <p className="text-red-600">{error}</p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </Card>
       </div>
     );
   }
 
-  const renderField = (section) => {
-    const { question, options } = section;
-
-    // For Maslow's Hierarchy questions or other select options
-    if (options) {
-      return (
-        <Select
-          value={formData[question] || ''}
-          onValueChange={(value) => handleInputChange(question, value)}
-        >
-          <SelectItem value="">Select an option</SelectItem>
-          {options.map((option, idx) => (
-            <SelectItem key={idx} value={option}>
-              {option}
-            </SelectItem>
-          ))}
-        </Select>
-      );
-    }
-
-    // For URL input
-    if (question.toLowerCase().includes('url')) {
-      return (
-        <Input
-          type="url"
-          value={formData[question] || ''}
-          onChange={(e) => handleInputChange(question, e.target.value)}
-          placeholder="https://example.com"
-        />
-      );
-    }
-
-    // For age input
-    if (question.includes('old is your persona')) {
-      return (
-        <Input
-          type="number"
-          value={formData[question] || ''}
-          onChange={(e) => handleInputChange(question, e.target.value)}
-          placeholder="Age"
-          min="1"
-          max="120"
-        />
-      );
-    }
-
-    // For income input
-    if (question.includes('annual income')) {
-      return (
-        <Input
-          type="text"
-          value={formData[question] || ''}
-          onChange={(e) => handleInputChange(question, e.target.value)}
-          placeholder="Annual Income"
-        />
-      );
-    }
-
-    // Default to textarea for longer form answers
+  if (!template?.sections) {
     return (
-      <Textarea
-        value={formData[question] || ''}
-        onChange={(e) => handleInputChange(question, e.target.value)}
-        placeholder="Your answer"
-        rows={4}
-      />
+      <div className="flex items-center justify-center h-screen">
+        <p>Invalid template format. Please contact support.</p>
+      </div>
     );
-  };
+  }
 
   const formContent = (
     <div className="max-w-4xl mx-auto p-6">
       <Card className="p-6">
-        <h1 className="text-2xl font-bold mb-4">{template.templateName}</h1>
-        <p className="text-sm text-gray-500 mb-6">{template.description}</p>
+        <h1 className="text-2xl font-bold mb-4">{template.templateName || TEMPLATE_NAME}</h1>
+        {template.description && (
+          <p className="text-sm text-gray-500 mb-6">{template.description}</p>
+        )}
 
         {lastUpdated && (
           <p className="text-sm text-gray-500 mb-4">
-            Last updated on: {new Date(lastUpdated).toLocaleString()}
+            Last updated: {lastUpdated.toLocaleString()}
           </p>
         )}
 
-        <form className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {template.sections.map((section, index) => (
             <div key={index} className="space-y-2">
               <label className="block text-sm font-medium">
@@ -237,8 +204,7 @@ const BuyerPersona = ({ onComplete, currentUser }) => {
           </div>
 
           <Button
-            type="button"
-            onClick={handleSubmit}
+            type="submit"
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             Save
@@ -248,7 +214,7 @@ const BuyerPersona = ({ onComplete, currentUser }) => {
     </div>
   );
 
-  return (
+  return currentUser ? (
     <FormChat
       formName={TEMPLATE_NAME}
       formId={formId}
@@ -258,7 +224,7 @@ const BuyerPersona = ({ onComplete, currentUser }) => {
     >
       {formContent}
     </FormChat>
-  );
+  ) : null;
 };
 
 export default BuyerPersona;
