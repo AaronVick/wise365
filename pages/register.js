@@ -1,9 +1,10 @@
 // pages/register.js
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, collection } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -24,36 +25,47 @@ const RegisterPage = () => {
     const password = e.target.password.value;
     const name = e.target.name.value.trim();
 
-    // Debug log
-    console.log('Starting registration process...');
-
     try {
-      // Create Firebase auth account
-      console.log('Creating Firebase auth account...');
+      // 1. Create Firebase auth account
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      console.log('Auth account created:', user.email);
 
-      // Create Firestore user document
-      console.log('Creating Firestore user document...');
+      // 2. Create a new team document
+      const teamsRef = collection(db, 'teams');
+      const teamDoc = doc(teamsRef);
+      const teamData = {
+        teamId: teamDoc.id,
+        name: `${name}'s Team`, // Default team name
+        members: [user.uid],
+        createdAt: serverTimestamp(),
+        subscriptionStatus: 'free', // Default status
+      };
+
+      // 3. Create user document with team reference
       const userDocRef = doc(db, 'users', user.uid);
-      await setDoc(userDocRef, {
+      const userData = {
         email,
         name,
         uid: user.uid,
-        role: 'user',
+        role: 'teamAdmin', // Since they're the first user of the team
         createdAt: serverTimestamp(),
         theme: 'light',
-        teamId: null
-      });
+        teamId: teamDoc.id,
+        profilePicture: '', // Add empty string as default
+      };
 
-      console.log('User document created successfully');
+      // 4. Write both documents to Firestore
+      await Promise.all([
+        setDoc(teamDoc, teamData),
+        setDoc(userDocRef, userData)
+      ]);
 
-      // Store essential info
+      // 5. Store essential info
       localStorage.setItem('userId', user.uid);
       localStorage.setItem('userEmail', user.email);
+      localStorage.setItem('teamId', teamDoc.id);
 
-      console.log('Redirecting to dashboard...');
+      console.log('Registration complete with team creation');
       router.push('/dashboard');
     } catch (error) {
       console.error('Registration error:', error);
@@ -73,6 +85,7 @@ const RegisterPage = () => {
     }
   };
 
+  // Rest of the component remains the same...
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       <div className="container mx-auto px-4 py-8">

@@ -38,6 +38,7 @@ import BuyerPersona from '../components/toolComponents/buyer-persona';
 import SuccessWheel from '../components/toolComponents/success-wheel';
 import PositioningFactors from '../components/toolComponents/positioning-factors';
 
+
 import { 
   fetchNestedChats, 
   handleAgentClick as handleAgentClickUtil, 
@@ -102,85 +103,346 @@ const Dashboard = () => {
 
   
   // Agent handlers
-const handleAgentClick = async (agent) => {
-  if (!agent?.id || !userData?.authenticationID) {
-    console.error('Missing required agent or user data:', { agent, userData });
-    return;
-  }
+  const handleAgentClick = async (agent) => {
+    if (!agent?.id || !userData?.authenticationID) {
+        console.error('Missing required agent or user data:', { agent, userData });
+        return;
+    }
 
-  // First, fetch all chats for this agent (main and sub)
-  const allAgentChats = await firebaseService.queryCollection('conversationNames', {
-    where: [
-      { field: 'agentId', operator: '==', value: agent.id },
-      { field: 'userId', operator: '==', value: userData.authenticationID }
-    ]
-  });
-
-  // Find the default chat
-  const defaultChat = allAgentChats.find(chat => chat.isDefault);
-  
-  // Get subchats (non-default chats)
-  const subChats = allAgentChats.filter(chat => !chat.isDefault);
-
-  // Special handling for Shawn
-  if (agent.id === 'shawn') {
     try {
+        // Query all conversations for this agent
+        const conversationsRef = collection(db, 'conversationNames');
+        const q = query(
+            conversationsRef,
+            where('agentId', '==', agent.id),
+            where('userId', '==', userData.authenticationID)
+        );
+
+        const querySnapshot = await getDocs(q);
+        const allAgentChats = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+
+        // Find default chat and subchats
+        const defaultChat = allAgentChats.find((chat) => chat.isDefault);
+        const subChats = allAgentChats.filter((chat) => !chat.isDefault);
+
+        if (agent.id === 'shawn') {
+            let chatId;
+            let isNewUser = false;
+
+            if (!defaultChat) {
+                // Create new conversation
+                const chatData = {
+                    agentId: 'shawn',
+                    conversationName: 'Chat with Shawn',
+                    userId: userData.authenticationID,
+                    isDefault: true,
+                    timestamp: serverTimestamp(),
+                };
+
+                const newChatRef = await addDoc(collection(db, 'conversationNames'), chatData);
+                chatId = newChatRef.id;
+                isNewUser = true;
+
+                // Advanced analysis for personalized messages
+                const context = await analyzeUserContext(userData); // Import from analyze-user-context.js
+                const funnels = await getFunnels(); // Import from funnelAnalyzer.js
+                const userFunnelData = await getUserFunnelData(userData); // Import from funnelAnalyzer.js
+                const funnelEvaluation = evaluateUserFunnels(funnels, userData, userFunnelData); // Import from funnelAnalyzer.js
+
+                // Generate personalized welcome message using LLM
+                const welcomeMessage = generateWelcomeMessage({
+                    userData,
+                    context,
+                    funnelEvaluation,
+                    isNewUser: true,
+                });
+
+                // Create the initial welcome message
+                await addDoc(collection(db, 'conversations'), {
+                    agentId: 'shawn',
+                    content: welcomeMessage,
+                    conversationName: chatId,
+                    from: 'shawn',
+                    isDefault: true,
+                    timestamp: serverTimestamp(),
+                    type: 'agent',
+                    context, // Store context for future use
+                    funnelEvaluation, // Store evaluation results for future use
+                });
+            } else {
+                chatId = defaultChat.id;
+
+                // Analyze if context has significantly changed
+                const context = await analyzeUserContext(userData);
+                const funnels = await getFunnels();
+                const userFunnelData = await getUserFunnelData(userData);
+                const funnelEvaluation = evaluateUserFunnels(funnels, userData, userFunnelData);
+
+                const shouldUpdateContext = await checkContextChange(chatId, context, funnelEvaluation); // Function to compare contexts
+
+                if (shouldUpdateContext) {
+                    const updateMessage = generateWelcomeMessage({
+                        userData,
+                        context,
+                        funnelEvaluation,
+                        isNewUser: false,
+                    });
+
+                    await addDoc(collection(db, 'conversations'), {
+                        agentId: 'shawn',
+                        content: updateMessage,
+                        conversationName: chatId,
+                        from: 'shawn',
+                        isDefault: true,
+                        timestamp: serverTimestamp(),
+                        type: 'agent',
+                        context,
+                        funnelEvaluation,
+                    });
+                }
+            }
+
+            // Update the chat state for the frontend
+            setNestedChats((prev) => ({
+                ...prev,
+                [agent.id]: subChats,
+            }));
+
+            setCurrentChat({
+                id: chatId,
+                agentId: 'shawn',
+                title: 'Chat with Shawn',
+                participants: [userData.authenticationID, 'shawn'],
+                isDefault: true,
+                conversationName: chatId,
+                isNewUser,
+            });
+
+            return;
+        }
+
+        // For other agents, handle as before
+        let chatId;
+        let isNewUser = false;
+
+        if (!defaultChat) {
+            const chatData = {
+                agentId: agent.id,
+                conversationName: `Chat with ${agent.name}`,
+                userId: userData.authenticationID,
+                isDefault: true,
+                timestamp: serverTimestamp(),
+            };
+
+            const newChatRef = await addDoc(collection(db, 'conversationNames'), chatData);
+            chatId = newChatRef.id;
+            isNewUser = true;
+
+            // Create initial system message
+            await addDoc(collection(db, 'conversations'), {
+                agentId: agent.id,
+                content: `Started conversation with ${agent.name}`,
+                conversationName: chatId,
+                from: userData.authenticationID,
+                isDefault: true,
+                timestamp: serverTimestamp(),
+                type: 'system',
+            });
+        } else {
+            chatId = defaultChat.id;
+        }
+
+        // Update chat states
+        setNestedChats((prev) => ({
+            ...prev,
+            [agent.id]: subChats,
+        }));
+
+        setCurrentChat({
+            id: chatId,
+            agentId: agent.id,
+            title: `Chat with ${agent.name}`,
+            participants: [userData.authenticationID, agent.id],
+            isDefault: true,
+            conversationName: chatId,
+            isNewUser,
+        });
+    } catch (error) {
+        console.error('Error handling agent click:', error);
+    }
+};
+
+  
+      // Regular agent handling (rest of the code remains the same)
       let chatId;
       let isNewUser = false;
-
+  
       if (!defaultChat) {
-        // Create new conversation with Shawn using firebaseService
+        // Create new default conversation
         const chatData = {
-          agentId: 'shawn',
-          conversationName: 'Chat with Shawn',
+          agentId: agent.id,
+          conversationName: `Chat with ${agent.name}`,
           userId: userData.authenticationID,
           isDefault: true,
           projectName: '',
           timestamp: serverTimestamp()
         };
-
-        const newChat = await firebaseService.create('conversationNames', chatData);
-        chatId = newChat.id;
+  
+        const newChatRef = await addDoc(collection(db, 'conversationNames'), chatData);
+        chatId = newChatRef.id;
         isNewUser = true;
-
-        // Create initial welcome message
-        const welcomeMessage = {
-          agentId: 'shawn',
-          content: `Hi! I'm Shawn, your personal guide to Business Wise365. I'll help you navigate our platform and connect you with the right experts for your business needs. Are you ready to get started?`,
+  
+        // Create initial system message
+        await addDoc(collection(db, 'conversations'), {
+          agentId: agent.id,
+          content: `Started conversation with ${agent.name}`,
           conversationName: chatId,
-          from: 'shawn',
+          from: userData.authenticationID,
           isDefault: true,
           timestamp: serverTimestamp(),
-          type: 'agent'
-        };
-
-        await firebaseService.create('conversations', welcomeMessage);
+          type: 'system'
+        });
       } else {
         chatId = defaultChat.id;
       }
-
+  
+      setNestedChats(prev => ({
+        ...prev,
+        [agent.id]: subChats
+      }));
+  
+      setCurrentChat({
+        id: chatId,
+        agentId: agent.id,
+        title: `Chat with ${agent.name}`,
+        participants: [userData.authenticationID, agent.id],
+        isDefault: true,
+        conversationName: chatId,
+        isNewUser: isNewUser
+      });
+  
+    } catch (error) {
+      console.error('Error handling agent click:', error);
+    }
+  };
+  
+  // Helper function to generate welcome message using LLM
+  const generateWelcomeMessage = async ({ userData, context, funnelEvaluation, isNewUser }) => {
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: `You are Shawn, the personal guide for Business Wise365. Generate a personalized welcome message based on the following context:
+              User: ${userData.name}
+              Is New User: ${isNewUser}
+              Context: ${JSON.stringify(context)}
+              Funnel Evaluation: ${JSON.stringify(funnelEvaluation)}
+              
+              If new user: Focus on welcoming them and explaining how you can help.
+              If returning user: Acknowledge their return and reference their previous work/progress.
+              Keep the tone friendly and professional. Mention specific insights from their context.`
+            }
+          ]
+        })
+      });
+  
+      if (!response.ok) throw new Error('Failed to generate welcome message');
+      const result = await response.json();
+      return result.reply;
+    } catch (error) {
+      console.error('Error generating welcome message:', error);
+      return "Hi! I'm Shawn, your personal guide to Business Wise365. How can I help you today?";
+    }
+  };
+  
+  // Helper function to check if context has changed significantly
+  const checkContextChange = async (chatId, newContext, newFunnelEvaluation) => {
+    try {
+      const messagesRef = collection(db, 'conversations');
+      const q = query(
+        messagesRef,
+        where('conversationName', '==', chatId),
+        where('type', '==', 'agent'),
+        orderBy('timestamp', 'desc'),
+        limit(1)
+      );
+      
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) return true;
+      
+      const lastMessage = snapshot.docs[0].data();
+      const lastContext = lastMessage.context;
+      const lastFunnelEvaluation = lastMessage.funnelEvaluation;
+      
+      // Compare contexts and return true if significant changes are detected
+      return hasSignificantChanges(lastContext, newContext) || 
+             hasSignificantChanges(lastFunnelEvaluation, newFunnelEvaluation);
+    } catch (error) {
+      console.error('Error checking context change:', error);
+      return false;
+    }
+  };
+  
+      // Regular agent handling
+      let chatId;
+      let isNewUser = false;
+  
+      if (!defaultChat) {
+        // Create new default conversation
+        const chatData = {
+          agentId: agent.id,
+          conversationName: `Chat with ${agent.name}`,
+          userId: userData.authenticationID,
+          isDefault: true,
+          projectName: '',
+          timestamp: serverTimestamp()
+        };
+  
+        const newChatRef = await addDoc(collection(db, 'conversationNames'), chatData);
+        chatId = newChatRef.id;
+        isNewUser = true;
+  
+        // Create initial system message
+        await addDoc(collection(db, 'conversations'), {
+          agentId: agent.id,
+          content: `Started conversation with ${agent.name}`,
+          conversationName: chatId,
+          from: userData.authenticationID,
+          isDefault: true,
+          timestamp: serverTimestamp(),
+          type: 'system'
+        });
+      } else {
+        chatId = defaultChat.id;
+      }
+  
       // Update nestedChats state with subchats
       setNestedChats(prev => ({
         ...prev,
         [agent.id]: subChats
       }));
-
+  
       setCurrentChat({
         id: chatId,
-        agentId: 'shawn',
-        title: 'Chat with Shawn',
-        participants: [userData.authenticationID, 'shawn'],
+        agentId: agent.id,
+        title: `Chat with ${agent.name}`,
+        participants: [userData.authenticationID, agent.id],
         isDefault: true,
         conversationName: chatId,
         isNewUser: isNewUser
       });
-
-      return;
+  
     } catch (error) {
-      console.error('Error initializing Shawn chat:', error);
-      return;
+      console.error('Error handling agent click:', error);
     }
-  }
+  };
 
   // Regular agent handling
   try {
