@@ -36,6 +36,14 @@ const AdminDashboard = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [activeTab, setActiveTab] = useState('overview');
 
+  // Define a placeholder component for System Settings
+  const SystemSettings = () => (
+    <div className="p-4">
+      <h2 className="text-2xl font-bold mb-4">System Settings</h2>
+      <p>System settings configuration coming soon...</p>
+    </div>
+  );
+
   const navigation = {
     agentManagement: [
       { name: 'Manage Agents', icon: Bot, component: ManageAgents, description: 'Create and configure AI agents' },
@@ -50,10 +58,35 @@ const AdminDashboard = () => {
       { name: 'Admin Management', icon: Users, component: AdminManagement, description: 'Manage system administrators' },
       { name: 'Billing Management', icon: Receipt, component: BillingManagement, description: 'Manage subscriptions and billing' },
       { name: 'Audit Logs', icon: ClipboardList, component: AuditLogs, description: 'View system audit trails' },
-      { name: 'System Settings', icon: Settings, component: null, description: 'Configure system-wide settings' }
+      { name: 'System Settings', icon: Settings, component: SystemSettings, description: 'Configure system-wide settings' }
     ]
   };
 
+  const renderNavigationCard = (item) => {
+    if (!item || !item.name) return null;
+
+    const IconComponent = item.icon || Settings;
+
+    return (
+      <Card key={item.name} className="hover:shadow-lg transition-shadow">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <IconComponent className="h-5 w-5" />
+            <CardTitle className="text-lg">{item.name}</CardTitle>
+          </div>
+          <CardDescription>{item.description || ''}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button 
+            className="w-full"
+            onClick={() => setCurrentView(item.name)}
+          >
+            Access
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const renderComponent = () => {
     if (currentView === 'dashboard') {
@@ -113,47 +146,11 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="agents" className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {navigation.agentManagement.map((item) => (
-              <Card key={item.name} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <item.icon className="h-5 w-5" />
-                    <CardTitle className="text-lg">{item.name}</CardTitle>
-                  </div>
-                  <CardDescription>{item.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="w-full"
-                    onClick={() => setCurrentView(item.name)}
-                  >
-                    Access
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+            {navigation.agentManagement.map(renderNavigationCard)}
           </TabsContent>
 
           <TabsContent value="system" className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {navigation.systemManagement.map((item) => (
-              <Card key={item.name} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <item.icon className="h-5 w-5" />
-                    <CardTitle className="text-lg">{item.name}</CardTitle>
-                  </div>
-                  <CardDescription>{item.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="w-full"
-                    onClick={() => setCurrentView(item.name)}
-                  >
-                    Access
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+            {navigation.systemManagement.map(renderNavigationCard)}
           </TabsContent>
         </Tabs>
       );
@@ -168,7 +165,7 @@ const AdminDashboard = () => {
       return <ComponentToRender />;
     }
     
-    return null;
+    return <div>Page not found</div>;
   };
 
   return (
