@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-import firebaseService from '../../lib/services/firebaseService';
+import firebaseService from '../lib/services/firebaseService';
 
 import { analyzeMessage } from '../pages/api/funnelAnalyzer';
 
