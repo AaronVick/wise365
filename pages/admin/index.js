@@ -75,7 +75,7 @@ const AuditLogs = dynamic(() => {
   return import('./auditLogs');
 }, { loading: () => <div>Loading Audit Logs...</div>, ssr: false });
 
-const AuditLogs = dynamic(() => {
+const tenantManagement = dynamic(() => {
   debug('Load', 'Loading Tenant Management component');
   return import('./tenantManagement');
 }, { loading: () => <div>Loading Audit Logs...</div>, ssr: false });
