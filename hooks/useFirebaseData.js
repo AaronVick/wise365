@@ -15,18 +15,6 @@ export function useFirebaseData(collectionName, queryParams = [], dependencies =
         setIsLoading(true);
         setError(null);
 
-        // Try using firebaseService first
-        try {
-          const items = await firebaseService.queryCollection(collectionName, queryParams);
-          if (items) {
-            setData(items);
-            return;
-          }
-        } catch (serviceError) {
-          console.warn('firebaseService query failed, falling back to direct Firebase query', serviceError);
-        }
-
-        // Fallback to direct Firebase query
         const collectionRef = collection(db, collectionName);
         
         // Build query with provided parameters
@@ -74,5 +62,13 @@ export function useRecentActivity(userId) {
       limit(10)
     ],
     [userId]
+  );
+}
+
+export function useResources(teamId) {
+  return useFirebaseData(
+    'resources',
+    teamId ? [where('teamId', '==', teamId)] : [],
+    [teamId]
   );
 }

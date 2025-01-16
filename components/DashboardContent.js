@@ -47,6 +47,7 @@ const MilestonesSection = dynamic(() => import('./MilestonesSection'));
 import { evaluateUserFunnels } from '../components/funnelEvaluator';
 import { useProgressAnalyzer } from '../components/ProgressAnalyzer';
 import { createFunnelProject } from '../components/FunnelActionHandler';
+import { useResources, useGoals, useRecentActivity } from '../hooks/useFirebaseData';
 
 // Badge component definition
 const badgeVariants = cva(
@@ -97,15 +98,21 @@ const DashboardContent = ({
   const [hasShawnChat, setHasShawnChat] = useState(false);
   const [messages, setMessages] = useState([]);
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
-  const [userData, setUserData] = useState(null); // New state for user data
-  const { data: resourcesData, isLoading: resourcesLoading, error: resourcesError } = useResources(currentUser?.teamId);
-  
+  const [userData, setUserData] = useState(null);
+
   const { 
     goals,
     setGoals,
     recentActivity,
     isLoading
   } = useDashboard();
+
+  // Get resources data using the hook
+  const { 
+    data: resourcesData, 
+    isLoading: resourcesLoading, 
+    error: resourcesError 
+  } = useResources(currentUser?.teamId);
 
   const loadConversationMessages = async (conversationId) => {
     try {
