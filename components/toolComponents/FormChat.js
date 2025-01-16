@@ -16,6 +16,12 @@ const FormChat = ({
   projectName = '',
   currentUser  // Now using currentUser from props
 }) => {
+  // Add validation check
+  if (!formName || !formId || !currentUser) {
+    console.error('FormChat missing required props:', { formName, formId, currentUser });
+    return <div>Missing required props</div>;
+  }
+
   const [chatState, setChatState] = useState(ChatState.CLOSED);
   const [conversationName, setConversationName] = useState(null);
   const [formContext, setFormContext] = useState(null);

@@ -294,24 +294,24 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
         <form onSubmit={handleSubmit} className="space-y-6">
           {template.sections.map((section, index) => (
             <div key={index} className="p-4 border rounded-lg bg-gray-50">
-              <h2 className="text-lg font-semibold mb-2">{section.question}</h2>
-              <p className="text-sm text-gray-600 mb-2">{section.definition}</p>
-              <p className="text-sm text-gray-500 italic mb-4">
-                {section.evaluationCriteria}
-              </p>
+            <h2 className="text-lg font-semibold mb-2">{section.question}</h2>
+            <p className="text-sm text-gray-600 mb-2">{section.definition}</p>
+            <p className="text-sm text-gray-500 italic mb-4">
+              {section.evaluationCriteria}
+            </p>
 
               <Select
                 defaultValue=""
                 value={formData[section.question] || ''}
                 onValueChange={(value) => handleInputChange(section.question, value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a grade" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem key="default" value="">Select a grade</SelectItem>
-                  {section.gradingScale?.map((grade, idx) => (
-                    <SelectItem key={`grade-${idx}`} value={grade}>
+                  <SelectItem value="">Select a grade</SelectItem>
+                  {Array.isArray(section.gradingScale) && section.gradingScale.map((grade, idx) => (
+                    <SelectItem key={idx} value={grade.toString()}>
                       {grade}
                     </SelectItem>
                   ))}
@@ -347,8 +347,8 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
     <FormChat
       formName={TEMPLATE_NAME}
       formId={formId}
-      projectId={currentUser?.teamId}
-      projectName={template?.templateName}
+      projectId={currentUser?.teamId || ''}  // Add fallback
+      projectName={template?.templateName || TEMPLATE_NAME}  // Add fallback
       currentUser={currentUser}
     >
       {formContent}
