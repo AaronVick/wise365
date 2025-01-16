@@ -90,18 +90,6 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
           }
         }
 
-        // For existing users, continue with normal flow
-        // Fetch user's funnel progress data
-        const funnelDataRef = collection(db, 'funnelData');
-        const funnelDataQuery = query(
-          funnelDataRef,
-          where('userId', '==', currentUser.uid)
-        );
-        const funnelDataSnapshot = await getDocs(funnelDataQuery);
-        const userFunnelData = funnelDataSnapshot.docs[0]?.data() || {};
-        setUserData(userFunnelData);
-        console.log('User funnel data:', userFunnelData);
-
         // Get all available funnels for the user
         const availableFunnels = await analyzeFunnelAvailability(
           funnelsData,
@@ -179,38 +167,47 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
   }, [currentUser?.uid, selectedMilestone]);
 
 
-  const analyzeFunnelAvailability = async (funnels, userFunnelData) => {
+  
+  const categorizeFunnels = (funnels, userFunnelData) => {
     const result = {
-      active: [],    // Currently active funnels
-      upcoming: [],  // Funnels that meet ALL prerequisites
-      locked: []     // Funnels that don't meet prerequisites yet
+      active: [],
+      upcoming: [],
+      locked: []
     };
   
+    if (!Array.isArray(funnels) || !userFunnelData) {
+      console.warn('Invalid input to categorizeFunnels');
+      return result;
+    }
+  
     funnels.forEach(funnel => {
-      // Special handling for onboarding
-      if (funnel.name.toLowerCase() === 'onboarding funnel') {
-        if (!userFunnelData || !userFunnelData[funnel.name]?.completed) {
-          result.active.push(funnel);
+      try {
+        // Special handling for onboarding
+        if (funnel?.name?.toLowerCase() === 'onboarding funnel') {
+          if (!userFunnelData[funnel.name]?.completed) {
+            result.active.push(funnel);
+          }
+          return;
         }
-        return;
-      }
   
-      const hasProgress = userFunnelData[funnel.name];
-      
-      // Check ALL prerequisites before marking as upcoming
-      const meetsAllCriteria = checkAllFunnelPrerequisites(funnel, userFunnelData);
+        const hasProgress = userFunnelData[funnel.name];
+        const meetsAllCriteria = checkAllFunnelPrerequisites(funnel, userFunnelData);
   
-      if (hasProgress) {
-        result.active.push(funnel);
-      } else if (meetsAllCriteria) {
-        result.upcoming.push(funnel);
-      } else {
-        result.locked.push(funnel);
+        if (hasProgress) {
+          result.active.push(funnel);
+        } else if (meetsAllCriteria) {
+          result.upcoming.push(funnel);
+        } else {
+          result.locked.push(funnel);
+        }
+      } catch (error) {
+        console.error(`Error processing funnel ${funnel?.name}:`, error);
       }
     });
   
     return result;
   };
+  
   
 
   
