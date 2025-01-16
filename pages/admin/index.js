@@ -93,7 +93,7 @@ const AdminDashboard = () => {
         },
         { 
           name: 'Agent Training',
-          icon: BookBook,
+          icon: BookOpen,
           component: Training,
           description: 'Train and configure agent behaviors',
           path: 'training'
