@@ -14,10 +14,16 @@ import {
 import { db } from '../../lib/firebase';
 import firebaseService from '../../lib/services/firebaseService';
 import { Button } from '../ui/button';
-import { Select, SelectItem } from '../ui/select';
 import { Checkbox } from '../ui/checkbox';
 import { Card } from '../ui/card';
 import FormChat from './FormChat';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 
 const TEMPLATE_NAME = "Marketing Success Wheel";
 
@@ -295,15 +301,21 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
               </p>
 
               <Select
+                defaultValue=""
                 value={formData[section.question] || ''}
                 onValueChange={(value) => handleInputChange(section.question, value)}
               >
-                <SelectItem value="">Select a grade</SelectItem>
-                {section.gradingScale?.map((grade, idx) => (
-                  <SelectItem key={idx} value={grade}>
-                    {grade}
-                  </SelectItem>
-                ))}
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a grade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem key="default" value="">Select a grade</SelectItem>
+                  {section.gradingScale?.map((grade, idx) => (
+                    <SelectItem key={`grade-${idx}`} value={grade}>
+                      {grade}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
           ))}
