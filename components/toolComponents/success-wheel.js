@@ -38,15 +38,17 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
         setLoading(true);
         setError(null);
 
-        if (!currentUser?.uid) {
-          console.error('No user ID found in currentUser object', { currentUser });
+        if (!currentUser?.authenticationID) {
+          console.error('No authentication ID found in currentUser object', { currentUser });
           setError('User authentication required');
           return;
         }
 
         // Initialize firebase service with user
         firebaseService.setCurrentUser(currentUser);
-        console.log('Firebase service initialized with user', { userId: currentUser.uid });
+        console.log('Firebase service initialized with user', { 
+          authenticationID: currentUser.authenticationID 
+        });
 
         // Parallel fetch of template and user data
         const [templateData, userData] = await Promise.all([
@@ -63,8 +65,8 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
           throw new Error('Failed to fetch required data');
         }
 
-        // Fetch previous answers using both Firebase and firebaseService
-        const previousAnswers = await fetchPreviousAnswers(currentUser.uid);
+        // Fetch previous answers
+        const previousAnswers = await fetchPreviousAnswers(currentUser.authenticationID);
         console.log('Previous answers fetched', { 
           hasAnswers: !!previousAnswers,
           answersCount: Object.keys(previousAnswers?.answers || {}).length 
@@ -87,7 +89,7 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
     };
 
     fetchTemplateAndAnswers();
-  }, [currentUser?.uid]);
+  }, [currentUser?.authenticationID]);
 
   const fetchTemplate = async () => {
     try {
@@ -124,9 +126,9 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
 
   const fetchUserData = async () => {
     try {
-      const userData = await firebaseService.get('users', currentUser.uid);
+      const userData = await firebaseService.get('users', currentUser.authenticationID);
       console.log('User data fetched', { 
-        userId: currentUser.uid,
+        authenticationID: currentUser.authenticationID,
         found: !!userData 
       });
       return userData;
@@ -136,13 +138,13 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
     }
   };
 
-  const fetchPreviousAnswers = async (userId) => {
+  const fetchPreviousAnswers = async (authenticationID) => {
     try {
       // Try firebaseService first
       const previousAnswers = await firebaseService.queryCollection('resourcesData', {
         where: [
           { field: 'templateName', operator: '==', value: TEMPLATE_NAME },
-          { field: 'userId', operator: '==', value: userId }
+          { field: 'authenticationID', operator: '==', value: authenticationID }
         ],
         orderBy: [{ field: 'timestamp', direction: 'desc' }],
         limit: 1
@@ -157,7 +159,7 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
       const answersQuery = query(
         answersRef,
         where('templateName', '==', TEMPLATE_NAME),
-        where('userId', '==', userId),
+        where('authenticationID', '==', authenticationID),
         orderBy('timestamp', 'desc'),
         limit(1)
       );
@@ -198,10 +200,10 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
     if (e) e.preventDefault();
     console.log('Form submission initiated', { formData });
     
-    if (!template || !currentUser?.uid) {
+    if (!template || !currentUser?.authenticationID) {
       console.error('Missing required data for submission', { 
         hasTemplate: !!template,
-        hasUserId: !!currentUser?.uid 
+        hasAuthenticationID: !!currentUser?.authenticationID 
       });
       setError('Missing required data');
       return;
@@ -217,7 +219,7 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
     setIsSaving(true);
     try {
       const submissionData = {
-        userId: currentUser.uid,
+        authenticationID: currentUser.authenticationID,
         teamId: currentUser.teamId || '',
         templateName: TEMPLATE_NAME,
         answers: formData,
