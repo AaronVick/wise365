@@ -9,11 +9,15 @@ import {
   Grid, 
   Text, 
   Button, 
-  Heading,
-  Container,
-  useColorModeValue,
-  SimpleGrid,
+  Heading, 
   IconButton,
+  useColorModeValue,
+  Container,
+  SimpleGrid,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText
 } from '@chakra-ui/react';
 import { 
   Bot, 
@@ -21,39 +25,50 @@ import {
   BookOpen, 
   BarChart3, 
   Code,
+  Home,
   ArrowLeft,
-  Users
+  Users,
+  Settings,
+  Receipt,
+  ClipboardList,
+  LineChart
 } from 'lucide-react';
 
-// Simple loading component
-const LoadingComponent = () => (
-  <Box p={4} textAlign="center">
-    <Text>Loading...</Text>
-  </Box>
-);
-
-// Simple error component
-const ErrorComponent = ({ message }) => (
-  <Box p={4} bg="red.50" borderRadius="lg" color="red.500" textAlign="center">
-    <Text>{message}</Text>
-  </Box>
-);
-
-// Basic dynamic import wrapper
-const DynamicComponent = ({ importFunc }) => {
+// Lazy load components with error boundaries
+const DynamicComponent = ({ importFunc, loadingText = 'Loading...' }) => {
   const Component = dynamic(importFunc, {
     ssr: false,
-    loading: LoadingComponent
+    loading: () => (
+      <Box p={4} textAlign="center">
+        <Text>{loadingText}</Text>
+      </Box>
+    )
   });
-  return <Component />;
+  
+  return (
+    <ErrorBoundary
+      fallback={<Box p={4} color="red.500">Error loading component</Box>}
+    >
+      <Component />
+    </ErrorBoundary>
+  );
 };
 
-// Navigation Components - kept minimal
-const ManageAgents = () => <DynamicComponent importFunc={() => import('./manage')} />;
-const Chat = () => <DynamicComponent importFunc={() => import('./chat')} />;
-const Training = () => <DynamicComponent importFunc={() => import('./training')} />;
-const Prompts = () => <DynamicComponent importFunc={() => import('./prompts')} />;
-const AgentStats = () => <DynamicComponent importFunc={() => import('./agentStats')} />;
+const ManageAgents = () => (
+  <DynamicComponent importFunc={() => import('./manage')} />
+);
+
+
+const Chat = dynamic(() => import('./chat'), { ssr: false });
+const Training = dynamic(() => import('./training'), { ssr: false });
+const Prompts = dynamic(() => import('./prompts'), { ssr: false });
+const AgentStats = dynamic(() => import('./agentStats'), { ssr: false });
+const AdminManagement = dynamic(() => import('./adminManagement'), { ssr: false });
+const UsageStats = dynamic(() => import('./usageStats'), { ssr: false });
+const BillingManagement = dynamic(() => import('./billingManagement'), { ssr: false });
+const AuditLogs = dynamic(() => import('./auditLogs'), { ssr: false });
+const TenantManagement = dynamic(() => import('./tenantManagement'), { ssr: false });
+
 
 const AdminDashboard = () => {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -63,11 +78,8 @@ const AdminDashboard = () => {
     totalConversations: 0,
   });
   const [error, setError] = useState(null);
-
-  // Color mode values
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const textColor = useColorModeValue('gray.800', 'white');
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -92,117 +104,126 @@ const AdminDashboard = () => {
     fetchStats();
   }, []);
 
-  const navigationItems = [
-    { name: 'Agent Configuration', icon: Bot, component: ManageAgents, description: 'Create and configure AI agents', path: 'manage' },
-    { name: 'Agent Training', icon: BookOpen, component: Training, description: 'Train and configure agent behaviors', path: 'training' },
-    { name: 'Agent Prompts', icon: Code, component: Prompts, description: 'Manage agent prompts and templates', path: 'prompts' },
-    { name: 'Chat Interface', icon: MessageCircle, component: Chat, description: 'Test and monitor agent conversations', path: 'chat' },
-    { name: 'Performance Analytics', icon: BarChart3, component: AgentStats, description: 'View agent interaction statistics', path: 'agentStats' },
-  ];
+  const navigationSections = {
+    agentManagement: {
+      title: "Agent Management Hub",
+      description: "Manage and monitor AI agents",
+      items: [
+        { name: 'Agent Configuration', icon: Bot, component: ManageAgents, description: 'Create and configure AI agents', path: 'manage' },
+        { name: 'Agent Training', icon: BookOpen, component: Training, description: 'Train and configure agent behaviors', path: 'training' },
+        { name: 'Agent Prompts', icon: Code, component: Prompts, description: 'Manage agent prompts and templates', path: 'prompts' },
+        { name: 'Chat Interface', icon: MessageCircle, component: Chat, description: 'Test and monitor agent conversations', path: 'chat' },
+        { name: 'Performance Analytics', icon: BarChart3, component: AgentStats, description: 'View agent interaction statistics', path: 'agentStats' },
+      ],
+    },
+    systemManagement: {
+      title: "System Administration",
+      description: "Manage system settings and users",
+      items: [
+        { name: 'Admin Management', icon: Users, component: AdminManagement, description: 'Manage system administrators', path: 'adminManagement' },
+        { name: 'Usage Statistics', icon: LineChart, component: UsageStats, description: 'System-wide usage metrics', path: 'usageStats' },
+        { name: 'Tenant Management', icon: Users, component: TenantManagement, description: 'Manage Users', path: 'tenantManagement' },
+        { name: 'Billing Management', icon: Receipt, component: BillingManagement, description: 'Manage subscriptions and billing', path: 'billingManagement' },
+        { name: 'Audit Logs', icon: ClipboardList, component: AuditLogs, description: 'View system audit trails', path: 'auditLogs' },
+        { name: 'System Settings', icon: Settings, component: () => <div>Settings coming soon...</div>, description: 'Configure system-wide settings', path: 'settings' },
+      ],
+    },
+  };
+
+  const handleNavigation = (view) => {
+    setCurrentView(view);
+  };
+
+  const renderNavigationSection = (section) => (
+    <Box mb={8}>
+      <Heading size="md" mb={2}>{section.title}</Heading>
+      <Text color="gray.500" mb={4}>{section.description}</Text>
+      <Grid templateColumns={{ base: 'repeat(1, 1fr)', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }} gap={6}>
+        {section.items.map((item) => (
+          <Box
+            key={item.name}
+            p={4}
+            borderWidth={1}
+            borderRadius="md"
+            boxShadow="md"
+            _hover={{ boxShadow: 'lg', transform: 'translateY(-4px)', transition: 'all 0.2s' }}
+          >
+            <Flex align="center" mb={4}>
+              <Box bg="blue.50" p={2} borderRadius="md" mr={3}>
+                <item.icon size={24} color="blue" />
+              </Box>
+              <Heading size="sm">{item.name}</Heading>
+            </Flex>
+            <Text mb={4}>{item.description}</Text>
+            <Button colorScheme="blue" width="full" onClick={() => handleNavigation(item.path)}>
+              Access
+            </Button>
+          </Box>
+        ))}
+      </Grid>
+    </Box>
+  );
 
   const renderContent = () => {
     if (currentView === 'dashboard') {
       return (
-        <Container maxW="container.xl" py={6}>
-          {/* Stats Cards */}
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
-            <Box p={6} bg={bgColor} borderRadius="lg" boxShadow="sm">
-              <Text fontSize="sm" color="gray.500">Total Agents</Text>
-              <Text fontSize="3xl" fontWeight="bold">{stats.totalAgents}</Text>
-              <Flex align="center" color="gray.500" mt={2}>
-                <Bot size={14} style={{ marginRight: '6px' }} />
-                <Text fontSize="sm">Active AI Agents</Text>
-              </Flex>
+        <>
+          <Grid templateColumns={{ base: 'repeat(1, 1fr)', md: 'repeat(3, 1fr)' }} gap={6} mb={8}>
+            <Box p={4} borderWidth={1} borderRadius="md" boxShadow="md">
+              <Text>Total Agents</Text>
+              <Heading size="lg">{stats.totalAgents}</Heading>
             </Box>
-            <Box p={6} bg={bgColor} borderRadius="lg" boxShadow="sm">
-              <Text fontSize="sm" color="gray.500">Active Users</Text>
-              <Text fontSize="3xl" fontWeight="bold">{stats.totalUsers}</Text>
-              <Flex align="center" color="gray.500" mt={2}>
-                <Users size={14} style={{ marginRight: '6px' }} />
-                <Text fontSize="sm">Total Platform Users</Text>
-              </Flex>
+            <Box p={4} borderWidth={1} borderRadius="md" boxShadow="md">
+              <Text>Active Users</Text>
+              <Heading size="lg">{stats.totalUsers}</Heading>
             </Box>
-            <Box p={6} bg={bgColor} borderRadius="lg" boxShadow="sm">
-              <Text fontSize="sm" color="gray.500">Total Conversations</Text>
-              <Text fontSize="3xl" fontWeight="bold">{stats.totalConversations}</Text>
-              <Flex align="center" color="gray.500" mt={2}>
-                <MessageCircle size={14} style={{ marginRight: '6px' }} />
-                <Text fontSize="sm">Active Interactions</Text>
-              </Flex>
+            <Box p={4} borderWidth={1} borderRadius="md" boxShadow="md">
+              <Text>Total Conversations</Text>
+              <Heading size="lg">{stats.totalConversations}</Heading>
             </Box>
-          </SimpleGrid>
-
-          {/* Navigation Grid */}
-          <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }} gap={6}>
-            {navigationItems.map((item) => (
-              <Box
-                key={item.name}
-                p={6}
-                bg={bgColor}
-                borderRadius="lg"
-                boxShadow="sm"
-                borderWidth="1px"
-                borderColor={borderColor}
-              >
-                <Flex align="center" mb={4}>
-                  <Box bg="blue.50" p={2} borderRadius="lg" mr={3}>
-                    <item.icon size={24} color="blue" />
-                  </Box>
-                  <Heading size="sm">{item.name}</Heading>
-                </Flex>
-                <Text mb={4} color="gray.500">{item.description}</Text>
-                <Button
-                  colorScheme="blue"
-                  width="full"
-                  onClick={() => setCurrentView(item.path)}
-                >
-                  Access
-                </Button>
-              </Box>
-            ))}
           </Grid>
-        </Container>
+          {renderNavigationSection(navigationSections.agentManagement)}
+          {renderNavigationSection(navigationSections.systemManagement)}
+        </>
       );
     }
 
-    const selectedItem = navigationItems.find(item => item.path === currentView);
+    const selectedItem = [
+      ...navigationSections.agentManagement.items,
+      ...navigationSections.systemManagement.items,
+    ].find((item) => item.path === currentView);
+
     if (selectedItem?.component) {
       const Component = selectedItem.component;
-      return (
-        <Box p={4}>
-          <Component />
-        </Box>
-      );
+      return <Component />;
     }
 
     return <Text>Page not found</Text>;
   };
 
   if (error) {
-    return <ErrorComponent message={error} />;
+    return (
+      <Box p={4} bg="red.50" borderWidth={1} borderColor="red.200" borderRadius="md">
+        <Heading size="sm" color="red.600">Error</Heading>
+        <Text color="red.500">{error}</Text>
+      </Box>
+    );
   }
 
   return (
-    <Box minH="100vh" bg={useColorModeValue('gray.50', 'gray.900')}>
-      <Flex direction="column">
-        <Box bg={bgColor} px={4} borderBottom="1px" borderColor={borderColor}>
-          <Flex h={16} alignItems="center" justifyContent="space-between">
-            <Heading size="md">Admin Dashboard</Heading>
-            {currentView !== 'dashboard' && (
-              <IconButton
-                icon={<ArrowLeft />}
-                onClick={() => setCurrentView('dashboard')}
-                variant="ghost"
-                aria-label="Return to dashboard"
-              />
-            )}
-          </Flex>
-        </Box>
-
-        <Box flex="1" p={4}>
-          {renderContent()}
-        </Box>
+    <Box maxW="7xl" mx="auto" py={8} px={4}>
+      <Flex align="center" mb={8}>
+        {currentView !== 'dashboard' && (
+          <IconButton
+            icon={<ArrowLeft />}
+            aria-label="Go back"
+            onClick={() => handleNavigation('dashboard')}
+            mr={4}
+          />
+        )}
+        <Heading>{currentView === 'dashboard' ? 'Admin Dashboard' : navigationSections.agentManagement.items.find((item) => item.path === currentView)?.name || 'Not Found'}</Heading>
       </Flex>
+      {renderContent()}
     </Box>
   );
 };
