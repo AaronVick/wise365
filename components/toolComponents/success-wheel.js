@@ -140,21 +140,7 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
 
   const fetchPreviousAnswers = async (authenticationID) => {
     try {
-      // Try firebaseService first
-      const previousAnswers = await firebaseService.queryCollection('resourcesData', {
-        where: [
-          { field: 'templateName', operator: '==', value: TEMPLATE_NAME },
-          { field: 'authenticationID', operator: '==', value: authenticationID }
-        ],
-        orderBy: [{ field: 'timestamp', direction: 'desc' }],
-        limit: 1
-      });
-
-      if (previousAnswers?.length) {
-        return previousAnswers[0];
-      }
-
-      // Fallback to direct Firebase query
+      // Remove the firebaseService attempt and just use direct Firebase query
       const answersRef = collection(db, 'resourcesData');
       const answersQuery = query(
         answersRef,
@@ -163,10 +149,10 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
         orderBy('timestamp', 'desc'),
         limit(1)
       );
-
+  
       const answersSnapshot = await getDocs(answersQuery);
       return answersSnapshot.empty ? null : answersSnapshot.docs[0].data();
-
+  
     } catch (error) {
       console.error('Error fetching previous answers:', error);
       throw error;

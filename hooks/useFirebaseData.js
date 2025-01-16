@@ -15,13 +15,13 @@ export function useFirebaseData(collectionName, queryParams = [], dependencies =
         setIsLoading(true);
         setError(null);
 
+        // Use direct Firebase query
         const collectionRef = collection(db, collectionName);
         
         // Build query with provided parameters
         let queryRef = collectionRef;
         if (queryParams && queryParams.length > 0) {
-          const queryConstraints = queryParams.filter(param => param); // Remove any undefined constraints
-          queryRef = query(collectionRef, ...queryConstraints);
+          queryRef = query(collectionRef, ...queryParams);
         }
 
         const querySnapshot = await getDocs(queryRef);
