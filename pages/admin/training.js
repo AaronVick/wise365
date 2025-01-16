@@ -209,7 +209,7 @@ useEffect(() => {
       </label>
       <select
         value={selectedAgent || ''}
-        onChange={(e) => setSelectedAgent(e.target.value)}
+        onChange={(e) => setSelectedAgent(e.target.value)} // Store agentId in state
         className="w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         disabled={agents.length === 0}
       >
@@ -218,14 +218,14 @@ useEffect(() => {
         </option>
         {agents.map((agent) => (
           <option key={agent.agentId} value={agent.agentId}>
-            {agent.agentName}: {agent.role}
+            {agent.agentName}: {agent.Role} {/* Display agentName and Role */}
           </option>
         ))}
       </select>
-
+  
       {selectedAgent && (
         <p className="mt-2 text-sm text-gray-500">
-          Selected Agent ID: {selectedAgent}
+          Selected Agent ID: {selectedAgent} {/* Display selected agentId */}
         </p>
       )}
     </div>
