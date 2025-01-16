@@ -44,10 +44,7 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
       setError(null);
 
       try {
-        // First check if user is new
-        const isNewUser = !userData || Object.keys(userData).length === 0;
-        
-        // Fetch funnel definitions
+        // Fetch funnel definitions first
         const funnelsRef = collection(db, 'funnels');
         const funnelsSnapshot = await getDocs(funnelsRef);
         const funnelsData = funnelsSnapshot.docs.map(doc => ({
@@ -55,23 +52,42 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
           ...doc.data()
         }));
         setFunnelDefinitions(funnelsData);
-        console.log('Available funnel definitions:', funnelsData.map(f => f.name));
 
-        if (isNewUser) {
-          // For new users, just set up onboarding milestone
-          const onboardingMilestone = {
-            name: 'Getting Started',
-            description: 'Complete your initial business setup',
-            status: 'ready',
-            progress: 0,
-            funnelName: 'Onboarding Funnel',
-            priority: 1
-          };
-          setMilestones([onboardingMilestone]);
-          setFilteredMilestones([onboardingMilestone]);
-          setSelectedMilestone(onboardingMilestone);
-          setLoading(false);
-          return;
+        // Get base onboarding funnel
+        const onboardingFunnel = funnelsData.find(f => 
+          f.name.toLowerCase() === 'onboarding funnel'
+        );
+
+        // Fetch user's funnel data
+        const funnelDataRef = collection(db, 'funnelData');
+        const funnelDataQuery = query(
+          funnelDataRef,
+          where('userId', '==', currentUser.uid)
+        );
+        const funnelDataSnapshot = await getDocs(funnelDataQuery);
+        const userFunnelData = funnelDataSnapshot.docs[0]?.data() || {};
+        setUserData(userFunnelData);
+
+        // Handle new user case - no funnel data yet
+        if (!userFunnelData || Object.keys(userFunnelData).length === 0) {
+          if (onboardingFunnel) {
+            const onboardingMilestone = {
+              name: onboardingFunnel.milestones[0]?.name || 'Getting Started',
+              description: onboardingFunnel.milestones[0]?.description || 'Complete your initial business setup',
+              status: 'ready',
+              progress: 0,
+              funnelName: 'Onboarding Funnel',
+              priority: 1,
+              id: onboardingFunnel.id
+            };
+
+            setMilestones([onboardingMilestone]);
+            setFilteredMilestones([onboardingMilestone]);
+            setSelectedMilestone(onboardingMilestone);
+            setActiveFunnel(onboardingFunnel);
+            setLoading(false);
+            return;
+          }
         }
 
         // For existing users, continue with normal flow

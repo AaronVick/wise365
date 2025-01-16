@@ -1,26 +1,30 @@
-// /components/SuggestedActions.js
+// components/SuggestedActions.js
 
 import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import _ from 'lodash';
 
 const SuggestedActions = ({ 
   currentUser, 
   handleAgentClick,
   userFunnelData,
-  resourcesData = []
+  resourcesData,
+  className = ''
 }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const generateSuggestions = async () => {
+    const fetchSuggestions = async () => {
+      if (!currentUser?.uid || !currentUser?.teamId) {
+        setError('User data not available');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
-        
-        // Fetch suggestions from API
         const response = await fetch('/api/generate-suggestions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -32,67 +36,45 @@ const SuggestedActions = ({
           })
         });
 
-        const { suggestions: fetchedSuggestions } = await response.json();
-        
-        // Sort and limit suggestions
-        const prioritizedSuggestions = _.orderBy(
-          fetchedSuggestions,
-          ['priority', 'relevanceScore'],
-          ['asc', 'desc']
-        ).slice(0, 3); // Show max 3 suggestions
-        
-        setSuggestions(prioritizedSuggestions);
+        if (!response.ok) {
+          throw new Error('Failed to fetch suggestions');
+        }
+
+        const data = await response.json();
+        setSuggestions(data.suggestions);
       } catch (error) {
-        console.error('Error generating suggestions:', error);
+        console.error('Error fetching suggestions:', error);
+        setError('Failed to load suggestions');
       } finally {
         setLoading(false);
       }
     };
 
-    if (currentUser?.uid) {
-      generateSuggestions();
-    }
-  }, [currentUser?.uid, userFunnelData]);
+    fetchSuggestions();
+  }, [currentUser?.uid, currentUser?.teamId]);
 
-  // Track suggestion interactions
-  const handleSuggestionClick = async (suggestion) => {
-    try {
-      // Log the interaction
-      await fetch('/api/track-suggestion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: currentUser.uid,
-          suggestionType: suggestion.type,
-          suggestionTitle: suggestion.title,
-          timestamp: new Date().toISOString()
-        })
-      });
-
-      // Handle the action
-      if (suggestion.type === 'agent') {
-        handleAgentClick(suggestion.agent);
-      } else if (suggestion.type === 'tool') {
-        suggestion.onClick();
-      }
-    } catch (error) {
-      console.error('Error tracking suggestion interaction:', error);
-    }
-  };
+  if (error) {
+    return (
+      <div className={className}>
+        <h3 className="text-lg font-semibold mb-4">Suggested Next Steps</h3>
+        <div className="text-red-500 text-center py-4">{error}</div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
-      <Card className="p-6">
+      <div className={className}>
         <h3 className="text-lg font-semibold mb-4">Suggested Next Steps</h3>
-        <div className="flex justify-center">
+        <div className="flex justify-center py-4">
           <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
         </div>
-      </Card>
+      </div>
     );
   }
 
   return (
-    <Card className="p-6">
+    <div className={className}>
       <h3 className="text-lg font-semibold mb-4">Suggested Next Steps</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {suggestions.map((suggestion, index) => (
@@ -100,7 +82,13 @@ const SuggestedActions = ({
             key={index}
             variant="outline"
             className="h-auto p-4 flex items-start text-left"
-            onClick={() => handleSuggestionClick(suggestion)}
+            onClick={() => {
+              if (suggestion.type === 'agent') {
+                handleAgentClick(suggestion.agent);
+              } else if (suggestion.type === 'tool') {
+                suggestion.action?.();
+              }
+            }}
           >
             <div>
               <h4 className="font-semibold mb-1">{suggestion.title}</h4>
@@ -109,7 +97,7 @@ const SuggestedActions = ({
           </Button>
         ))}
       </div>
-    </Card>
+    </div>
   );
 };
 

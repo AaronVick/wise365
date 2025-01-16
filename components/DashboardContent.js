@@ -456,12 +456,13 @@ const DashboardContent = ({
 
           {/* Suggested Actions */}
           <Card className="p-6">
-              <SuggestedActions 
-                        currentUser={currentUser}
-                        handleAgentClick={handleAgentClick}
-                        userFunnelData={userData}
-                        resourcesData={resourcesData}
-                      />
+            <SuggestedActions 
+              currentUser={currentUser}
+              handleAgentClick={handleAgentClick}
+              userFunnelData={userData}
+              resourcesData={resourcesData}
+              className="w-full"
+            />
           </Card>
 
           {/* Projects Section */}
