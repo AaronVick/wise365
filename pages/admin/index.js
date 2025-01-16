@@ -1,5 +1,7 @@
 // pages/admin/index.js
 import React, { useState } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import dynamic from 'next/dynamic';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,6 +79,40 @@ const AdminDashboard = () => {
   
   const [currentView, setCurrentView] = useState('dashboard');
   const [error, setError] = useState(null);
+
+
+  const [stats, setStats] = useState({
+    totalAgents: 0,
+    totalUsers: 0,
+    totalConversations: 0,
+  });
+  const [systemHealth, setSystemHealth] = useState('Good'); // Placeholder logic for now
+  
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [agentsSnap, usersSnap, conversationsSnap] = await Promise.all([
+          getDocs(collection(db, 'agents')),
+          getDocs(collection(db, 'users')),
+          getDocs(collection(db, 'conversations')),
+        ]);
+  
+        setStats({
+          totalAgents: agentsSnap.size,
+          totalUsers: usersSnap.size,
+          totalConversations: conversationsSnap.size,
+        });
+  
+        // Placeholder: Update system health logic here
+        setSystemHealth('Good'); // Add real health check logic
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    };
+  
+    fetchStats();
+  }, []);
+
 
   // Define navigation sections
   const navigationSections = {
@@ -228,8 +264,7 @@ const AdminDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">12</div>
-                <p className="text-xs text-gray-500">+2 this month</p>
+                <div className="text-2xl font-bold">{stats.totalAgents}</div>
               </CardContent>
             </Card>
             <Card>
@@ -239,8 +274,7 @@ const AdminDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">1,234</div>
-                <p className="text-xs text-gray-500">+15% from last month</p>
+                <div className="text-2xl font-bold">{stats.totalUsers}</div>
               </CardContent>
             </Card>
             <Card>
@@ -250,19 +284,7 @@ const AdminDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">45,678</div>
-                <p className="text-xs text-gray-500">+5% this week</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500">
-                  System Health
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-500">Good</div>
-                <p className="text-xs text-gray-500">All systems operational</p>
+                <div className="text-2xl font-bold">{stats.totalConversations}</div>
               </CardContent>
             </Card>
           </div>
