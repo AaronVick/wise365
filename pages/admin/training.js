@@ -24,6 +24,17 @@ export default function Training() {
   const [newRecordFields, setNewRecordFields] = useState({});
   const [saving, setSaving] = useState(false);
 
+  const checkAllRecords = async () => {
+    const allRecordsQuery = query(collection(db, 'agentData'));
+    const snapshot = await getDocs(allRecordsQuery);
+    console.log('All available records:', snapshot.docs.map(doc => ({
+      id: doc.id,
+      agentId: doc.data().agentId
+    })));
+  };
+  
+  // Call this in your fetchTrainingData function
+  await checkAllRecords();
   // Section 2: Agent Fetching
   useEffect(() => {
     const fetchAgents = async () => {
@@ -52,18 +63,26 @@ export default function Training() {
       console.log('Selected Agent ID:', selectedAgent); 
       setLoadingTrainingData(true);
       try {
+        // Convert selectedAgent to match the case in database
+        const normalizedAgentId = selectedAgent.trim();
+        
         const trainingQuery = query(
           collection(db, 'agentData'), 
-          where('agentId', '==', selectedAgent)
+          where('agentId', '==', normalizedAgentId)
         );
-        console.log('Query:', trainingQuery); 
+        
+        console.log('Normalized Agent ID:', normalizedAgentId);
         const querySnapshot = await getDocs(trainingQuery);
-        console.log('Query Results:', querySnapshot.size); 
+        
+        if (querySnapshot.size === 0) {
+          console.warn('No records found for agent:', normalizedAgentId);
+        }
+        
         const records = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
         }));
-        console.log('Processed Records:', records); 
+        
         setTrainingData(records);
       } catch (err) {
         console.error('Error fetching training data:', err);
