@@ -1,6 +1,6 @@
 // pages/admin/index.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -20,73 +20,48 @@ import {
   ClipboardList 
 } from 'lucide-react';
 
+// Lazy load components
+const AdminManagement = React.lazy(() => import('./adminManagement'));
+const AgentStats = React.lazy(() => import('./agentStats'));
+const AuditLogs = React.lazy(() => import('./auditLogs'));
+const BillingManagement = React.lazy(() => import('./billingManagement'));
+const Chat = React.lazy(() => import('./chat'));
+const ManageAgents = React.lazy(() => import('./manage'));
+const Prompts = React.lazy(() => import('./prompts'));
+const TenantManagement = React.lazy(() => import('./tenantManagement'));
+const Training = React.lazy(() => import('./training'));
+const UsageStats = React.lazy(() => import('./usageStats'));
+
 // Debug helper
 const debug = (message, data = '') => {
   console.log(`[Admin Dashboard] ${message}`, data);
 };
 
-// Error boundary component
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error('[Admin Dashboard Error]', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-          <h3 className="text-red-800 font-medium">Something went wrong</h3>
-          <p className="text-red-600">{this.state.error?.message}</p>
-          <Button 
-            variant="outline" 
-            className="mt-2"
-            onClick={() => this.setState({ hasError: false })}
-          >
-            Try Again
-          </Button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-// Lazy load components with error handling
-const loadComponent = async (name) => {
-  debug(`Loading component: ${name}`);
-  try {
-    const component = await import(`./${name.toLowerCase()}`);
-    debug(`Successfully loaded component: ${name}`);
-    return component.default;
-  } catch (error) {
-    console.error(`Error loading component ${name}:`, error);
-    return null;
-  }
-};
-
 const AdminDashboard = () => {
-  debug('Rendering AdminDashboard');
-
   const [currentView, setCurrentView] = useState('dashboard');
   const [activeTab, setActiveTab] = useState('overview');
-  const [loadedComponents, setLoadedComponents] = useState({});
-  const [error, setError] = useState(null);
 
-  // Track current view changes
-  useEffect(() => {
-    debug('Current view changed to:', currentView);
-  }, [currentView]);
+  // Component mapping with strict typing
+  const componentMap = {
+    'Manage Agents': ManageAgents,
+    'Training': Training,
+    'Prompts': Prompts,
+    'Chat Interface': Chat,
+    'Agent Stats': AgentStats,
+    'Usage Statistics': UsageStats,
+    'Tenant Management': TenantManagement,
+    'Admin Management': AdminManagement,
+    'Billing Management': BillingManagement,
+    'Audit Logs': AuditLogs,
+    'System Settings': () => (
+      <div className="p-4">
+        <h2 className="text-2xl font-bold mb-4">System Settings</h2>
+        <p>System settings configuration coming soon...</p>
+      </div>
+    )
+  };
 
-  // Define navigation structure
+  // Navigation structure
   const navigation = {
     agentManagement: [
       { name: 'Manage Agents', icon: Bot, description: 'Create and configure AI agents' },
@@ -105,60 +80,30 @@ const AdminDashboard = () => {
     ]
   };
 
-  // Load component on view change
-  useEffect(() => {
-    if (currentView !== 'dashboard' && !loadedComponents[currentView]) {
-      debug(`Loading component for view: ${currentView}`);
-      
-      const loadViewComponent = async () => {
-        try {
-          // Convert view name to component path (e.g., "Manage Agents" -> "manageagents")
-          const componentPath = currentView.toLowerCase().replace(/\s+/g, '');
-          const Component = await loadComponent(componentPath);
-          
-          if (Component) {
-            setLoadedComponents(prev => ({
-              ...prev,
-              [currentView]: Component
-            }));
-            debug(`Component loaded successfully: ${currentView}`);
-          } else {
-            throw new Error(`Failed to load component: ${currentView}`);
-          }
-        } catch (err) {
-          console.error('Error loading component:', err);
-          setError(`Failed to load ${currentView}. Please try again.`);
-        }
-      };
-
-      loadViewComponent();
-    }
-  }, [currentView, loadedComponents]);
-
+  // Safe render function for navigation cards
   const renderNavigationCard = (item) => {
-    debug(`Rendering navigation card for: ${item.name}`);
-    
     if (!item?.name) {
-      console.warn('Invalid navigation item:', item);
+      debug('Invalid navigation item:', item);
       return null;
     }
 
     const IconComponent = item.icon || Settings;
+    const cardKey = `nav-card-${item.name.toLowerCase().replace(/\s+/g, '-')}`;
 
     return (
-      <Card key={item.name} className="hover:shadow-lg transition-shadow">
+      <Card key={cardKey} className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <div className="flex items-center gap-2">
             <IconComponent className="h-5 w-5" />
             <CardTitle className="text-lg">{item.name}</CardTitle>
           </div>
-          <CardDescription>{item.description}</CardDescription>
+          <CardDescription>{item.description || ''}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button 
             className="w-full"
             onClick={() => {
-              debug(`Navigation clicked: ${item.name}`);
+              debug('Navigation clicked:', item.name);
               setCurrentView(item.name);
             }}
           >
@@ -169,9 +114,39 @@ const AdminDashboard = () => {
     );
   };
 
-  const renderDashboard = () => {
-    debug('Rendering dashboard view');
-    
+  // Safe render function for dynamic components
+  const renderDynamicComponent = () => {
+    if (currentView === 'dashboard') {
+      return null;
+    }
+
+    const Component = componentMap[currentView];
+    if (!Component) {
+      debug('Component not found:', currentView);
+      return (
+        <div className="p-4">
+          <p>Component not found: {currentView}</p>
+        </div>
+      );
+    }
+
+    return (
+      <React.Suspense fallback={
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      }>
+        <Component />
+      </React.Suspense>
+    );
+  };
+
+  // Render dashboard content
+  const renderDashboardContent = () => {
+    if (currentView !== 'dashboard') {
+      return renderDynamicComponent();
+    }
+
     return (
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
@@ -182,7 +157,6 @@ const AdminDashboard = () => {
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Quick Stats */}
             <Card>
               <CardHeader>
                 <CardTitle>System Overview</CardTitle>
@@ -206,7 +180,6 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Recent Activity */}
             <Card>
               <CardHeader>
                 <CardTitle>Recent Activity</CardTitle>
@@ -236,47 +209,8 @@ const AdminDashboard = () => {
     );
   };
 
-  const renderComponent = () => {
-    if (currentView === 'dashboard') {
-      return renderDashboard();
-    }
-
-    const Component = loadedComponents[currentView];
-    
-    if (!Component) {
-      debug(`No component found for view: ${currentView}`);
-      return (
-        <div className="text-center py-8">
-          <p className="text-gray-500">Loading component...</p>
-        </div>
-      );
-    }
-
-    debug(`Rendering component for: ${currentView}`);
-    return <ErrorBoundary><Component /></ErrorBoundary>;
-  };
-
-  if (error) {
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-        <p className="text-red-600">{error}</p>
-        <Button 
-          variant="outline" 
-          className="mt-2"
-          onClick={() => {
-            setError(null);
-            setCurrentView('dashboard');
-          }}
-        >
-          Return to Dashboard
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto p-6">
-      {/* Persistent Header with Home Button */}
       <div className="flex items-center gap-4 mb-8">
         {currentView !== 'dashboard' && (
           <Button
@@ -306,8 +240,7 @@ const AdminDashboard = () => {
         </h1>
       </div>
 
-      {/* Main Content */}
-      {renderComponent()}
+      {renderDashboardContent()}
     </div>
   );
 };
