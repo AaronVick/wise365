@@ -97,7 +97,6 @@ const DashboardContent = ({
   const [hasShawnChat, setHasShawnChat] = useState(false);
   const [messages, setMessages] = useState([]);
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
-  const [resourcesData, setResourcesData] = useState([]); // New state for resource data
   const [userData, setUserData] = useState(null); // New state for user data
   const { data: resourcesData, isLoading: resourcesLoading, error: resourcesError } = useResources(currentUser?.teamId);
   
