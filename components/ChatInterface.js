@@ -209,37 +209,34 @@ Previous Interactions Summary:
   }, [userId, agentId, conversationName, isDefault]);
 
   // Fetch Messages
-  useEffect(() => {
-    if (!conversationNameRef) {
-      console.error('No conversationNameRef provided');
-      return;
+  // Fetch Messages
+useEffect(() => {
+  if (!conversationNameRef) {
+    console.error('No conversationNameRef provided');
+    return;
+  }
+
+  const q = query(
+    collection(db, 'conversations'),
+    where('conversationName', '==', conversationNameRef),
+    orderBy('timestamp', 'asc')
+  );
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const fetchedMessages = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    setMessages(fetchedMessages);
+
+    // Automatically scroll to the bottom of the chat
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  
-    const unsubscribe = firebaseService.subscribeToCollection('conversations', {
-      where: [
-        { field: 'conversationName', operator: '==', value: conversationNameRef }
-      ],
-      orderBy: 'timestamp asc'
-    }, setMessages);
-  
-    return () => unsubscribe();
-  }, [conversationNameRef]);
+  });
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedMessages = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setMessages(fetchedMessages);
-
-      // Automatically scroll to the bottom of the chat
-      if (scrollRef.current) {
-        scrollRef.current.scrollIntoView({ behavior: 'smooth' });
-      }
-    });
-
-    return () => unsubscribe();
-  }, [conversationNameRef]);
+  return () => unsubscribe();
+}, [conversationNameRef]);
 
 // Handle Sending Messages
 const handleSendMessage = async (e) => {
