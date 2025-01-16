@@ -1,5 +1,5 @@
 // pages/admin/index.js
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,235 +19,182 @@ import {
   ClipboardList 
 } from 'lucide-react';
 
-// Debug helper
 const debug = (area, message, data = '') => {
   console.log(`[Admin Dashboard][${area}] ${message}`, data ? data : '');
 };
 
-// Lazy load all components
-const AdminManagement = React.lazy(() => {
-  debug('Lazy Load', 'Loading AdminManagement');
-  return import('./adminManagement').catch(e => {
-    debug('Error', 'Failed to load AdminManagement', e);
-    return { default: () => <div>Error loading Admin Management</div> };
-  });
-});
+// Separate Navigation Card Component
+const NavigationCard = ({ item, onNavigate }) => {
+  if (!item?.name) {
+    debug('NavigationCard', 'Invalid item props');
+    return null;
+  }
 
-const AgentStats = React.lazy(() => {
-  debug('Lazy Load', 'Loading AgentStats');
-  return import('./agentStats').catch(e => {
-    debug('Error', 'Failed to load AgentStats', e);
-    return { default: () => <div>Error loading Agent Stats</div> };
-  });
-});
+  const IconComponent = item.icon || Settings;
 
-// ... Similarly for other components
-const AuditLogs = React.lazy(() => import('./auditLogs'));
-const BillingManagement = React.lazy(() => import('./billingManagement'));
-const TenantManagement = React.lazy(() => import('./tenantManagement'));
-const UsageStats = React.lazy(() => import('./usageStats'));
+  return (
+    <Card className="hover:shadow-lg transition-shadow">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <IconComponent className="h-5 w-5" />
+          <CardTitle className="text-lg">{item.name}</CardTitle>
+        </div>
+        {item.description && (
+          <CardDescription>{item.description}</CardDescription>
+        )}
+      </CardHeader>
+      <CardContent>
+        <Button 
+          className="w-full"
+          onClick={() => {
+            debug('NavigationCard', `Click: ${item.name}`);
+            if (onNavigate) onNavigate(item.name);
+          }}
+        >
+          Access
+        </Button>
+      </CardContent>
+    </Card>
+  );
+};
 
-// Loading component
-const LoadingComponent = () => (
-  <div className="flex justify-center items-center h-48">
-    <p className="text-gray-500">Loading...</p>
-  </div>
+// Overview Card Component
+const OverviewCard = ({ title, description, children }) => (
+  <Card>
+    <CardHeader>
+      <CardTitle>{title}</CardTitle>
+      {description && <CardDescription>{description}</CardDescription>}
+    </CardHeader>
+    <CardContent>{children}</CardContent>
+  </Card>
 );
 
 const AdminDashboard = () => {
-  debug('Render', 'Starting AdminDashboard render');
+  debug('Init', 'Initializing AdminDashboard');
   
   const [currentView, setCurrentView] = useState('dashboard');
   const [activeTab, setActiveTab] = useState('overview');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    debug('Effect', 'Current view changed to:', currentView);
-  }, [currentView]);
-
-  useEffect(() => {
-    debug('Effect', 'Active tab changed to:', activeTab);
-  }, [activeTab]);
-
-  // Navigation structure
+  // Navigation Structure
   const navigation = {
     agentManagement: [
-      { name: 'Admin Management', icon: Users, component: AdminManagement },
-      { name: 'Agent Stats', icon: BarChart3, component: AgentStats }
-      // Add other agent management items as needed
+      { name: 'Manage Agents', icon: Bot, description: 'Create and configure AI agents' },
+      { name: 'Training', icon: BookOpen, description: 'Train and fine-tune agent models' },
+      { name: 'Prompts', icon: Code, description: 'Manage agent prompts and behaviors' },
+      { name: 'Chat Interface', icon: MessageCircle, description: 'Test and monitor agent conversations' },
+      { name: 'Agent Stats', icon: BarChart3, description: 'View agent performance metrics' }
     ],
     systemManagement: [
-      { name: 'Usage Statistics', icon: BarChart3, component: UsageStats },
-      { name: 'Tenant Management', icon: Building2, component: TenantManagement },
-      { name: 'Billing Management', icon: Receipt, component: BillingManagement },
-      { name: 'Audit Logs', icon: ClipboardList, component: AuditLogs },
-      { name: 'System Settings', icon: Settings, component: null }
+      { name: 'Usage Statistics', icon: BarChart3, description: 'System-wide usage metrics' },
+      { name: 'Tenant Management', icon: Building2, description: 'Manage organization tenants' },
+      { name: 'Admin Management', icon: Users, description: 'Manage system administrators' },
+      { name: 'Billing Management', icon: Receipt, description: 'Manage subscriptions and billing' },
+      { name: 'Audit Logs', icon: ClipboardList, description: 'View system audit trails' },
+      { name: 'System Settings', icon: Settings, description: 'Configure system-wide settings' }
     ]
   };
 
-  const renderNavigationCard = (item) => {
-    debug('Render', `Rendering navigation card for: ${item.name}`);
-    
-    if (!item?.name) {
-      debug('Error', 'Invalid navigation item:', item);
-      return null;
-    }
-
-    const IconComponent = item.icon || Settings;
-
-    return (
-      <Card key={item.name} className="hover:shadow-lg transition-shadow">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <IconComponent className="h-5 w-5" />
-            <CardTitle className="text-lg">{item.name}</CardTitle>
-          </div>
-          <CardDescription>{item.description}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button 
-            className="w-full"
-            onClick={() => {
-              debug('Action', `Navigation clicked: ${item.name}`);
-              setCurrentView(item.name);
-            }}
-          >
-            Access
-          </Button>
-        </CardContent>
-      </Card>
-    );
+  const handleNavigation = (view) => {
+    debug('Navigation', `Changing view to: ${view}`);
+    setCurrentView(view);
   };
 
-  const renderDashboardContent = () => {
-    debug('Render', 'Rendering dashboard content');
-    
-    return (
-      <Tabs 
-        value={activeTab} 
-        onValueChange={(value) => {
-          debug('Action', `Tab changed to: ${value}`);
-          setActiveTab(value);
-        }} 
-        className="space-y-6"
-      >
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="agents">Agent Management</TabsTrigger>
-          <TabsTrigger value="system">System Management</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Quick Stats Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>System Overview</CardTitle>
-                <CardDescription>Key metrics and status</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span>Active Tenants</span>
-                    <span className="font-semibold">23</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Total Agents</span>
-                    <span className="font-semibold">45</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Active Users</span>
-                    <span className="font-semibold">156</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Recent Activity Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Latest system events</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-48">
-                  <div className="space-y-4">
-                    <div className="text-sm">New tenant onboarded: Acme Corp</div>
-                    <div className="text-sm">Agent configuration updated: Support Bot</div>
-                    <div className="text-sm">System backup completed</div>
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+  const renderOverviewContent = () => (
+    <div className="grid gap-6 md:grid-cols-2">
+      <OverviewCard title="System Overview" description="Key metrics and status">
+        <div className="space-y-4">
+          <div className="flex justify-between">
+            <span>Active Tenants</span>
+            <span className="font-semibold">23</span>
           </div>
-        </TabsContent>
+          <div className="flex justify-between">
+            <span>Total Agents</span>
+            <span className="font-semibold">45</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Active Users</span>
+            <span className="font-semibold">156</span>
+          </div>
+        </div>
+      </OverviewCard>
 
-        <TabsContent value="agents" className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {navigation.agentManagement.map((item) => {
-            debug('Render', `Rendering agent management card: ${item.name}`);
-            return renderNavigationCard(item);
-          })}
-        </TabsContent>
+      <OverviewCard title="Recent Activity" description="Latest system events">
+        <ScrollArea className="h-48">
+          <div className="space-y-4">
+            <div className="text-sm">New tenant onboarded: Acme Corp</div>
+            <div className="text-sm">Agent configuration updated: Support Bot</div>
+            <div className="text-sm">System backup completed</div>
+          </div>
+        </ScrollArea>
+      </OverviewCard>
+    </div>
+  );
 
-        <TabsContent value="system" className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {navigation.systemManagement.map((item) => {
-            debug('Render', `Rendering system management card: ${item.name}`);
-            return renderNavigationCard(item);
-          })}
-        </TabsContent>
-      </Tabs>
+  const renderDynamicComponent = () => {
+    debug('Render', `Loading dynamic component for: ${currentView}`);
+    
+    const Component = React.lazy(() => 
+      import(`./${currentView.toLowerCase().replace(/\s+/g, '')}`).catch(error => {
+        debug('Error', `Failed to load component: ${currentView}`, error);
+        return { default: () => <div>Error loading component</div> };
+      })
     );
-  };
-
-  const renderComponent = () => {
-    debug('Render', `Rendering component for view: ${currentView}`);
-
-    if (currentView === 'dashboard') {
-      return renderDashboardContent();
-    }
-
-    // Find the component to render
-    const componentConfig = [...navigation.agentManagement, ...navigation.systemManagement]
-      .find(item => item.name === currentView);
-
-    if (!componentConfig?.component) {
-      debug('Error', `No component found for view: ${currentView}`);
-      return <div>Component not found</div>;
-    }
-
-    const Component = componentConfig.component;
-    debug('Render', `Found component for: ${currentView}`);
 
     return (
-      <Suspense fallback={<LoadingComponent />}>
+      <Suspense fallback={<div>Loading...</div>}>
         <Component />
       </Suspense>
     );
   };
 
-  if (error) {
-    debug('Error', 'Rendering error state:', error);
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-        <h3 className="text-red-800 font-medium">Error</h3>
-        <p className="text-red-600">{error}</p>
-      </div>
-    );
-  }
+  const renderContent = () => {
+    if (currentView === 'dashboard') {
+      return (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="agents">Agent Management</TabsTrigger>
+            <TabsTrigger value="system">System Management</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            {renderOverviewContent()}
+          </TabsContent>
+
+          <TabsContent value="agents" className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {navigation.agentManagement.map((item) => (
+              <NavigationCard 
+                key={item.name}
+                item={item}
+                onNavigate={handleNavigation}
+              />
+            ))}
+          </TabsContent>
+
+          <TabsContent value="system" className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {navigation.systemManagement.map((item) => (
+              <NavigationCard 
+                key={item.name}
+                item={item}
+                onNavigate={handleNavigation}
+              />
+            ))}
+          </TabsContent>
+        </Tabs>
+      );
+    }
+
+    return renderDynamicComponent();
+  };
 
   return (
     <div className="container mx-auto p-6">
-      {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         {currentView !== 'dashboard' && (
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              debug('Action', 'Back button clicked');
-              setCurrentView('dashboard');
-            }}
+            onClick={() => handleNavigation('dashboard')}
             className="mr-2"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -256,10 +203,7 @@ const AdminDashboard = () => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => {
-            debug('Action', 'Home button clicked');
-            setCurrentView('dashboard');
-          }}
+          onClick={() => handleNavigation('dashboard')}
         >
           <Home className="h-5 w-5" />
         </Button>
@@ -268,57 +212,9 @@ const AdminDashboard = () => {
         </h1>
       </div>
 
-      {/* Main Content */}
-      {isLoading ? (
-        <LoadingComponent />
-      ) : (
-        <ErrorBoundary onError={(error) => {
-          debug('Error', 'ErrorBoundary caught error:', error);
-          setError(error.message);
-        }}>
-          {renderComponent()}
-        </ErrorBoundary>
-      )}
+      {renderContent()}
     </div>
   );
 };
-
-// Error Boundary Component
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error) {
-    debug('Error', 'ErrorBoundary getDerivedStateFromError:', error);
-    return { hasError: true };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    debug('Error', 'ErrorBoundary caught error:', { error, errorInfo });
-    if (this.props.onError) {
-      this.props.onError(error);
-    }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-          <h3 className="text-red-800 font-medium">Something went wrong</h3>
-          <Button 
-            onClick={() => this.setState({ hasError: false })}
-            className="mt-2"
-          >
-            Try Again
-          </Button>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
 
 export default AdminDashboard;
