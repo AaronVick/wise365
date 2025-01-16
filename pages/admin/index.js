@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import dynamic from 'next/dynamic';
-import { Box, Flex, Grid, Text, Button, Heading, IconButton } from '@chakra-ui/react';
+import { Box, Flex, Grid, Text, Button, Heading, IconButton, ChakraProvider } from '@chakra-ui/react'; // Import ChakraProvider
 import { 
   Bot, 
   MessageCircle, 
@@ -175,20 +175,22 @@ const AdminDashboard = () => {
   }
 
   return (
-    <Box maxW="7xl" mx="auto" py={8} px={4}>
-      <Flex align="center" mb={8}>
-        {currentView !== 'dashboard' && (
-          <IconButton
-            icon={<ArrowLeft />}
-            aria-label="Go back"
-            onClick={() => handleNavigation('dashboard')}
-            mr={4}
-          />
-        )}
-        <Heading>{currentView === 'dashboard' ? 'Admin Dashboard' : navigationSections.agentManagement.items.find((item) => item.path === currentView)?.name || 'Not Found'}</Heading>
-      </Flex>
-      {renderContent()}
-    </Box>
+    <ChakraProvider> {/* Wrap entire component in ChakraProvider */}
+      <Box maxW="7xl" mx="auto" py={8} px={4}>
+        <Flex align="center" mb={8}>
+          {currentView !== 'dashboard' && (
+            <IconButton
+              icon={<ArrowLeft />}
+              aria-label="Go back"
+              onClick={() => handleNavigation('dashboard')}
+              mr={4}
+            />
+          )}
+          <Heading>{currentView === 'dashboard' ? 'Admin Dashboard' : navigationSections.agentManagement.items.find((item) => item.path === currentView)?.name || 'Not Found'}</Heading>
+        </Flex>
+        {renderContent()}
+      </Box>
+    </ChakraProvider>
   );
 };
 
