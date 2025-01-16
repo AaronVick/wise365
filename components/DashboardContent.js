@@ -1,6 +1,7 @@
 // components/DashboardContent.js
 
 import React, { useState, useEffect } from 'react';
+import { useResources } from '../hooks/useFirebaseData';
 import { useRouter } from 'next/router';
 import { 
   collection, 
@@ -306,6 +307,9 @@ const DashboardContent = ({
   };
 
   // Resource data loading effect
+
+  const { data: resourcesData, isLoading: resourcesLoading, error: resourcesError } = useResources(currentUser?.teamId);
+  
   useEffect(() => {
     const loadResourceData = async () => {
       if (!currentUser?.uid) return;
