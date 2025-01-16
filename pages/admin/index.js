@@ -19,6 +19,7 @@ import {
   ClipboardList,
   LineChart
 } from 'lucide-react';
+import TenantManagement from './tenantManagement';
 
 const debug = (area, message, data = '') => {
   console.log(`[Admin Dashboard][${area}] ${message}`, data ? JSON.stringify(data) : '');
@@ -73,6 +74,13 @@ const AuditLogs = dynamic(() => {
   debug('Load', 'Loading AuditLogs component');
   return import('./auditLogs');
 }, { loading: () => <div>Loading Audit Logs...</div>, ssr: false });
+
+const AuditLogs = dynamic(() => {
+  debug('Load', 'Loading Tenant Management component');
+  return import('./tenantManagement');
+}, { loading: () => <div>Loading Audit Logs...</div>, ssr: false });
+
+
 
 const AdminDashboard = () => {
   debug('Init', 'Starting dashboard initialization');
@@ -174,6 +182,13 @@ const AdminDashboard = () => {
           component: UsageStats,
           description: 'System-wide usage metrics',
           path: 'usageStats'
+        },
+        {
+          name: 'tenantManagement',
+          icon: Users,
+          component: TenantManagement,
+          description: 'Manage Users',
+          path: 'tenantManagement'
         },
         {
           name: 'Billing Management',
