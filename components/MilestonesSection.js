@@ -228,13 +228,17 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
             console.warn('No milestones were processed');
             setError('No milestones available');
           }
-        
         } catch (error) {
           console.error('Error in milestone processing:', error);
           setError(error.message || 'Failed to load milestones');
-        } finally {
-          setLoading(false);
         }
+      } catch (error) {
+        console.error('Error fetching funnel data:', error);
+        setError('Failed to load funnel data');
+      } finally {
+        setLoading(false);
+      }
+    };
 
     fetchFunnelsAndProgress();
   }, [currentUser?.uid, selectedMilestone]);
