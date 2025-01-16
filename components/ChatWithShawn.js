@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, addDoc, orderBy, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import firebaseService from '../../lib/services/firebaseService';
+import firebaseService from '../lib/services/firebaseService';
 
 
 import ChatInterface from './ChatInterface';
