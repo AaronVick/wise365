@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../lib/firebase';
-import { ChakraProvider } from '@chakra-ui/react'; // Import ChakraProvider
+import { ChakraProvider } from '@chakra-ui/react';
 
 const inter = Inter({ subsets: ['latin'], fallback: ['sans-serif'] });
 
@@ -53,20 +53,30 @@ const MyApp = ({ Component, pageProps }) => {
     );
   }
 
+  const shouldUseChakra = router.pathname.startsWith('/admin'); // Only apply Chakra to specific paths
+
+  const MainContent = (
+    <DashboardProvider>
+      <main className={inter.className}>
+        <Component {...pageProps} />
+      </main>
+    </DashboardProvider>
+  );
+
   return (
     <ErrorBoundary
       FallbackComponent={ErrorFallback}
       onError={(error, info) => console.error("ErrorBoundary caught an error", error, info)}
     >
-      <ChakraProvider> {/* Wrap ChakraProvider */}
-        <DashboardProvider>
-          <main className={inter.className}>
-            <Component {...pageProps} />
-          </main>
-        </DashboardProvider>
-      </ChakraProvider>
+      {shouldUseChakra ? (
+        <ChakraProvider>
+          {MainContent}
+        </ChakraProvider>
+      ) : (
+        MainContent
+      )}
     </ErrorBoundary>
   );
-}
+};
 
 export default MyApp;
