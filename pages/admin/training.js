@@ -63,12 +63,12 @@ export default function Training() {
   }, []);
 
   // Section 3: Training Data Fetching
+useEffect(() => {
   const fetchTrainingData = async () => {
     console.log('Selected Agent ID:', selectedAgent);
     setLoadingTrainingData(true);
+    
     try {
-      await checkAllRecords(); // Now this is inside an async function
-      
       const normalizedAgentId = selectedAgent.trim();
       const trainingQuery = query(
         collection(db, 'agentData'),
@@ -76,7 +76,12 @@ export default function Training() {
       );
       
       const querySnapshot = await getDocs(trainingQuery);
-      // ... rest of your function
+      const records = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      setTrainingData(records);
     } catch (error) {
       console.error('Error:', error);
       setError('Failed to fetch training data');
@@ -85,39 +90,39 @@ export default function Training() {
     }
   };
 
+  if (selectedAgent) {
     fetchTrainingData();
-  }, [selectedAgent]);
+  }
+}, [selectedAgent]);
 
-  // Section 4: Data Type Aggregation
-  useEffect(() => {
-    const aggregateDataTypes = () => {
-      const dataTypeMap = {};
+// Section 4: Data Type Aggregation
+useEffect(() => {
+  const aggregateDataTypes = () => {
+    const dataTypeMap = {};
 
-      trainingData.forEach(record => {
-        const { datatype, ...fields } = record;
-        if (!datatype) return;
+    trainingData.forEach(record => {
+      const { datatype, ...fields } = record;
+      if (!datatype) return;
 
-        if (!dataTypeMap[datatype]) {
-          dataTypeMap[datatype] = new Set();
-        }
+      if (!dataTypeMap[datatype]) {
+        dataTypeMap[datatype] = new Set();
+      }
 
-        Object.keys(fields)
-          .filter(key => key !== 'agentId' && key !== 'id')
-          .forEach(field => dataTypeMap[datatype].add(field));
-      });
+      Object.keys(fields)
+        .filter(key => key !== 'agentId' && key !== 'id')
+        .forEach(field => dataTypeMap[datatype].add(field));
+    });
 
-      const aggregatedTypes = Object.entries(dataTypeMap).map(([type, fields]) => ({
-        type,
-        fields: Array.from(fields),
-      }));
+    const aggregatedTypes = Object.entries(dataTypeMap).map(([type, fields]) => ({
+      type,
+      fields: Array.from(fields),
+    }));
 
-      setAvailableDataTypes(aggregatedTypes);
-    };
+    setDataTypes(aggregatedTypes);
+  };
 
-    if (trainingData.length > 0) {
-      aggregateDataTypes();
-    }
-  }, [trainingData]);
+  aggregateDataTypes();
+}, [trainingData]);
 
   // Section 5: Form Handlers
   const handleDataTypeSelection = (event) => {
