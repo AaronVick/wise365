@@ -1,244 +1,206 @@
 // pages/admin/billingManagement.js
-
 import React, { useState, useEffect } from 'react';
-import { collection, doc, getDoc, updateDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, CheckCircle2, CreditCard } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CreditCard, Search } from 'lucide-react';
 
-const BillingManagement = ({ tenantId }) => {
-  const [tenant, setTenant] = useState(null);
-  const [billingHistory, setBillingHistory] = useState([]);
+export default function BillingManagement() {
+  const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filter, setFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetchTenantData();
-    fetchBillingHistory();
-  }, [tenantId]);
-
-  const fetchTenantData = async () => {
-    try {
-      const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
-      if (tenantDoc.exists()) {
-        setTenant(tenantDoc.data());
+    const fetchTenants = async () => {
+      try {
+        const tenantsSnapshot = await getDocs(collection(db, 'tenants'));
+        const tenantsData = tenantsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          // Set default values for new fields if they don't exist
+          subscriptionPlan: doc.data().subscriptionPlan || 'Free',
+          subscriptionStatus: doc.data().subscriptionStatus || 'inactive',
+          billingCycle: doc.data().billingCycle || 'monthly',
+          nextBillingDate: doc.data().nextBillingDate || null,
+        }));
+        setTenants(tenantsData);
+      } catch (error) {
+        console.error('Error fetching tenants:', error);
+        setError('Failed to load tenant billing information');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching tenant data:', error);
-    }
+    };
+
+    fetchTenants();
+  }, []);
+
+  const filteredTenants = tenants.filter(tenant => {
+    const matchesFilter = filter === 'all' || tenant.subscriptionStatus === filter;
+    const matchesSearch = searchQuery === '' || 
+      tenant.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tenant.id.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  const handleViewBillingDetails = (tenantId) => {
+    // TODO: Implement billing details view
+    console.log('View billing details for tenant:', tenantId);
   };
 
-  const fetchBillingHistory = async () => {
-    try {
-      // This would typically query a 'billingHistory' collection
-      // For now, we'll use placeholder data
-      setBillingHistory([
-        {
-          id: 1,
-          date: '2025-01-15',
-          amount: 299.00,
-          status: 'paid',
-          description: 'Monthly Subscription - Enterprise Plan'
-        },
-        {
-          id: 2,
-          date: '2024-12-15',
-          amount: 299.00,
-          status: 'paid',
-          description: 'Monthly Subscription - Enterprise Plan'
-        }
-      ]);
-    } catch (error) {
-      console.error('Error fetching billing history:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handleUpdateSubscription = (tenantId) => {
+    // TODO: Implement Stripe integration
+    console.log('Update subscription for tenant:', tenantId);
   };
-
-  const handleUpdateSubscription = async (newPlan) => {
-    // TODO: Integrate with Stripe
-    // 1. Create Stripe Checkout Session
-    // 2. Redirect to Stripe Checkout
-    // 3. Handle webhook for successful payment
-    // 4. Update Firebase with new subscription status
-    console.log('Updating subscription to:', newPlan);
-  };
-
-  const handleUpdatePaymentMethod = () => {
-    // TODO: Integrate with Stripe
-    // 1. Create Stripe Setup Intent
-    // 2. Redirect to Stripe Payment Method update page
-    console.log('Updating payment method');
-  };
-
-  const subscriptionPlans = [
-    {
-      name: 'Starter',
-      price: 99,
-      features: ['Up to 5 users', 'Basic support', '2 AI agents'],
-      recommended: false
-    },
-    {
-      name: 'Professional',
-      price: 199,
-      features: ['Up to 20 users', 'Priority support', '5 AI agents', 'Advanced analytics'],
-      recommended: true
-    },
-    {
-      name: 'Enterprise',
-      price: 299,
-      features: ['Unlimited users', '24/7 support', 'Unlimited AI agents', 'Custom integrations'],
-      recommended: false
-    }
-  ];
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <p className="text-lg text-gray-500">Loading billing information...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md">
+        {error}
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      {/* Current Subscription Status */}
       <Card>
         <CardHeader>
-          <CardTitle>Current Subscription</CardTitle>
-          <CardDescription>
-            Manage your subscription and billing details
-          </CardDescription>
+          <CardTitle>Billing Overview</CardTitle>
+          <CardDescription>Manage tenant subscriptions and billing</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-lg font-semibold">Enterprise Plan</h3>
-              <p className="text-sm text-gray-500">Next billing date: February 15, 2025</p>
-            </div>
-            <Badge variant={tenant?.subscriptionStatus === 'active' ? 'success' : 'destructive'}>
-              {tenant?.subscriptionStatus === 'active' ? 'Active' : 'Inactive'}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Payment Method */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment Method</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <CreditCard className="h-6 w-6" />
-              <div>
-                <p className="font-medium">•••• •••• •••• 4242</p>
-                <p className="text-sm text-gray-500">Expires 12/25</p>
+          {/* Filters and Search */}
+          <div className="flex gap-4 mb-6">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search tenants..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
               </div>
             </div>
-            <Button variant="outline" onClick={handleUpdatePaymentMethod}>
-              Update Payment Method
-            </Button>
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="trial">Trial</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Available Plans */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Available Plans</CardTitle>
-          <CardDescription>Choose the plan that best fits your needs</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {subscriptionPlans.map((plan) => (
-              <Card key={plan.name} className={plan.recommended ? 'border-primary' : ''}>
-                <CardHeader>
-                  <CardTitle>{plan.name}</CardTitle>
-                  <CardDescription>${plan.price}/month</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2">
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button 
-                    className="w-full mt-4"
-                    variant={plan.recommended ? 'default' : 'outline'}
-                    onClick={() => handleUpdateSubscription(plan.name)}
-                  >
-                    Select Plan
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Billing History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Billing History</CardTitle>
-          <CardDescription>View your past invoices and payments</CardDescription>
-        </CardHeader>
-        <CardContent>
+          {/* Tenants List */}
           <div className="space-y-4">
-            {billingHistory.map((invoice) => (
-              <div key={invoice.id} className="flex justify-between items-center p-4 border rounded-lg">
-                <div>
-                  <p className="font-medium">{invoice.description}</p>
-                  <p className="text-sm text-gray-500">{invoice.date}</p>
+            {filteredTenants.length > 0 ? (
+              filteredTenants.map((tenant) => (
+                <div
+                  key={tenant.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <CreditCard className="h-8 w-8 text-gray-400" />
+                    <div>
+                      <h3 className="font-medium">{tenant.name || 'Unnamed Tenant'}</h3>
+                      <p className="text-sm text-gray-500">ID: {tenant.id}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className="text-right mr-4">
+                      <p className="font-medium">{tenant.subscriptionPlan}</p>
+                      <p className="text-sm text-gray-500">
+                        {tenant.billingCycle === 'monthly' ? 'Monthly' : 'Annual'} billing
+                      </p>
+                    </div>
+                    
+                    <Badge className="mr-4" variant={
+                      tenant.subscriptionStatus === 'active' ? 'success' :
+                      tenant.subscriptionStatus === 'trial' ? 'warning' :
+                      'destructive'
+                    }>
+                      {tenant.subscriptionStatus.charAt(0).toUpperCase() + 
+                       tenant.subscriptionStatus.slice(1)}
+                    </Badge>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleViewBillingDetails(tenant.id)}
+                      >
+                        View Details
+                      </Button>
+                      <Button 
+                        onClick={() => handleUpdateSubscription(tenant.id)}
+                      >
+                        Update Plan
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="font-medium">${invoice.amount.toFixed(2)}</span>
-                  <Badge variant={invoice.status === 'paid' ? 'success' : 'destructive'}>
-                    {invoice.status}
-                  </Badge>
-                  <Button variant="ghost" size="sm">
-                    Download
-                  </Button>
-                </div>
+              ))
+            ) : searchQuery || filter !== 'all' ? (
+              <div className="text-center py-8 text-gray-500">
+                No tenants found matching your filters
               </div>
-            ))}
+            ) : (
+              <div className="text-center py-8">
+                <h3 className="text-lg font-medium mb-2">No Tenants Found</h3>
+                <p className="text-gray-500 mb-4">
+                  Start by adding tenants to your system or check your database configuration.
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
-      
-      {/* Usage Overview */}
+
+      {/* Quick Stats Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Usage Overview</CardTitle>
-          <CardDescription>Current billing cycle usage</CardDescription>
+          <CardTitle>Subscription Statistics</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between mb-2">
-                <span>Active Users</span>
-                <span>15/20</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-primary h-2 rounded-full" style={{ width: '75%' }}></div>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600">Total Tenants</p>
+              <p className="text-2xl font-bold">{tenants.length}</p>
             </div>
-            <div>
-              <div className="flex justify-between mb-2">
-                <span>AI Agent Usage</span>
-                <span>4/5</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-primary h-2 rounded-full" style={{ width: '80%' }}></div>
-              </div>
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600">Active Subscriptions</p>
+              <p className="text-2xl font-bold">
+                {tenants.filter(t => t.subscriptionStatus === 'active').length}
+              </p>
+            </div>
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600">Trial Accounts</p>
+              <p className="text-2xl font-bold">
+                {tenants.filter(t => t.subscriptionStatus === 'trial').length}
+              </p>
             </div>
           </div>
         </CardContent>
       </Card>
     </div>
   );
-};
-
-export default BillingManagement;
+}

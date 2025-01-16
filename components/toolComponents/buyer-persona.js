@@ -32,13 +32,13 @@ const BuyerPersona = ({ onComplete, currentUser }) => {
       try {
         setLoading(true);
         setError(null);
-
-        // Validate currentUser
-        if (!currentUser?.uid) {
+  
+        // Update the validation to check for authenticationID instead of uid
+        if (!currentUser?.authenticationID) {
           setError('User authentication required');
           return;
         }
-
+  
         // Fetch template
         const templateQuery = query(
           collection(db, 'resources'),
@@ -46,32 +46,32 @@ const BuyerPersona = ({ onComplete, currentUser }) => {
         );
         
         const templateSnapshot = await getDocs(templateQuery);
-
+  
         if (templateSnapshot.empty) {
           setError('Template not found');
           return;
         }
-
+  
         const templateData = templateSnapshot.docs[0].data();
         setTemplate(templateData);
-
-        // Fetch previous answers
+  
+        // Update the query to use authenticationID
         const answersQuery = query(
           collection(db, 'resourcesData'),
           where('templateName', '==', TEMPLATE_NAME),
-          where('userId', '==', currentUser.uid),
+          where('userId', '==', currentUser.authenticationID),
           orderBy('timestamp', 'desc'),
           limit(1)
         );
-
+  
         const answersSnapshot = await getDocs(answersQuery);
-
+  
         if (!answersSnapshot.empty) {
           const lastSubmission = answersSnapshot.docs[0].data();
           setFormData(lastSubmission.answers || {});
           setLastUpdated(lastSubmission.timestamp?.toDate());
         }
-
+  
       } catch (error) {
         console.error('Error fetching template or prior responses:', error);
         setError('Failed to load form data');
@@ -79,9 +79,9 @@ const BuyerPersona = ({ onComplete, currentUser }) => {
         setLoading(false);
       }
     };
-
+  
     fetchTemplateAndAnswers();
-  }, [currentUser?.uid]);
+  }, [currentUser?.authenticationID]);
 
   const handleInputChange = (question, value) => {
     setFormData(prev => ({

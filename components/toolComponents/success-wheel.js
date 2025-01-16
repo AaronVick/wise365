@@ -68,7 +68,7 @@ const SuccessWheel = ({ onComplete, currentUser }) => {
     };
 
     fetchTemplateAndAnswers();
-  }, [currentUser?.uid]);
+  }, [currentUser?.authenticationID]);
 
   const handleInputChange = (question, value) => {
     setFormData(prev => ({
