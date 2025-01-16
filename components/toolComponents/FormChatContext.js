@@ -95,7 +95,7 @@ export const FormChatProvider = ({
   const fetchFormHistory = async () => {
     const historyQuery = query(
       collection(db, 'resourcesData'),
-      where('userId', '==', currentUser.uid),
+      where('userId', '==', currentUser.authenticationID),
       where('templateName', '==', formName),
       orderBy('timestamp', 'desc')
     );

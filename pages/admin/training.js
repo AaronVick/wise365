@@ -49,17 +49,21 @@ export default function Training() {
     if (!selectedAgent) return;
 
     const fetchTrainingData = async () => {
+      console.log('Selected Agent ID:', selectedAgent); 
       setLoadingTrainingData(true);
       try {
         const trainingQuery = query(
           collection(db, 'agentData'), 
           where('agentId', '==', selectedAgent)
         );
+        console.log('Query:', trainingQuery); 
         const querySnapshot = await getDocs(trainingQuery);
+        console.log('Query Results:', querySnapshot.size); 
         const records = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
         }));
+        console.log('Processed Records:', records); 
         setTrainingData(records);
       } catch (err) {
         console.error('Error fetching training data:', err);

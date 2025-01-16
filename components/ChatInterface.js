@@ -6,6 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+import firebaseService from '../../lib/services/firebaseService';
+
 import { analyzeMessage } from '../pages/api/funnelAnalyzer';
 
 
@@ -146,7 +148,7 @@ const ChatInterface = ({
         
         // Fetch user info
         const usersRef = collection(db, 'users');
-        const userQuery = query(usersRef, where('uid', '==', userId));
+        const userQuery = query(usersRef, where('authenticationID', '==', userId));
         const userSnapshot = await getDocs(userQuery);
         
         if (userSnapshot.docs.length > 0) {
@@ -209,16 +211,19 @@ Previous Interactions Summary:
   // Fetch Messages
   useEffect(() => {
     if (!conversationNameRef) {
-      console.error('No conversationNameRef provided. Skipping message fetch.');
+      console.error('No conversationNameRef provided');
       return;
     }
-
-    const messagesRef = collection(db, 'conversations');
-    const q = query(
-      messagesRef,
-      where('conversationName', '==', conversationNameRef),
-      orderBy('timestamp', 'asc')
-    );
+  
+    const unsubscribe = firebaseService.subscribeToCollection('conversations', {
+      where: [
+        { field: 'conversationName', operator: '==', value: conversationNameRef }
+      ],
+      orderBy: 'timestamp asc'
+    }, setMessages);
+  
+    return () => unsubscribe();
+  }, [conversationNameRef]);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedMessages = snapshot.docs.map((doc) => ({

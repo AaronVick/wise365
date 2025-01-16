@@ -5,6 +5,9 @@ import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, collection, getDocs, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import firebaseService from '../lib/services/firebaseService';
+
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -58,28 +61,26 @@ const Dashboard = () => {
     const fetchData = async () => {
       if (user) {
         try {
+          // Initialize firebase service with user
+          firebaseService.setCurrentUser(user);
+    
           // Fetch user data
-          const userDocRef = doc(db, 'users', user.uid);
-          const userDoc = await getDoc(userDocRef);
-
-          if (userDoc.exists()) {
-            setUserData(userDoc.data());
-            
-            // Fetch nested chats for each agent
+          const userData = await firebaseService.get('users', user.uid);
+          if (userData) {
+            setUserData(userData);
+    
+            // Fetch nested chats
             Object.values(agents).flat().forEach(agent => {
-              fetchNestedChats(agent.id, user, setNestedChats, db);
+              fetchNestedChats(agent.id, user);
             });
-
+    
             // Fetch projects
-            const projectsRef = collection(db, 'projectNames');
-            const projectsQuery = query(projectsRef, where('userId', '==', user.uid));
-            const projectsSnapshot = await getDocs(projectsQuery);
-            const projectsData = projectsSnapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            }));
+            const projectsData = await firebaseService.queryCollection('projectNames', {
+              where: [
+                { field: 'userId', operator: '==', value: user.authenticationID }
+              ]
+            });
             setProjects(projectsData);
-
           } else {
             console.error('No user document found. Redirecting to login...');
             router.replace('/');
@@ -157,7 +158,7 @@ const Dashboard = () => {
           id: chatId,
           agentId: 'shawn',
           title: 'Chat with Shawn',
-          participants: [user.uid, 'shawn'],
+          participants: [user.authenticationID, 'shawn'],
           isDefault: true,
           conversationName: chatId,
           isNewUser: isNewUser
@@ -483,11 +484,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Resize Handle */}
-      <div
-        className="w-1 cursor-ew-resize bg-gray-700 hover:bg-blue-600 transition-colors"
-        onMouseDown={handleSidebarResize}
-      />
+  
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto bg-slate-50">
@@ -495,7 +492,7 @@ const Dashboard = () => {
           <ChatInterface
             chatId={currentChat.id}
             agentId={currentChat.agentId}
-            userId={user.authenticationID}  // Use the correct ID field
+            userId={userData?.authenticationID}
             isDefault={currentChat.isDefault}
             title={currentChat.title}
             conversationName={currentChat.conversationName}
@@ -545,6 +542,12 @@ const Dashboard = () => {
           />
         )}
       </div>
+
+      {/* Resize Handle */}
+      <div
+        className="w-1 cursor-ew-resize bg-gray-700 hover:bg-blue-600 transition-colors"
+        onMouseDown={handleSidebarResize}
+      />
     </div>
   );
 };

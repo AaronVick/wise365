@@ -15,6 +15,9 @@ import {
   arrayUnion
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import firebaseService from '../../lib/services/firebaseService';
+
+
 import { 
   Plus, 
   Target, 
@@ -121,35 +124,33 @@ const DashboardContent = ({
 
   const startConversation = async (agent) => {
     try {
-      const conversationsRef = collection(db, 'conversations');
-      const newConversation = await addDoc(conversationsRef, {
+      const newConversation = await firebaseService.create('conversations', {
         agentId: agent.id,
         createdAt: serverTimestamp(),
-        createdBy: currentUser.uid,
+        createdBy: currentUser.authenticationID,
         isShared: true,
         lastUpdatedAt: serverTimestamp(),
         messages: [],
         name: `${agent.name} Conversation`,
-        participants: [currentUser.uid, agent.id],
-        teamID: currentUser.teamId,
+        participants: [currentUser.authenticationID, agent.id],
+        teamId: currentUser.teamId,
       });
-
-      // Update currentChat instead of using setCurrentConversation
+  
       setCurrentChat({
         id: newConversation.id,
         agentId: agent.id,
         title: `${agent.name} Conversation`,
-        participants: [currentUser.uid, agent.id],
+        participants: [currentUser.authenticationID, agent.id],
         isDefault: false,
         conversationName: newConversation.id
       });
-
+  
       await loadConversationMessages(newConversation.id);
-      router.push(`/chat/${newConversation.id}`);
     } catch (error) {
       console.error('Error starting conversation:', error);
     }
   };
+  
 
   const sendMessage = async (messageContent) => {
     if (!currentChat?.id) return;

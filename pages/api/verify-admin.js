@@ -1,6 +1,7 @@
 // pages/api/verify-admin.js
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+
 import '../../lib/firebaseAdmin';
 
 export default async function handler(req, res) {

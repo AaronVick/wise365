@@ -47,7 +47,7 @@ const PositioningFactors = ({ onComplete, currentUser }) => {
             const answersQuery = query(
               collection(db, 'resourcesData'),
               where('templateName', '==', TEMPLATE_NAME),
-              where('userId', '==', currentUser.uid),
+              where('userId', '==', currentUser.authenticationID),
               orderBy('timestamp', 'desc')
             );
             const answersSnapshot = await getDocs(answersQuery);

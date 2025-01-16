@@ -2,6 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { db } from '../lib/firebase';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../lib/firebase';
+import firebaseService from '../lib/services/firebaseService';
+
 import { 
   collection, 
   query, 
@@ -43,14 +47,41 @@ const GoalsPage = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const router = useRouter();
+  const [user] = useAuthState(auth);
+  const [userData, setUserData] = useState(null);
 
   useEffect(() => {
     const fetchGoals = async () => {
+      if (!userData?.authenticationID) return;
+  
+      try {
+        setLoading(true);
+        const goalsData = await firebaseService.queryCollection('goals', {
+          where: [
+            { field: 'userId', operator: '==', value: userData.authenticationID }
+          ],
+          orderBy: 'createdAt desc'
+        });
+        setGoals(goalsData);
+      } catch (error) {
+        console.error('Error fetching goals:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchGoals();
+  }, [userData?.authenticationID]);
+
+  useEffect(() => {
+    const fetchGoals = async () => {
+      if (!userData?.authenticationID) return;
+
       try {
         const goalsRef = collection(db, 'goals');
         const q = query(
           goalsRef,
-          where('userId', '==', localStorage.getItem('userId')),
+          where('userId', '==', userData.authenticationID),
           orderBy('createdAt', 'desc')
         );
         
@@ -69,7 +100,7 @@ const GoalsPage = () => {
     };
 
     fetchGoals();
-  }, []);
+  }, [userData?.authenticationID]);
 
   const updateGoalStatus = async (goalId, newStatus) => {
     try {
@@ -95,7 +126,7 @@ const GoalsPage = () => {
     return goal.status === filter;
   });
 
-  if (loading) {
+  if (loading || !userData) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>

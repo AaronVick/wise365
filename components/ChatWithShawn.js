@@ -5,6 +5,9 @@
 import React, { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, addDoc, orderBy, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import firebaseService from '../../lib/services/firebaseService';
+
+
 import ChatInterface from './ChatInterface';
 import { evaluateUserFunnels } from './funnelEvaluator';
 import { useProgressAnalyzer } from './ProgressAnalyzer';
@@ -23,21 +26,16 @@ const ChatWithShawn = ({ currentUser }) => {
 
       try {
         // Step 1: Check for existing conversation
-        const existingChatId = await checkForExistingChat(currentUser);
-        if (existingChatId) {
-          setChatId(existingChatId);
-          setIsNewUser(false);
-        } else {
-          // Step 2: Start a new chat with Shawn
-          const onboardingFunnel = await getOnboardingFunnel(currentUser);
-          if (onboardingFunnel) {
-            const newChatId = await createInitialChatWithInsights(currentUser, onboardingFunnel);
-            setChatId(newChatId);
-            setIsNewUser(true);
-          } else {
-            throw new Error('Onboarding funnel not found.');
-          }
-        }
+        const checkForExistingChat = async (user) => {
+          const chats = await firebaseService.queryCollection('conversationNames', {
+            where: [
+              { field: 'agentId', operator: '==', value: 'shawn' },
+              { field: 'userId', operator: '==', value: user.authenticationID },
+              { field: 'isDefault', operator: '==', value: true }
+            ]
+          });
+          return chats.empty ? null : chats[0].id;
+        };
 
         // Step 3: Analyze user context for insights
         const context = await analyzeUserContext(currentUser);
@@ -80,7 +78,7 @@ const checkForExistingChat = async (user) => {
   const q = query(
     conversationsRef,
     where('agentId', '==', 'shawn'),
-    where('userId', '==', user.uid),
+    where('userId', '==', user.authenticationID),
     where('isDefault', '==', true)
   );
   const querySnapshot = await getDocs(q);

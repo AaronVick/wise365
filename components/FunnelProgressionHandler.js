@@ -14,9 +14,9 @@ export const useFunnelProgression = (funnel, currentUser, userData) => {
       try {
         // Get all relevant funnel data
         const [funnelData, conversationData, formData] = await Promise.all([
-          getFunnelData(currentUser.uid, funnel.name),
-          getConversationData(currentUser.uid, funnel.name),
-          getFormData(currentUser.uid, funnel.formsNeeded)
+          getFunnelData(currentUser.authenticationID, funnel.name),
+          getConversationData(currentUser.authenticationID, funnel.name),
+          getFormData(currentUser.authenticationID, funnel.formsNeeded)
         ]);
 
         // Calculate comprehensive progress
@@ -52,7 +52,7 @@ export const useFunnelProgression = (funnel, currentUser, userData) => {
 
         // Update funnel data in Firestore if needed
         if (shouldUpdateFunnelData(progress, funnelData)) {
-          await updateFunnelProgress(currentUser.uid, funnel.name, progress);
+          await updateFunnelProgress(currentUser.authenticationID, funnel.name, progress);
         }
 
       } catch (error) {

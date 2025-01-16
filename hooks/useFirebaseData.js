@@ -12,17 +12,7 @@ export function useFirebaseData(collectionName, queryParams, dependencies = []) 
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        setError(null);
-
-        const collectionRef = collection(db, collectionName);
-        const queryRef = query(collectionRef, ...queryParams);
-        const snapshot = await getDocs(queryRef);
-
-        const items = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-
+        const items = await firebaseService.queryCollection(collectionName, queryParams);
         setData(items);
       } catch (err) {
         setError(err.message);
@@ -38,14 +28,11 @@ export function useFirebaseData(collectionName, queryParams, dependencies = []) 
   return { data, isLoading, error };
 }
 
-export function useGoals(userId) {
+export function useGoals(authenticationID) {
   return useFirebaseData(
     'goals',
-    [
-      where('userId', '==', userId),
-      orderBy('updatedAt', 'desc')
-    ],
-    [userId]
+    [where('userId', '==', authenticationID)],
+    [authenticationID]
   );
 }
 
