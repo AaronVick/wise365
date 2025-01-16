@@ -15,7 +15,7 @@ import {
   arrayUnion
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import firebaseService from '../../lib/services/firebaseService';
+import firebaseService from '../lib/services/firebaseService';
 
 
 import { 
