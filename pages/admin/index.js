@@ -1,25 +1,38 @@
-//  pages/admin/index.js
+// pages/admin/index.js
 
 import { useState } from 'react';
 import AdminLayout from '@/components/AdminLayout';
 import ManageAgents from './manage';
 import Training from './training';
 import Chat from './chat';
-import Prompts from './prompts'; // Import the new Prompts component
+import Prompts from './prompts';
+import AgentStats from './agentStats';
+import UsageStats from './usageStats';
+import TenantManagement from './tenantManagement';
+import AdminManagement from './adminManagement';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('agents');
+  const [activeTab, setActiveTab] = useState('globalAgents');
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'agents':
-        return <ManageAgents />;
-      case 'training':
-        return <Training />;
-      case 'chat':
-        return <Chat />;
-      case 'prompts': // Add the case for Prompts
-        return <Prompts />;
+      case 'globalAgents':
+        return (
+          <>
+            <ManageAgents />
+            <Training />
+            <Chat />
+            <Prompts />
+          </>
+        );
+      case 'agentStats':
+        return <AgentStats />;
+      case 'usageStats':
+        return <UsageStats />;
+      case 'tenantManagement':
+        return <TenantManagement />;
+      case 'adminManagement':
+        return <AdminManagement />;
       default:
         return null;
     }
@@ -27,41 +40,53 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout>
-      {/* Tab Navigation */}
+      {/* Main Tab Navigation */}
       <div className="flex space-x-4 mb-4">
+        {/* Agent Management Tabs */}
         <button
-          onClick={() => setActiveTab('agents')}
+          onClick={() => setActiveTab('globalAgents')}
           className={`px-4 py-2 rounded ${
-            activeTab === 'agents' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+            activeTab === 'globalAgents' ? 'bg-blue-500 text-white' : 'bg-gray-200'
           }`}
         >
-          Agents
+          Global Agents
         </button>
         <button
-          onClick={() => setActiveTab('training')}
+          onClick={() => setActiveTab('agentStats')}
           className={`px-4 py-2 rounded ${
-            activeTab === 'training' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+            activeTab === 'agentStats' ? 'bg-blue-500 text-white' : 'bg-gray-200'
           }`}
         >
-          Training
+          Agent Stats
+        </button>
+
+        {/* System Management Tabs */}
+        <button
+          onClick={() => setActiveTab('usageStats')}
+          className={`px-4 py-2 rounded ${
+            activeTab === 'usageStats' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+          }`}
+        >
+          Usage Stats
         </button>
         <button
-          onClick={() => setActiveTab('chat')}
+          onClick={() => setActiveTab('tenantManagement')}
           className={`px-4 py-2 rounded ${
-            activeTab === 'chat' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+            activeTab === 'tenantManagement' ? 'bg-blue-500 text-white' : 'bg-gray-200'
           }`}
         >
-          Chat
+          Tenant Management
         </button>
         <button
-          onClick={() => setActiveTab('prompts')} // Add button for Prompts tab
+          onClick={() => setActiveTab('adminManagement')}
           className={`px-4 py-2 rounded ${
-            activeTab === 'prompts' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+            activeTab === 'adminManagement' ? 'bg-blue-500 text-white' : 'bg-gray-200'
           }`}
         >
-          Prompts
+          Admin Management
         </button>
       </div>
+
       {/* Render Active Tab Content */}
       <div className="bg-white shadow rounded p-6">{renderContent()}</div>
     </AdminLayout>

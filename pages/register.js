@@ -4,79 +4,98 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from '../lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, collection } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Alert, AlertDescription } from "../components/ui/alert";
+import { Alert, AlertDescription } from '../components/ui/alert';
 
 const RegisterPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
 
+  // Handle form submission
   const handleRegister = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
+    // Gather form data
     const email = e.target.email.value.trim();
     const password = e.target.password.value;
     const name = e.target.name.value.trim();
+    const teamName = `${name}'s Team`; // Default team name for new registrations
 
     try {
-      // 1. Create Firebase auth account
+      // 1. Create Firebase Authentication user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Create a new team document
+      // 2. Check if team already exists
       const teamsRef = collection(db, 'teams');
-      const teamDoc = doc(teamsRef);
-      const teamData = {
-        teamId: teamDoc.id,
-        name: `${name}'s Team`, // Default team name
-        members: [user.uid],
-        createdAt: serverTimestamp(),
-        subscriptionStatus: 'free', // Default status
-      };
+      const teamQuery = query(teamsRef, where('name', '==', teamName));
+      const teamSnapshot = await getDocs(teamQuery);
 
-      // 3. Create user document with team reference
+      let teamId;
+      let role;
+
+      if (!teamSnapshot.empty) {
+        // Team exists
+        const existingTeam = teamSnapshot.docs[0].data();
+        teamId = existingTeam.teamId;
+        role = 'Member'; // Assign as Member for existing team
+      } else {
+        // Create a new team
+        const newTeamDoc = doc(teamsRef);
+        teamId = newTeamDoc.id;
+
+        const newTeamData = {
+          teamId,
+          name: teamName,
+          members: [user.uid],
+          createdAt: serverTimestamp(),
+          subscriptionStatus: 'free', // Default subscription
+        };
+
+        await setDoc(newTeamDoc, newTeamData);
+        role = 'Manager'; // Assign as Manager for new team
+      }
+
+      // 3. Create a user document
       const userDocRef = doc(db, 'users', user.uid);
       const userData = {
         email,
         name,
         uid: user.uid,
-        role: 'teamAdmin', // Since they're the first user of the team
+        role,
         createdAt: serverTimestamp(),
         theme: 'light',
-        teamId: teamDoc.id,
-        profilePicture: '', // Add empty string as default
+        teamId,
+        tenantId: `placeholder-tenant-${Date.now()}`, // Placeholder tenantId
+        profilePicture: '',
       };
 
-      // 4. Write both documents to Firestore
-      await Promise.all([
-        setDoc(teamDoc, teamData),
-        setDoc(userDocRef, userData)
-      ]);
+      await setDoc(userDocRef, userData);
 
-      // 5. Store essential info
+      // 4. Store essential data in localStorage for client-side use
       localStorage.setItem('userId', user.uid);
       localStorage.setItem('userEmail', user.email);
-      localStorage.setItem('teamId', teamDoc.id);
+      localStorage.setItem('teamId', teamId);
 
-      console.log('Registration complete with team creation');
+      console.log('Registration complete');
       router.push('/dashboard');
     } catch (error) {
       console.error('Registration error:', error);
-      
+
       const errorMessages = {
         'auth/email-already-in-use': 'An account with this email already exists',
         'auth/invalid-email': 'Invalid email format',
         'auth/operation-not-allowed': 'Email/password registration is not enabled',
         'auth/weak-password': 'Password must be at least 6 characters long',
         'auth/network-request-failed': 'Network error. Please check your connection',
-        'auth/internal-error': 'Registration service error. Please try again'
+        'auth/internal-error': 'Registration service error. Please try again',
       };
 
       setError(errorMessages[error.code] || error.message || 'Registration failed. Please try again.');
@@ -85,7 +104,7 @@ const RegisterPage = () => {
     }
   };
 
-  // Rest of the component remains the same...
+  // Registration form UI
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       <div className="container mx-auto px-4 py-8">
@@ -143,12 +162,12 @@ const RegisterPage = () => {
                 )}
               </CardContent>
               <CardFooter className="flex flex-col space-y-4">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full h-11"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Creating Account..." : "Create Account"}
+                  {isLoading ? 'Creating Account...' : 'Create Account'}
                 </Button>
                 <div className="text-sm text-gray-500 text-center">
                   Already have an account?{' '}
@@ -169,7 +188,7 @@ const RegisterPage = () => {
       {/* Footer */}
       <footer className="mt-16 py-6 bg-white border-t">
         <div className="container mx-auto px-4 text-center text-gray-600">
-          <p>© 2024 Business Wise365. All rights reserved.</p>
+          <p>© 2025 Business Wise365. All rights reserved.</p>
         </div>
       </footer>
     </div>

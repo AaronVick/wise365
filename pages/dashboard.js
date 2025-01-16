@@ -276,10 +276,12 @@ const Dashboard = () => {
 };
 
   
-      // Regular agent handling (rest of the code remains the same)
+      // Regular agent handling
+  const handleRegularAgent = async () => {
+    try {
       let chatId;
       let isNewUser = false;
-  
+
       if (!defaultChat) {
         // Create new default conversation
         const chatData = {
@@ -290,11 +292,11 @@ const Dashboard = () => {
           projectName: '',
           timestamp: serverTimestamp()
         };
-  
+
         const newChatRef = await addDoc(collection(db, 'conversationNames'), chatData);
         chatId = newChatRef.id;
         isNewUser = true;
-  
+
         // Create initial system message
         await addDoc(collection(db, 'conversations'), {
           agentId: agent.id,
@@ -308,12 +310,12 @@ const Dashboard = () => {
       } else {
         chatId = defaultChat.id;
       }
-  
+
       setNestedChats(prev => ({
         ...prev,
         [agent.id]: subChats
       }));
-  
+
       setCurrentChat({
         id: chatId,
         agentId: agent.id,
@@ -323,11 +325,12 @@ const Dashboard = () => {
         conversationName: chatId,
         isNewUser: isNewUser
       });
-  
     } catch (error) {
-      console.error('Error handling agent click:', error);
+      console.error('Error handling regular agent:', error);
     }
   };
+
+  handleRegularAgent();
   
   // Helper function to generate welcome message using LLM
   const generateWelcomeMessage = async ({ userData, context, funnelEvaluation, isNewUser }) => {
