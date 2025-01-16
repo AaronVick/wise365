@@ -101,14 +101,8 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
         let processedMilestones = [];
 
         // 1. Always process onboarding first for new users
-        const onboardingFunnel = funnelsData.find(f => 
-          f.name.toLowerCase() === 'onboarding funnel'
-        );
-        if (onboardingFunnel && (!userFunnelData || !userFunnelData[onboardingFunnel.name]?.completed)) {
-          processedMilestones.push(
-            ...processFunnelMilestones(onboardingFunnel, userFunnelData, true)
-          );
-        }
+        // handled above with the Get base onboarding funnel
+        
 
         // 2. Process active funnels (those with progress data)
         const activeFunnels = funnelsData.filter(f => 
