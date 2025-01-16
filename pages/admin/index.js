@@ -3,27 +3,35 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import dynamic from 'next/dynamic';
-import { 
-  Box, 
-  Flex, 
-  Grid, 
-  Text, 
-  Button, 
-  Heading, 
+import { ErrorBoundary as ReactErrorBoundary } from 'react-error-boundary';
+import {
+  Box,
+  Flex,
+  Grid,
+  Text,
+  Button,
+  Heading,
   IconButton,
+  useColorMode,
   useColorModeValue,
   Container,
   SimpleGrid,
   Stat,
   StatLabel,
   StatNumber,
-  StatHelpText
+  StatHelpText,
+  Badge,
+  Divider,
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  useToast
 } from '@chakra-ui/react';
-import { 
-  Bot, 
-  MessageCircle, 
-  BookOpen, 
-  BarChart3, 
+import {
+  Bot,
+  MessageCircle,
+  BookOpen,
+  BarChart3,
   Code,
   Home,
   ArrowLeft,
@@ -31,69 +39,69 @@ import {
   Settings,
   Receipt,
   ClipboardList,
-  LineChart
+  LineChart,
+  Sun,
+  Moon
 } from 'lucide-react';
 
-// Lazy load components with error boundaries
-const DynamicComponent = ({ importFunc, loadingText = 'Loading...' }) => {
-  const Component = dynamic(importFunc, {
-    ssr: false,
-    loading: () => (
-      <Box p={4} textAlign="center">
-        <Text>{loadingText}</Text>
-      </Box>
-    )
-  });
-  
+// Error Boundary Component
+const ErrorFallback = ({ error }) => {
+  const bgColor = useColorModeValue('red.50', 'red.900');
+  const borderColor = useColorModeValue('red.200', 'red.700');
+  const textColor = useColorModeValue('red.600', 'red.200');
+
   return (
-    <ErrorBoundary
-      fallback={<Box p={4} color="red.500">Error loading component</Box>}
+    <Box
+      p={6}
+      m={4}
+      bg={bgColor}
+      borderWidth={1}
+      borderColor={borderColor}
+      borderRadius="lg"
+      textAlign="center"
     >
-      <Component />
-    </ErrorBoundary>
+      <Heading size="md" color={textColor} mb={2}>
+        Error
+      </Heading>
+      <Text color={textColor}>
+        {error?.message || "An unexpected error occurred"}
+      </Text>
+    </Box>
   );
 };
 
-const ManageAgents = () => (
-  <DynamicComponent importFunc={() => import('./manage')} />
+// Loading Component
+const LoadingComponent = () => (
+  <Box p={4} textAlign="center">
+    <Text>Loading...</Text>
+  </Box>
 );
 
-const Chat = () => (
-  <DynamicComponent importFunc={() => import('./chat')} />
-);
+// Dynamic Component Wrapper
+const DynamicComponent = ({ importFunc }) => {
+  const Component = dynamic(importFunc, {
+    ssr: false,
+    loading: LoadingComponent
+  });
 
-const Training = () => (
-  <DynamicComponent importFunc={() => import('./training')} />
-);
+  return (
+    <ReactErrorBoundary FallbackComponent={ErrorFallback}>
+      <Component />
+    </ReactErrorBoundary>
+  );
+};
 
-const Prompts = () => (
-  <DynamicComponent importFunc={() => import('./prompts')} />
-);
-
-const AgentStats = () => (
-  <DynamicComponent importFunc={() => import('./agentStats')} />
-);
-
-const AdminManagement = () => (
-  <DynamicComponent importFunc={() => import('./adminManagement')} />
-);
-
-const UsageStats = () => (
-  <DynamicComponent importFunc={() => import('./usageStats')} />
-);
-
-const BillingManagement = () => (
-  <DynamicComponent importFunc={() => import('./billingManagement')} />
-);
-
-const AuditLogs = () => (
-  <DynamicComponent importFunc={() => import('./auditLogs')} />
-);
-
-const TenantManagement = () => (
-  <DynamicComponent importFunc={() => import('./tenantManagement')} />
-);
-
+// Navigation Components
+const ManageAgents = () => <DynamicComponent importFunc={() => import('./manage')} />;
+const Chat = () => <DynamicComponent importFunc={() => import('./chat')} />;
+const Training = () => <DynamicComponent importFunc={() => import('./training')} />;
+const Prompts = () => <DynamicComponent importFunc={() => import('./prompts')} />;
+const AgentStats = () => <DynamicComponent importFunc={() => import('./agentStats')} />;
+const AdminManagement = () => <DynamicComponent importFunc={() => import('./adminManagement')} />;
+const UsageStats = () => <DynamicComponent importFunc={() => import('./usageStats')} />;
+const BillingManagement = () => <DynamicComponent importFunc={() => import('./billingManagement')} />;
+const AuditLogs = () => <DynamicComponent importFunc={() => import('./auditLogs')} />;
+const TenantManagement = () => <DynamicComponent importFunc={() => import('./tenantManagement')} />;
 
 const AdminDashboard = () => {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -102,13 +110,21 @@ const AdminDashboard = () => {
     totalUsers: 0,
     totalConversations: 0,
   });
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { colorMode, toggleColorMode } = useColorMode();
+  const toast = useToast();
+
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const cardBg = useColorModeValue('white', 'gray.700');
+  const textColor = useColorModeValue('gray.800', 'white');
+  const descriptionColor = useColorModeValue('gray.600', 'gray.400');
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
+        setIsLoading(true);
         const [agentsSnap, usersSnap, conversationsSnap] = await Promise.all([
           getDocs(collection(db, 'agents')),
           getDocs(collection(db, 'users')),
@@ -123,18 +139,27 @@ const AdminDashboard = () => {
       } catch (err) {
         console.error('Error fetching stats:', err);
         setError('Failed to load dashboard statistics');
+        toast({
+          title: 'Error loading statistics',
+          description: 'Please try refreshing the page',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      } finally {
+        setIsLoading(false);
       }
     };
 
     fetchStats();
-  }, []);
+  }, [toast]);
 
   const navigationSections = {
     agentManagement: {
       title: "Agent Management Hub",
-      description: "Manage and monitor AI agents",
+      description: "Configure and monitor AI agents across your organization",
       items: [
-        { name: 'Agent Configuration', icon: Bot, component: ManageAgents, description: 'Create and configure AI agents', path: 'manage' },
+        { name: 'Agent Configuration', icon: Bot, component: ManageAgents, description: 'Create and configure AI agents', path: 'manage', badge: 'Core' },
         { name: 'Agent Training', icon: BookOpen, component: Training, description: 'Train and configure agent behaviors', path: 'training' },
         { name: 'Agent Prompts', icon: Code, component: Prompts, description: 'Manage agent prompts and templates', path: 'prompts' },
         { name: 'Chat Interface', icon: MessageCircle, component: Chat, description: 'Test and monitor agent conversations', path: 'chat' },
@@ -143,44 +168,119 @@ const AdminDashboard = () => {
     },
     systemManagement: {
       title: "System Administration",
-      description: "Manage system settings and users",
+      description: "Manage system settings, users, and monitor platform usage",
       items: [
         { name: 'Admin Management', icon: Users, component: AdminManagement, description: 'Manage system administrators', path: 'adminManagement' },
         { name: 'Usage Statistics', icon: LineChart, component: UsageStats, description: 'System-wide usage metrics', path: 'usageStats' },
-        { name: 'Tenant Management', icon: Users, component: TenantManagement, description: 'Manage Users', path: 'tenantManagement' },
+        { name: 'Tenant Management', icon: Users, component: TenantManagement, description: 'Manage organization users', path: 'tenantManagement' },
         { name: 'Billing Management', icon: Receipt, component: BillingManagement, description: 'Manage subscriptions and billing', path: 'billingManagement' },
         { name: 'Audit Logs', icon: ClipboardList, component: AuditLogs, description: 'View system audit trails', path: 'auditLogs' },
-        { name: 'System Settings', icon: Settings, component: () => <div>Settings coming soon...</div>, description: 'Configure system-wide settings', path: 'settings' },
+        { name: 'System Settings', icon: Settings, component: () => <Box p={4}>Settings coming soon...</Box>, description: 'Configure system-wide settings', path: 'settings' },
       ],
     },
   };
 
   const handleNavigation = (view) => {
     setCurrentView(view);
+    toast({
+      title: 'Navigation',
+      description: `Navigated to ${view}`,
+      status: 'info',
+      duration: 2000,
+      isClosable: true,
+    });
   };
+
+  const renderStatCard = (label, value, icon, helpText) => (
+    <Stat
+      px={6}
+      py={4}
+      bg={cardBg}
+      borderRadius="xl"
+      borderWidth="1px"
+      borderColor={borderColor}
+      boxShadow="sm"
+      transition="all 0.3s"
+      _hover={{ boxShadow: 'md', transform: 'translateY(-2px)' }}
+    >
+      <StatLabel fontSize="sm" color={descriptionColor}>
+        {label}
+      </StatLabel>
+      <StatNumber fontSize="3xl" fontWeight="bold" color={textColor}>
+        {isLoading ? '-' : value.toLocaleString()}
+      </StatNumber>
+      <StatHelpText>
+        <Flex align="center" color={descriptionColor}>
+          {icon}
+          {helpText}
+        </Flex>
+      </StatHelpText>
+    </Stat>
+  );
 
   const renderNavigationSection = (section) => (
     <Box mb={8}>
-      <Heading size="md" mb={2}>{section.title}</Heading>
-      <Text color="gray.500" mb={4}>{section.description}</Text>
-      <Grid templateColumns={{ base: 'repeat(1, 1fr)', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }} gap={6}>
+      <Heading size="lg" mb={2} color={textColor}>{section.title}</Heading>
+      <Text color={descriptionColor} mb={6}>{section.description}</Text>
+      <Grid 
+        templateColumns={{ 
+          base: 'repeat(1, 1fr)', 
+          md: 'repeat(2, 1fr)', 
+          lg: 'repeat(3, 1fr)' 
+        }} 
+        gap={6}
+      >
         {section.items.map((item) => (
           <Box
             key={item.name}
-            p={4}
-            borderWidth={1}
-            borderRadius="md"
-            boxShadow="md"
-            _hover={{ boxShadow: 'lg', transform: 'translateY(-4px)', transition: 'all 0.2s' }}
+            p={6}
+            bg={cardBg}
+            borderRadius="xl"
+            borderWidth="1px"
+            borderColor={borderColor}
+            boxShadow="sm"
+            transition="all 0.3s"
+            _hover={{ 
+              boxShadow: 'lg', 
+              transform: 'translateY(-4px)',
+            }}
           >
             <Flex align="center" mb={4}>
-              <Box bg="blue.50" p={2} borderRadius="md" mr={3}>
-                <item.icon size={24} color="blue" />
+              <Box 
+                bg={useColorModeValue('blue.50', 'blue.900')} 
+                p={2} 
+                borderRadius="lg" 
+                mr={3}
+              >
+                <item.icon 
+                  size={24} 
+                  color={useColorModeValue('#2B6CB0', '#90CDF4')} 
+                />
               </Box>
-              <Heading size="sm">{item.name}</Heading>
+              <Box flex="1">
+                <Heading size="md" color={textColor}>{item.name}</Heading>
+                {item.badge && (
+                  <Badge 
+                    ml={2} 
+                    colorScheme="blue" 
+                    variant="subtle"
+                  >
+                    {item.badge}
+                  </Badge>
+                )}
+              </Box>
             </Flex>
-            <Text mb={4}>{item.description}</Text>
-            <Button colorScheme="blue" width="full" onClick={() => handleNavigation(item.path)}>
+            <Text mb={4} color={descriptionColor}>{item.description}</Text>
+            <Button
+              colorScheme="blue"
+              width="full"
+              onClick={() => handleNavigation(item.path)}
+              borderRadius="lg"
+              _hover={{
+                transform: 'translateY(-2px)',
+                boxShadow: 'md',
+              }}
+            >
               Access
             </Button>
           </Box>
@@ -192,167 +292,111 @@ const AdminDashboard = () => {
   const renderContent = () => {
     if (currentView === 'dashboard') {
       return (
-        <Container maxW="container.xl" py={6}>
+        <Container maxW="container.xl" py={8}>
           <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
-            <Stat
-              px={6}
-              py={4}
-              bg={useColorModeValue('white', 'gray.800')}
-              borderRadius="lg"
-              borderWidth="1px"
-              borderColor={useColorModeValue('gray.200', 'gray.700')}
-              boxShadow="sm"
-              transition="all 0.3s"
-              _hover={{ boxShadow: 'md' }}
-            >
-              <StatLabel fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
-                Total Agents
-              </StatLabel>
-              <StatNumber fontSize="3xl" fontWeight="bold">
-                {stats.totalAgents}
-              </StatNumber>
-              <StatHelpText>
-                <Flex align="center" color={useColorModeValue('gray.600', 'gray.400')}>
-                  <Bot size={14} style={{ marginRight: '6px' }} />
-                  Active AI Agents
-                </Flex>
-              </StatHelpText>
-            </Stat>
-  
-            <Stat
-              px={6}
-              py={4}
-              bg={useColorModeValue('white', 'gray.800')}
-              borderRadius="lg"
-              borderWidth="1px"
-              borderColor={useColorModeValue('gray.200', 'gray.700')}
-              boxShadow="sm"
-              transition="all 0.3s"
-              _hover={{ boxShadow: 'md' }}
-            >
-              <StatLabel fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
-                Active Users
-              </StatLabel>
-              <StatNumber fontSize="3xl" fontWeight="bold">
-                {stats.totalUsers}
-              </StatNumber>
-              <StatHelpText>
-                <Flex align="center" color={useColorModeValue('gray.600', 'gray.400')}>
-                  <Users size={14} style={{ marginRight: '6px' }} />
-                  Total Platform Users
-                </Flex>
-              </StatHelpText>
-            </Stat>
-  
-            <Stat
-              px={6}
-              py={4}
-              bg={useColorModeValue('white', 'gray.800')}
-              borderRadius="lg"
-              borderWidth="1px"
-              borderColor={useColorModeValue('gray.200', 'gray.700')}
-              boxShadow="sm"
-              transition="all 0.3s"
-              _hover={{ boxShadow: 'md' }}
-            >
-              <StatLabel fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')}>
-                Total Conversations
-              </StatLabel>
-              <StatNumber fontSize="3xl" fontWeight="bold">
-                {stats.totalConversations}
-              </StatNumber>
-              <StatHelpText>
-                <Flex align="center" color={useColorModeValue('gray.600', 'gray.400')}>
-                  <MessageCircle size={14} style={{ marginRight: '6px' }} />
-                  Active Interactions
-                </Flex>
-              </StatHelpText>
-            </Stat>
+            {renderStatCard(
+              'Total Agents',
+              stats.totalAgents,
+              <Bot size={14} style={{ marginRight: '6px' }} />,
+              'Active AI Agents'
+            )}
+            {renderStatCard(
+              'Active Users',
+              stats.totalUsers,
+              <Users size={14} style={{ marginRight: '6px' }} />,
+              'Total Platform Users'
+            )}
+            {renderStatCard(
+              'Total Conversations',
+              stats.totalConversations,
+              <MessageCircle size={14} style={{ marginRight: '6px' }} />,
+              'Active Interactions'
+            )}
           </SimpleGrid>
-  
-          <Box mb={8}>
-            {renderNavigationSection(navigationSections.agentManagement)}
-          </Box>
-          <Box>
-            {renderNavigationSection(navigationSections.systemManagement)}
-          </Box>
+
+          <Divider my={8} />
+          
+          {renderNavigationSection(navigationSections.agentManagement)}
+          {renderNavigationSection(navigationSections.systemManagement)}
         </Container>
       );
     }
-  
-    const selectedItem = [
+
+    const allItems = [
       ...navigationSections.agentManagement.items,
       ...navigationSections.systemManagement.items,
-    ].find((item) => item.path === currentView);
-  
+    ];
+    const selectedItem = allItems.find((item) => item.path === currentView);
+
     if (selectedItem?.component) {
       const Component = selectedItem.component;
       return (
         <Box p={4}>
+          <Breadcrumb mb={4}>
+            <BreadcrumbItem>
+              <BreadcrumbLink onClick={() => setCurrentView('dashboard')}>
+                Dashboard
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbItem isCurrentPage>
+              <BreadcrumbLink>{selectedItem.name}</BreadcrumbLink>
+            </BreadcrumbItem>
+          </Breadcrumb>
           <Component />
         </Box>
       );
     }
-  
+
     return (
       <Box p={4} textAlign="center">
         <Heading size="md" color="gray.500">Page not found</Heading>
       </Box>
     );
   };
-  
-  // Error handling component
+
   if (error) {
-    return (
-      <Box
-        p={6}
-        m={4}
-        bg={useColorModeValue('red.50', 'red.900')}
-        borderWidth={1}
-        borderColor={useColorModeValue('red.200', 'red.700')}
-        borderRadius="lg"
-        textAlign="center"
-      >
-        <Heading size="md" color={useColorModeValue('red.600', 'red.200')} mb={2}>
-          Error
-        </Heading>
-        <Text color={useColorModeValue('red.500', 'red.300')}>
-          {error}
-        </Text>
-      </Box>
-    );
+    return <ErrorFallback error={{ message: error }} />;
   }
 
   return (
     <Box minH="100vh" bg={useColorModeValue('gray.50', 'gray.900')}>
       <Flex direction="column">
-        {/* Navigation Header */}
         <Box
           bg={bgColor}
-          px={4}
+          px={6}
+          py={4}
           borderBottom="1px"
           borderColor={borderColor}
+          position="sticky"
+          top={0}
+          zIndex={10}
         >
-          <Flex h={16} alignItems="center" justifyContent="space-between">
-            <Heading size="md">Admin Dashboard</Heading>
-            {currentView !== 'dashboard' && (
-              <IconButton
-                icon={<ArrowLeft />}
-                onClick={() => setCurrentView('dashboard')}
-                variant="ghost"
-                aria-label="Return to dashboard"
-              />
-            )}
+          <Flex alignItems="center" justifyContent="space-between">
+            <Flex alignItems="center">
+              {currentView !== 'dashboard' && (
+                <IconButton
+                  icon={<ArrowLeft />}
+                  onClick={() => setCurrentView('dashboard')}
+                  variant="ghost"
+                  aria-label="Return to dashboard"
+                  mr={4}
+                />
+              )}
+              <Heading size="lg" color={textColor}>Admin Dashboard</Heading>
+            </Flex>
+            <IconButton
+              icon={colorMode === 'light' ? <Moon /> : <Sun />}
+              onClick={toggleColorMode}
+              variant="ghost"
+              aria-label="Toggle color mode"
+            />
           </Flex>
         </Box>
 
-        {/* Main Content */}
         <Box flex="1" p={4}>
-          {error ? (
-            <Text color="red.500">{error}</Text>
-          ) : (
-            renderContent()
-          )}
+          <ReactErrorBoundary FallbackComponent={ErrorFallback}>
+            {renderContent()}
+          </ReactErrorBoundary>
         </Box>
       </Flex>
     </Box>
