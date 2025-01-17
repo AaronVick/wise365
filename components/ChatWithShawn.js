@@ -7,9 +7,18 @@ import ChatInterface from './ChatInterface';
 import { evaluateUserFunnels } from './funnelEvaluator';
 import { useProgressAnalyzer } from './ProgressAnalyzer';
 
-const ChatWithShawn = ({ currentUser }) => {
-  const [chatId, setChatId] = useState(null);
-  const [isNewUser, setIsNewUser] = useState(true);
+const ChatWithShawn = ({ 
+  currentUser,
+  chatId: parentChatId,  // Rename to avoid conflict with state
+  userId,
+  isDefault = true,
+  title = 'Chat with Shawn',
+  conversationName: parentConversationName,
+  isNewUser: parentIsNewUser
+}) => {
+  // Keep internal state for managing chat initialization
+  const [localChatId, setLocalChatId] = useState(parentChatId || null);
+  const [isNewUser, setIsNewUser] = useState(parentIsNewUser !== undefined ? parentIsNewUser : true);
   const [userContext, setUserContext] = useState(null);
 
   useEffect(() => {
@@ -17,28 +26,35 @@ const ChatWithShawn = ({ currentUser }) => {
       if (!currentUser?.uid) return;
 
       try {
-        // Step 1: Check for existing chat
+        // If we already have a chat ID from props, use that
+        if (parentChatId) {
+          setLocalChatId(parentChatId);
+          // Still get context and update chat if needed
+          const context = await analyzeUserContext(currentUser);
+          setUserContext(context);
+          const funnels = await getFunnels();
+          const userFunnelData = await getUserFunnelData(currentUser);
+          const funnelEvaluation = evaluateUserFunnels(funnels, currentUser, userFunnelData);
+          await updateExistingChat(parentChatId, currentUser, context, funnelEvaluation);
+          return;
+        }
+
+        // Otherwise, follow the original initialization flow
         const existingChat = await checkForExistingChat(currentUser);
-        
-        // Step 2: Analyze user context and gather insights
         const context = await analyzeUserContext(currentUser);
         setUserContext(context);
 
-        // Step 3: Get funnel status and evaluation
         const funnels = await getFunnels();
         const userFunnelData = await getUserFunnelData(currentUser);
         const funnelEvaluation = evaluateUserFunnels(funnels, currentUser, userFunnelData);
 
-        // Step 4: Handle chat initialization or update
         if (!existingChat) {
-          // Create new chat for first-time user
           const newChatId = await createInitialShawnChat(currentUser, context, funnelEvaluation);
-          setChatId(newChatId);
+          setLocalChatId(newChatId);
           setIsNewUser(true);
         } else {
-          // Update existing chat with new context-aware message if needed
           await updateExistingChat(existingChat.id, currentUser, context, funnelEvaluation);
-          setChatId(existingChat.id);
+          setLocalChatId(existingChat.id);
           setIsNewUser(false);
         }
       } catch (error) {
@@ -47,7 +63,12 @@ const ChatWithShawn = ({ currentUser }) => {
     };
 
     initializeShawnChat();
-  }, [currentUser]);
+  }, [currentUser, parentChatId]);
+
+  // Show loading state if we don't have a chat ID yet
+  if (!localChatId && !parentChatId) {
+    return <div>Initializing chat with Shawn...</div>;
+  }
 
   const checkForExistingChat = async (user) => {
     const chats = await firebaseService.queryCollection('conversationNames', {
@@ -154,19 +175,17 @@ const ChatWithShawn = ({ currentUser }) => {
   };
 
   // Return ChatInterface with enhanced context
-  return chatId ? (
+  return (
     <ChatInterface
-      chatId={chatId}
+      chatId={parentChatId || localChatId}
       agentId="shawn"
-      userId={currentUser.authenticationID}
-      isDefault={true}
-      title="Chat with Shawn"
-      conversationName={chatId}
+      userId={userId || currentUser?.authenticationID}
+      isDefault={isDefault}
+      title={title}
+      conversationName={parentConversationName || parentChatId || localChatId}
       userContext={userContext}
       isNewUser={isNewUser}
     />
-  ) : (
-    <div>Initializing chat with Shawn...</div>
   );
 };
 

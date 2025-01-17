@@ -415,18 +415,38 @@ const DashboardContent = ({
                       try {
                         console.log('Starting Shawn chat initialization...');
                         
-                        // Create a new chat session for Shawn
-                        const newChat = {
-                          id: `shawn-${currentUser.authenticationID}`,
+                        // Create a new conversation name entry first
+                        const chatData = {
+                          agentId: 'shawn',
+                          conversationName: 'Chat with Shawn',
+                          userId: currentUser.authenticationID,
+                          isDefault: true,
+                          timestamp: serverTimestamp()
+                        };
+
+                        const newChat = await firebaseService.create('conversationNames', chatData);
+                        
+                        // Create initial system message
+                        await firebaseService.create('conversations', {
+                          agentId: 'shawn',
+                          content: `Started conversation with Shawn`,
+                          conversationName: newChat.id,
+                          from: 'shawn',
+                          isDefault: true,
+                          timestamp: serverTimestamp(),
+                          type: 'system'
+                        });
+                        
+                        // Set the current chat with all required properties
+                        setCurrentChat({
+                          id: newChat.id,
                           agentId: 'shawn',
                           title: 'Chat with Shawn',
                           participants: [currentUser.authenticationID, 'shawn'],
                           isDefault: true,
-                          conversationName: `shawn-${currentUser.authenticationID}`
-                        };
+                          conversationName: newChat.id
+                        });
                         
-                        // Update state
-                        setCurrentChat(newChat);
                         setHasShawnChat(true);
                         
                       } catch (error) {
@@ -437,6 +457,7 @@ const DashboardContent = ({
                   >
                     Chat with Shawn
                   </Button>
+
                 </div>
               </div>
             </Card>
@@ -481,12 +502,13 @@ const DashboardContent = ({
 
           {/* Suggested Actions */}
           <Card className="p-6">
-          <SuggestedActions 
-            currentUser={currentUser}
-            handleAgentClick={handleAgentClick}
-            userFunnelData={userData}
-            resourcesData={resourcesData}
-          />
+            <SuggestedActions 
+              currentUser={currentUser}
+              handleAgentClick={handleAgentClick}
+              userFunnelData={userData}
+              resourcesData={resourcesData}
+              setCurrentTool={setCurrentTool}
+            />
           </Card>
 
           {/* Projects Section */}
