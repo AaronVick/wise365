@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { useProgressAnalyzer } from '../ProgressAnalyzer';
+import { useProgressAnalyzer } from '../milestoneFunnels/ProgressAnalyzer';
 import { mapFunnelDataToFunnels } from '../../pages/api/funnelAnalyzer';
 
 const FormChatContext = createContext(null);

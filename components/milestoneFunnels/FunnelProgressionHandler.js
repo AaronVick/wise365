@@ -1,9 +1,9 @@
 // components/FunnelProgressionHandler.js
 import { useState, useEffect } from 'react';
-import { useFirebaseData } from '../hooks/useFirebaseData';
-import firebaseService from '../lib/services/firebaseService';
+import { useFirebaseData } from '../../hooks/useFirebaseData';
+import firebaseService from '../../lib/services/firebaseService';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../../lib/firebase';
 
 export const useFunnelProgression = (funnel, currentUser, userData) => {
   // Core state management

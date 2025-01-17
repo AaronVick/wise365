@@ -17,8 +17,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { mapFunnelDataToFunnels, evaluateMilestoneProgress } from '../../pages/api/funnelAnalyzer';
-import { useProgressAnalyzer } from '../ProgressAnalyzer';
-import { validateMilestoneReadiness } from '../MilestoneValidation';
+import { useProgressAnalyzer } from '../milestoneFunnels/ProgressAnalyzer';
+import { validateMilestoneReadiness } from '../milestoneFunnels/MilestoneValidation';
 
 const FormChatInterface = ({
   chatId,

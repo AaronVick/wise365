@@ -1,6 +1,6 @@
 // components/FunnelActionHandler.js
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../../lib/firebase';
 
 export const createFunnelProject = async (action, currentUser, funnel) => {
   try {

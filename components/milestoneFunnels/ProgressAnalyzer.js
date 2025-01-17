@@ -1,7 +1,7 @@
 // components/ProgressAnalyzer.js
 import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../../lib/firebase';
 
 export const useProgressAnalyzer = (currentUser, funnel, milestone) => {
   const [analysis, setAnalysis] = useState(null);

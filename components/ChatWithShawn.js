@@ -4,8 +4,8 @@ import { collection, query, where, getDocs, addDoc, orderBy, serverTimestamp } f
 import { db } from '../lib/firebase';
 import firebaseService from '../lib/services/firebaseService';
 import ChatInterface from './ChatInterface';
-import { evaluateUserFunnels } from './funnelEvaluator';
-import { useProgressAnalyzer } from './ProgressAnalyzer';
+import { evaluateUserFunnels } from './milestoneFunnels/funnelEvaluator';
+import { useProgressAnalyzer } from './milestoneFunnels/ProgressAnalyzer';
 
 const ChatWithShawn = ({ 
   currentUser,
