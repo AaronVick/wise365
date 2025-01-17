@@ -2,32 +2,44 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import firebaseService from '../lib/services/firebaseService';
 
-const SuggestedActions = ({ currentUser, handleAgentClick, userFunnelData, resourcesData }) => {
+const SuggestedActions = ({ currentUser, handleAgentClick }) => {
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState([]);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchSuggestions = async () => {
-      if (!currentUser?.authenticationID || !currentUser?.teamId) {
-        setError('User data not available');
+      if (!currentUser?.authenticationID) {
+        setError('User authentication not available');
         setLoading(false);
         return;
       }
 
       try {
+        // Fetch all required data using FirebaseService
+        const userData = await firebaseService.getUserData(currentUser.authenticationID);
+        const teamData = currentUser.teamId ? await firebaseService.getTeamData(currentUser.teamId) : null;
+        const funnelData = await firebaseService.getFunnelData(currentUser.authenticationID);
+        const resourcesData = await firebaseService.getResourcesData(currentUser.authenticationID);
+
+        // Prepare the payload
+        const payload = {
+          userId: currentUser.authenticationID,
+          teamId: currentUser.teamId || null,
+          userData: userData || {},
+          teamData: teamData || {},
+          funnelData: funnelData || [],
+          resourcesData: resourcesData || []
+        };
+
         const response = await fetch('/api/generate-suggestions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            userId: currentUser.authenticationID,
-            teamId: currentUser.teamId,
-            funnelData: userFunnelData,
-            resourcesData: resourcesData
-          }),
+          body: JSON.stringify(payload),
         });
 
         if (!response.ok) {
@@ -35,19 +47,27 @@ const SuggestedActions = ({ currentUser, handleAgentClick, userFunnelData, resou
         }
 
         const data = await response.json();
-        setSuggestions(data.suggestions);
+        
+        // Filter out any invalid suggestions
+        const validSuggestions = data.suggestions.filter(suggestion => 
+          suggestion && suggestion.title && suggestion.type
+        );
+
+        setSuggestions(validSuggestions);
       } catch (err) {
-        setError('Error fetching suggestions');
         console.error('Error fetching suggestions:', err);
+        setError('Unable to load suggestions at this time');
       } finally {
         setLoading(false);
       }
     };
 
     fetchSuggestions();
-  }, [currentUser, userFunnelData, resourcesData]);
+  }, [currentUser]);
 
   const trackSuggestionClick = async (suggestion) => {
+    if (!currentUser?.authenticationID) return;
+
     try {
       await fetch('/api/track-suggestion', {
         method: 'POST',
@@ -72,16 +92,27 @@ const SuggestedActions = ({ currentUser, handleAgentClick, userFunnelData, resou
     if (suggestion.type === 'agent' && suggestion.agent) {
       handleAgentClick(suggestion.agent);
     }
-    // Handle other suggestion types as needed
   };
 
+  // Default suggestions for new users or when API fails
+  const getDefaultSuggestions = () => [
+    {
+      title: "Complete Your Profile",
+      description: "Add your business details to get personalized recommendations",
+      type: "profile",
+    },
+    {
+      title: "Chat with Shawn",
+      description: "Get started with a guided introduction to Business Wise365",
+      type: "agent",
+      agent: { id: 'shawn', name: 'Shawn' }
+    }
+  ];
+
   if (error) {
-    return (
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Suggested Next Steps</h3>
-        <div className="text-sm text-red-600">{error}</div>
-      </Card>
-    );
+    // Show default suggestions instead of error message for better UX
+    setSuggestions(getDefaultSuggestions());
+    setError(null);
   }
 
   return (
@@ -110,7 +141,20 @@ const SuggestedActions = ({ currentUser, handleAgentClick, userFunnelData, resou
         </div>
       ) : (
         <div className="text-sm text-gray-500 text-center py-4">
-          No suggestions available at this time
+          {getDefaultSuggestions().map((suggestion, index) => (
+            <Button
+              key={index}
+              variant="ghost"
+              className="w-full justify-between text-left hover:bg-gray-100 mb-2"
+              onClick={() => handleSuggestionClick(suggestion)}
+            >
+              <div>
+                <h4 className="font-medium text-gray-900">{suggestion.title}</h4>
+                <p className="text-sm text-gray-600">{suggestion.description}</p>
+              </div>
+              <span className="text-blue-600">Start</span>
+            </Button>
+          ))}
         </div>
       )}
     </Card>

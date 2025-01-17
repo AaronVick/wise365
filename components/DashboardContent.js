@@ -597,8 +597,9 @@ const DashboardContent = ({
 
                   <Button
                     variant="ghost"
-                    onClick={() => {
-                      setCurrentTool('success-wheel');
+                    onClick={async () => {
+                      const SuccessWheel = (await import('../components/toolComponents/success-wheel')).default;
+                      setCurrentTool(<SuccessWheel currentUser={currentUser} onComplete={() => setCurrentTool(null)} />);
                     }}
                     className="w-full justify-between text-left hover:bg-gray-100"
                   >

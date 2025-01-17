@@ -16,7 +16,7 @@ import firebaseService from '../../lib/services/firebaseService';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { Card } from '../ui/card';
-import FormChat from './FormChat';
+
 import {
   Select,
   SelectContent,
@@ -24,6 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+
+import dynamic from 'next/dynamic';
+
+const FormChat = dynamic(() => import('./FormChat'), { 
+  loading: () => <div>Loading chat...</div>
+});
 
 const TEMPLATE_NAME = "Marketing Success Wheel";
 
