@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import MilestoneCard from "@/components/dashboard/MilestoneCard";
+import MilestoneCard from "@/components/milestoneFunnels/MilestoneCard";
 import firebaseService from "@/lib/services/firebaseService";
 
 const MilestonesSection = ({ currentUser, setCurrentChat }) => {

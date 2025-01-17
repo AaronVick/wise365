@@ -17,17 +17,6 @@ const QuickStats = ({ recentActivity, currentUser }) => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {/* Active Conversations */}
-      <Card className="p-4">
-        <h4 className="text-sm font-semibold text-gray-500 mb-2">Active Conversations</h4>
-        <div className="flex items-baseline">
-          <span className="text-2xl font-bold">{activeConversations}</span>
-          <span className="text-sm text-gray-500 ml-2">conversations</span>
-        </div>
-        {activeConversations === 0 && (
-          <p className="text-xs text-gray-400 mt-2">No recent conversations.</p>
-        )}
-      </Card>
 
       {/* Team Members */}
       <Card className="p-4">
