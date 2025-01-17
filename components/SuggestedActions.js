@@ -24,6 +24,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "./ui/badge";
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import firebaseService from '../lib/services/firebaseService';
+import { agents } from '../data/agents';
 
 const SuggestedActions = ({ 
   currentUser, 
@@ -42,59 +46,147 @@ const SuggestedActions = ({
   });
 
   useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (!currentUser?.authenticationID || !currentUser?.teamId) {
+    const generateSuggestions = async () => {
+      if (!currentUser?.uid) {
         setIsLoading(false);
-        setError('User data not available');
+        setError('Please log in to see suggestions');
         return;
       }
 
       try {
-        const response = await fetch('/api/generate-suggestions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: currentUser.authenticationID,
-            teamId: currentUser.teamId
-          }),
+        const allSuggestions = [];
+        const categoryCounts = {
+          resources: 0,
+          funnels: 0,
+          agents: 0
+        };
+
+        // 1. Check incomplete resources
+        const resourcesRef = collection(db, 'resources');
+        const resourceQuery = query(
+          resourcesRef,
+          where('teamId', '==', currentUser.teamId),
+          where('status', '==', 'incomplete')
+        );
+        const resourceSnapshot = await getDocs(resourceQuery);
+        
+        resourceSnapshot.docs.forEach(doc => {
+          const resource = doc.data();
+          allSuggestions.push({
+            id: doc.id,
+            type: 'tool',
+            title: `Complete ${resource.name}`,
+            description: resource.description || `Continue working on your ${resource.name.toLowerCase()}`,
+            toolId: doc.id,
+            action: resource.type,
+            priority: resource.priority || 2,
+            progress: resource.progress || 0
+          });
+          categoryCounts.resources++;
         });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.details || errorData.error || 'Failed to fetch suggestions');
+        // 2. Check funnel status
+        if (userFunnelData) {
+          const incompleteFunnels = Object.entries(userFunnelData)
+            .filter(([_, data]) => data.status === 'incomplete')
+            .map(([name, data]) => ({
+              name,
+              ...data
+            }));
+
+          incompleteFunnels.forEach(funnel => {
+            allSuggestions.push({
+              type: 'funnel',
+              title: `Continue ${funnel.name}`,
+              description: `Resume work on your ${funnel.name.toLowerCase()}`,
+              toolId: funnel.id,
+              action: 'continue_funnel',
+              priority: 1,
+              progress: funnel.progress || 0
+            });
+            categoryCounts.funnels++;
+          });
         }
 
-        const data = await response.json();
-        setSuggestions(data.suggestions);
-        setCategories(data.metadata.categories);
+        // 3. Get recent agent interactions
+        const conversationsRef = collection(db, 'conversations');
+        const conversationQuery = query(
+          conversationsRef,
+          where('userId', '==', currentUser.uid),
+          orderBy('lastUpdatedAt', 'desc'),
+          limit(5)
+        );
+        const conversationSnapshot = await getDocs(conversationQuery);
+        
+        const interactedAgentIds = new Set(
+          conversationSnapshot.docs.map(doc => doc.data().agentId)
+        );
+
+        // Suggest agents that haven't been interacted with
+        Object.values(agents).flat().forEach(agent => {
+          if (!interactedAgentIds.has(agent.id)) {
+            allSuggestions.push({
+              type: 'agent',
+              title: `Connect with ${agent.name}`,
+              description: agent.description || `Start a conversation with ${agent.name} to get expert advice`,
+              agent: {
+                id: agent.id,
+                name: agent.name,
+                role: agent.role
+              },
+              priority: 3
+            });
+            categoryCounts.agents++;
+          }
+        });
+
+        // Sort by priority (lower number = higher priority)
+        const sortedSuggestions = allSuggestions.sort((a, b) => {
+          if (a.priority === b.priority) {
+            return (b.progress || 0) - (a.progress || 0);
+          }
+          return a.priority - b.priority;
+        });
+
+        setSuggestions(sortedSuggestions);
+        setCategories(categoryCounts);
       } catch (err) {
-        console.error('Error fetching suggestions:', err);
+        console.error('Error generating suggestions:', err);
         setError(err.message);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchSuggestions();
-  }, [currentUser]);
+    generateSuggestions();
+  }, [currentUser, userFunnelData]);
 
-  const handleSuggestionClick = (suggestion) => {
+  const handleSuggestionClick = async (suggestion) => {
     switch (suggestion.type) {
       case 'agent':
         handleAgentClick(suggestion.agent);
         break;
       case 'tool':
-        if (suggestion.action === 'continue_funnel') {
-          // Handle funnel continuation
-          console.log('Continuing funnel:', suggestion.toolId);
-        } else {
-          setCurrentTool(suggestion.toolId);
-        }
+      case 'funnel':
+        await firebaseService.update('resources', suggestion.toolId, {
+          lastAccessed: new Date()
+        });
+        setCurrentTool(suggestion.toolId);
         break;
       default:
         console.warn('Unknown suggestion type:', suggestion.type);
+    }
+  };
+
+  const handleDismiss = async (suggestionId) => {
+    try {
+      await firebaseService.update('suggestions', suggestionId, {
+        status: 'dismissed',
+        dismissedAt: new Date()
+      });
+      setSuggestions(prev => prev.filter(s => s.id !== suggestionId));
+    } catch (error) {
+      console.error('Error dismissing suggestion:', error);
     }
   };
 
@@ -104,23 +196,11 @@ const SuggestedActions = ({
         return <MessageSquare className="h-4 w-4 mr-2" />;
       case 'tool':
         return <Tool className="h-4 w-4 mr-2" />;
+      case 'funnel':
+        return <Target className="h-4 w-4 mr-2" />;
       default:
         return <Target className="h-4 w-4 mr-2" />;
     }
-  };
-
-  const renderCategoryBadge = (type) => {
-    const badgeStyles = {
-      agent: 'bg-blue-100 text-blue-800',
-      tool: 'bg-purple-100 text-purple-800',
-      funnel: 'bg-green-100 text-green-800'
-    };
-
-    return (
-      <span className={`text-xs px-2 py-1 rounded-full ${badgeStyles[type]}`}>
-        {type.charAt(0).toUpperCase() + type.slice(1)}
-      </span>
-    );
   };
 
   if (error) {
@@ -170,14 +250,14 @@ const SuggestedActions = ({
       ) : suggestions.length === 0 ? (
         <div className="text-center py-8 bg-gray-50 rounded-lg">
           <Target className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-          <p className="text-sm text-gray-600">No suggestions available at the moment</p>
+          <p className="text-sm text-gray-600">All caught up! No new suggestions at the moment.</p>
         </div>
       ) : (
         <ScrollArea className="h-[300px] pr-4">
           <div className="space-y-3">
-            {suggestions.map((suggestion, index) => (
+            {suggestions.map((suggestion) => (
               <div
-                key={`${suggestion.type}-${index}`}
+                key={suggestion.id || `${suggestion.type}-${suggestion.title}`}
                 className="group relative bg-white rounded-lg border border-gray-200 hover:border-blue-200 transition-all duration-200"
               >
                 <Button
@@ -194,13 +274,26 @@ const SuggestedActions = ({
                         <h4 className="text-sm font-medium text-gray-900 truncate">
                           {suggestion.title}
                         </h4>
-                        {renderCategoryBadge(suggestion.type)}
+                        <Badge 
+                          variant={
+                            suggestion.type === 'agent' ? 'default' :
+                            suggestion.type === 'tool' ? 'secondary' :
+                            'outline'
+                          }
+                          className="text-xs"
+                        >
+                          {suggestion.type}
+                        </Badge>
                       </div>
                       <p className="mt-1 text-sm text-gray-500">
                         {suggestion.description}
                       </p>
-                      {suggestion.progress && (
+                      {suggestion.progress !== undefined && (
                         <div className="mt-2">
+                          <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                            <span>Progress</span>
+                            <span>{suggestion.progress}%</span>
+                          </div>
                           <Progress value={suggestion.progress} className="h-1" />
                         </div>
                       )}
@@ -209,25 +302,24 @@ const SuggestedActions = ({
                   </div>
                 </Button>
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="absolute top-2 right-2 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <span className="sr-only">Open menu</span>
-                      <Tool className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => console.log('Dismiss suggestion')}>
-                      Dismiss
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => console.log('Snooze suggestion')}>
-                      Snooze
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {suggestion.id && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="absolute top-2 right-2 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <span className="sr-only">Open menu</span>
+                        <Tool className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleDismiss(suggestion.id)}>
+                        Dismiss
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             ))}
           </div>
