@@ -414,11 +414,7 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Resize Handle */}
-      <div
-        className="w-1 cursor-ew-resize bg-gray-700 hover:bg-blue-600 transition-colors"
-        onMouseDown={handleSidebarResize}
-      />
+      
     </div>
   );
 };

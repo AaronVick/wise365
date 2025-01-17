@@ -18,11 +18,30 @@ const SuggestedActions = ({ currentUser, handleAgentClick }) => {
       }
 
       try {
-        // Fetch all required data using FirebaseService
+        // Initialize the firebase service with current user
+        firebaseService.setCurrentUser(currentUser);
+
+        // Fetch user data using the registered collection
         const userData = await firebaseService.getUserData(currentUser.authenticationID);
-        const teamData = currentUser.teamId ? await firebaseService.getTeamData(currentUser.teamId) : null;
-        const funnelData = await firebaseService.getFunnelData(currentUser.authenticationID);
-        const resourcesData = await firebaseService.getResourcesData(currentUser.authenticationID);
+        
+        // Fetch team data if available
+        const teamData = currentUser.teamId ? 
+          await firebaseService.getTeamData(currentUser.teamId) : null;
+
+        // Fetch funnel data using the registered collection
+        const funnelData = await firebaseService.queryCollection('funnelData', {
+          where: [
+            { field: 'userId', operator: '==', value: currentUser.authenticationID }
+          ],
+          limit: 1
+        });
+
+        // Fetch resources using the registered collection
+        const resourcesData = await firebaseService.queryCollection('resources', {
+          where: [
+            { field: 'authenticationID', operator: '==', value: currentUser.authenticationID }
+          ]
+        });
 
         // Prepare the payload
         const payload = {
@@ -30,7 +49,7 @@ const SuggestedActions = ({ currentUser, handleAgentClick }) => {
           teamId: currentUser.teamId || null,
           userData: userData || {},
           teamData: teamData || {},
-          funnelData: funnelData || [],
+          funnelData: funnelData[0] || {},
           resourcesData: resourcesData || []
         };
 
@@ -57,6 +76,8 @@ const SuggestedActions = ({ currentUser, handleAgentClick }) => {
       } catch (err) {
         console.error('Error fetching suggestions:', err);
         setError('Unable to load suggestions at this time');
+        // Set default suggestions on error
+        setSuggestions(getDefaultSuggestions());
       } finally {
         setLoading(false);
       }

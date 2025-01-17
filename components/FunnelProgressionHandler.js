@@ -83,132 +83,110 @@ export const useFunnelProgression = (funnel, currentUser, userData) => {
   // Main effect for analyzing funnel state
   useEffect(() => {
     const analyzeFunnelState = async () => {
-      // Don't proceed if essential data is missing or still loading
       if (!funnel || !currentUser || isFunnelLoading || isConversationLoading || isFormLoading) {
         return;
       }
-
+    
       try {
         setLoading(true);
         
-        // Initialize progress structure
-        const progress = {
-          overall: 0,
-          milestones: {},
-          forms: 0,
-          conversations: {},
-          dataRequirements: 0
-        };
-
-        // Calculate conversation progress
-        if (conversationData?.length > 0) {
-          progress.conversations = conversationData.reduce((acc, conv) => {
-            const milestoneId = conv.milestoneId || 'default';
-            if (!acc[milestoneId]) {
-              acc[milestoneId] = {
-                messageCount: 0,
-                hasUserInput: false,
-                hasAgentResponse: false,
-                hasCompletion: false
-              };
-            }
-            
-            acc[milestoneId].messageCount++;
-            if (conv.from === currentUser.authenticationID) {
-              acc[milestoneId].hasUserInput = true;
-            } else {
-              acc[milestoneId].hasAgentResponse = true;
-              if (conv.content?.toLowerCase().includes('completed') || 
-                  conv.content?.toLowerCase().includes('finished')) {
-                acc[milestoneId].hasCompletion = true;
-              }
-            }
-            return acc;
-          }, {});
-        }
-
-        // Calculate form completion progress
-        if (funnel.formsNeeded?.length > 0) {
-          const completedForms = formSubmissions?.length || 0;
-          progress.forms = (completedForms / funnel.formsNeeded.length) * 100;
-        } else {
-          progress.forms = 100; // No forms needed = 100% complete
-        }
-
-        // Calculate data requirement progress
-        if (funnel.dataRequirements?.length > 0) {
-          const satisfiedRequirements = funnel.dataRequirements.filter(req => {
-            const paths = req.path.split('.');
-            let current = userData;
-            return paths.every(path => {
-              if (!current || !current[path]) return false;
-              current = current[path];
-              return true;
-            });
-          }).length;
-          
-          progress.dataRequirements = 
-            (satisfiedRequirements / funnel.dataRequirements.length) * 100;
-        } else {
-          progress.dataRequirements = 100; // No requirements = 100% complete
-        }
-
-        // Calculate milestone-specific progress
-        if (funnel.milestones?.length > 0) {
-          funnel.milestones.forEach(milestone => {
-            progress.milestones[milestone.name] = calculateMilestoneProgress(
-              milestone,
-              progress.conversations[milestone.name],
-              progress.forms,
-              progress.dataRequirements
-            );
+        // Get current funnel data
+        const funnelData = await firebaseService.getFunnelData(
+          currentUser.authenticationID,
+          funnel.name
+        );
+    
+        // Calculate progress metrics
+        const progress = calculateProgress(funnelData, funnel);
+        
+        // If this is a milestone completion
+        if (progress.overall === 100 && funnelData?.progress !== 100) {
+          // Update funnel completion in database
+          await firebaseService.update('funnelData', funnelData.id, {
+            progress: 100,
+            completed: true,
+            completedAt: new Date()
           });
-
-          // Calculate overall progress
-          progress.overall = Math.round(
-            Object.values(progress.milestones)
-              .reduce((sum, val) => sum + val, 0) / funnel.milestones.length
+    
+          // Evaluate next available funnels
+          const nextFunnels = await determineNextFunnels(
+            currentUser.authenticationID,
+            funnel.name
           );
+    
+          // Create funnel records for newly available funnels
+          for (const nextFunnel of nextFunnels) {
+            const exists = await firebaseService.getFunnelData(
+              currentUser.authenticationID,
+              nextFunnel.name
+            );
+            
+            if (!exists) {
+              await firebaseService.create('funnelData', {
+                userId: currentUser.authenticationID,
+                funnelName: nextFunnel.name,
+                status: 'ready',
+                progress: 0,
+                milestones: nextFunnel.milestones.reduce((acc, m) => {
+                  acc[m.name] = { progress: 0, status: 'ready' };
+                  return acc;
+                }, {})
+              });
+            }
+          }
         }
-
-        setProgressDetails(progress);
-
-        // Handle different funnel types
-        if (funnel.name.toLowerCase() === 'onboarding funnel') {
-          const result = handleOnboardingState(progress, userData);
-          setCurrentPhase(result.phase);
-          setNextActions(result.actions);
-          setRequiredForms(result.forms);
-        } else {
-          // Handle regular funnel progression
-          const phase = determineCurrentPhase(funnel, progress);
-          setCurrentPhase(phase);
-
-          const missingForms = funnel.formsNeeded?.filter(form => 
-            !formSubmissions?.some(submission => submission.formId === form)
-          ) || [];
-          setRequiredForms(missingForms);
-
-          const actions = await determineNextActions(phase, funnel, userData, progress);
-          setNextActions(actions);
-        }
-
-        // Update funnel data if significant changes
-        if (shouldUpdateFunnelData(progress, funnelData?.[0])) {
-          await firebaseService.create('funnelData', {
-            userId: currentUser.authenticationID,
-            funnelName: funnel.name,
-            progress,
-            lastUpdated: new Date()
+    
+        // Update current funnel progress
+        if (funnelData && progress.overall !== funnelData.progress) {
+          await firebaseService.update('funnelData', funnelData.id, {
+            progress: progress.overall,
+            milestones: progress.milestones
           });
         }
-
+    
+        setProgressDetails(progress);
+        
       } catch (err) {
         console.error('Error analyzing funnel state:', err);
         setError(err.message);
       } finally {
         setLoading(false);
       }
+    };
+    
+    const determineNextFunnels = async (userId, completedFunnelName) => {
+      // Get all funnel definitions
+      const funnelsRef = collection(db, 'funnels');
+      const funnelsSnapshot = await getDocs(funnelsRef);
+      const allFunnels = funnelsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    
+      // Get user's current funnel data
+      const userFunnelData = await firebaseService.queryCollection('funnelData', {
+        where: [
+          { field: 'userId', operator: '==', value: userId }
+        ]
+      });
+    
+      // Filter funnels that should now be available
+      return allFunnels.filter(funnel => {
+        // Skip if already in progress or completed
+        if (userFunnelData.some(d => d.funnelName === funnel.name)) {
+          return false;
+        }
+    
+        // Check if dependencies are met
+        if (funnel.dependencies) {
+          return funnel.dependencies.every(dep => {
+            const depData = userFunnelData.find(d => d.funnelName === dep);
+            return depData?.completed;
+          });
+        }
+    
+        return true;
+      });
     };
 
     analyzeFunnelState();

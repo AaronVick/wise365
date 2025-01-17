@@ -66,7 +66,8 @@ const DashboardSidebar = ({
   style={{ 
     width: isCollapsed ? `${minWidth}px` : `${sidebarWidth}px`,
     minWidth: `${minWidth}px`,
-    maxWidth: `${maxWidth}px`
+    maxWidth: `${maxWidth}px`,
+     position: 'relative'
   }}
 >
       
@@ -416,6 +417,30 @@ const DashboardSidebar = ({
           {isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
         </span>
       </Button>
+
+      {/* Resize Handle */}
+<div
+  className="absolute right-0 top-0 w-1 h-full cursor-ew-resize bg-gray-700 hover:bg-blue-600 transition-colors"
+  onMouseDown={onResize}
+/>
+
+{/* Collapse Toggle */}
+<Button
+  variant="ghost"
+  size="icon"
+  className="absolute -right-3 top-1/2 transform -translate-y-1/2 h-6 w-6 rounded-full bg-gray-700 text-white hover:bg-blue-600 z-10 group relative"
+  onClick={onCollapse}
+>
+  {isCollapsed ? (
+    <ChevronRight className="h-4 w-4" />
+  ) : (
+    <ChevronLeft className="h-4 w-4" />
+  )}
+  <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded 
+                invisible group-hover:visible whitespace-nowrap z-50">
+    {isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+  </span>
+</Button>
     </div>  
   );
 };
