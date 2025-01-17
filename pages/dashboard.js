@@ -1,5 +1,7 @@
 // pages/dashboard.js
 
+// pages/dashboard.js
+
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -15,7 +17,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
-} from '@/components/Accordion';
+} from '@/components/ui/accordion';
 import { 
   Home,
   Settings,
@@ -26,8 +28,11 @@ import {
   Briefcase,
   Target,
   BookOpen,
-  LayoutDashboard
+  LayoutDashboard,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
+
 import { agents } from '../data/agents';
 import { useDashboard } from '../contexts/DashboardContext';
 import DashboardContent from '../components/DashboardContent';
@@ -36,7 +41,7 @@ import ChatWithShawn from '@/components/ChatWithShawn';
 import BuyerPersona from '../components/toolComponents/buyer-persona';
 import SuccessWheel from '../components/toolComponents/success-wheel';
 import PositioningFactors from '../components/toolComponents/positioning-factors';
-
+import DashboardSidebar from '@/components/DashboardSidebar';
 
 import { 
   fetchNestedChats, 
@@ -50,11 +55,18 @@ const Dashboard = () => {
   const [user, loading] = useAuthState(auth);
   const [userData, setUserData] = useState(null);
   const [isLoadingUserData, setIsLoadingUserData] = useState(true);
-  const [sidebarWidth, setSidebarWidth] = useState(250);
   const [currentChat, setCurrentChat] = useState(null);
   const [nestedChats, setNestedChats] = useState({});
   const [currentTool, setCurrentTool] = useState(null);
   const [projects, setProjects] = useState([]);
+
+  // New state variables for collapsible sidebar
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(250);
+  const minWidth = 64;
+  const maxWidth = 400;
+
+
 
   // Data fetching
   useEffect(() => {
@@ -323,226 +335,25 @@ const Dashboard = () => {
   return (
     <div className="flex h-screen bg-slate-50">
       {/* Sidebar */}
-      <div
-        className="bg-gray-900 text-white flex flex-col"
-        style={{ width: `${sidebarWidth}px`, minWidth: '200px', maxWidth: '400px' }}
-      >
-        {/* Logo and Home */}
-        <div className="p-4 border-b border-gray-700 flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            className="text-white hover:text-white"
-            onClick={() => {
-              setCurrentChat(null);
-              setCurrentTool(null);
-              router.push('/dashboard');
-            }}
-          >
-            <Home className="h-5 w-5" />
-          </Button>
-          <h1 className="text-lg font-bold">Business Wise365</h1>
-        </div>
-
-        {/* Scrollable Content */}
-        <ScrollArea className="flex-1">
-          <div className="p-4 space-y-6">
-            {/* Agents Categories */}
-            <div className="space-y-4">
-              {/* Administrative Category (Always First) */}
-              <Accordion type="multiple" className="w-full">
-                <AccordionItem value="Administrative">
-                  <AccordionTrigger className="text-white hover:text-white px-3">
-                    Administrative
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    {/* Shawn - Always First */}
-                    {agents['Administrative']?.map(agent => {
-                      if (agent.id === 'shawn') {
-                        return (
-                          <div 
-                            key={agent.id}
-                            className="px-4 py-2 mb-2 hover:bg-gray-800 rounded cursor-pointer"
-                            onClick={() => handleAgentClick(agent)}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h4 className="font-medium text-white">{agent.name}</h4>
-                                <p className="text-xs text-gray-400">{agent.role}</p>
-                              </div>
-                              <Bot className="h-4 w-4 text-gray-400" />
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })}
-
-                    {/* Other Administrative Agents */}
-                    {agents['Administrative']?.filter(agent => agent.id !== 'shawn').map(agent => (
-                      <div key={agent.id} className="mb-2">
-                        <div
-                          className="px-4 py-2 hover:bg-gray-800 rounded cursor-pointer"
-                          onClick={() => handleAgentClick(agent)}
-                          onContextMenu={(e) => onAgentContextMenu(e, agent)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="font-medium text-white">{agent.name}</h4>
-                              <p className="text-xs text-gray-400">{agent.role}</p>
-                            </div>
-                            <Bot className="h-4 w-4 text-gray-400" />
-                          </div>
-                        </div>
-                        {/* Subchats */}
-                        {nestedChats[agent.id]?.length > 0 && (
-                          <div className="ml-4 mt-1 space-y-1">
-                            {nestedChats[agent.id]
-                              .filter(chat => !chat.isDefault)
-                              .map(subChat => (
-                                <div
-                                  key={subChat.id}
-                                  className="px-3 py-1 hover:bg-gray-800 rounded cursor-pointer text-sm text-gray-300"
-                                  onClick={() => handleSubChatClick(agent.id, subChat)}
-                                >
-                                  {subChat.conversationName}
-                                </div>
-                              ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </AccordionContent>
-                </AccordionItem>
-
-                {/* Other Categories */}
-                {Object.entries(agents)
-                  .filter(([category]) => category !== 'Administrative')
-                  .map(([category, categoryAgents]) => (
-                    <AccordionItem key={category} value={category}>
-                      <AccordionTrigger className="text-white hover:text-white px-3">
-                        {category}
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        {categoryAgents.map(agent => (
-                          <div key={agent.id} className="mb-2">
-                            <div
-                              className="px-4 py-2 hover:bg-gray-800 rounded cursor-pointer"
-                              onClick={() => handleAgentClick(agent)}
-                              onContextMenu={(e) => onAgentContextMenu(e, agent)}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <h4 className="font-medium text-white">{agent.name}</h4>
-                                  <p className="text-xs text-gray-400">{agent.role}</p>
-                                </div>
-                                <Bot className="h-4 w-4 text-gray-400" />
-                              </div>
-                            </div>
-                            {/* Subchats */}
-                            {nestedChats[agent.id]?.length > 0 && (
-                              <div className="ml-4 mt-1 space-y-1">
-                                {nestedChats[agent.id]
-                                  .filter(chat => !chat.isDefault)
-                                  .map(subChat => (
-                                    <div
-                                      key={subChat.id}
-                                      className="px-3 py-1 hover:bg-gray-800 rounded cursor-pointer text-sm text-gray-300"
-                                      onClick={() => handleSubChatClick(agent.id, subChat)}
-                                    >
-                                      {subChat.conversationName}
-                                    </div>
-                                  ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-              </Accordion>
-            </div>
-
-            {/* Projects Section */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between px-3 mb-2">
-                <h2 className="text-sm font-semibold text-muted-foreground">Projects</h2>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              {projects && projects.length > 0 ? (
-                projects.map((project) => (
-                  <div
-                    key={project.id}
-                    className="px-4 py-2 hover:bg-gray-800 rounded cursor-pointer group"
-                    onClick={() => handleProjectClick(project)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-white">{project.ProjectName}</p>
-                        <p className="text-xs text-gray-400">
-                          {project.participants?.agent ? `With ${project.participants.agent}` : ''}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleProjectDetails(project);
-                        }}
-                      >
-                        Details
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-400 text-sm px-4">No projects available</p>
-              )}
-            </div>
-
-            {/* Goals Section */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between px-3 mb-2">
-                <h2 className="text-sm font-semibold text-muted-foreground">Goals</h2>
-              </div>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-white hover:bg-gray-800 px-4"
-                onClick={() => setCurrentTool('goals')}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add New Goal
-              </Button>
-            </div>
-          </div>
-        </ScrollArea>
-
-        {/* User Profile Section */}
-        <div className="border-t border-gray-700 p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-              <span className="text-sm font-medium text-blue-700">
-                {userData?.name?.charAt(0) || 'U'}
-              </span>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-white">{userData?.name}</p>
-              <p className="text-xs text-gray-400">{userData?.role}</p>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="text-gray-400 hover:text-white"
-              onClick={handleSignOut}
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
+      <DashboardSidebar 
+        agents={agents}
+        projects={projects}
+        userData={userData}
+        isCollapsed={isCollapsed}
+        sidebarWidth={sidebarWidth}
+        minWidth={minWidth}
+        maxWidth={maxWidth}
+        nestedChats={nestedChats}
+        onCollapse={() => setIsCollapsed(!isCollapsed)}
+        onResize={handleSidebarResize}
+        onAgentClick={handleAgentClick}
+        onProjectClick={handleProjectClick}
+        onProjectDetails={handleProjectDetails}
+        onAgentContextMenu={onAgentContextMenu}
+        onSignOut={handleSignOut}
+        onSubChatClick={handleSubChatClick}
+        setCurrentTool={setCurrentTool}
+      />
 
   
 

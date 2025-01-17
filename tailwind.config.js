@@ -2,9 +2,10 @@
 module.exports = {
   darkMode: ["class"],
   content: [
-    './pages/**/*.{js,jsx}',
-    './components/**/*.{js,jsx}',
-    './app/**/*.{js,jsx}',
+    './pages/**/*.{js,jsx,ts,tsx}',
+    './components/**/*.{js,jsx,ts,tsx}',
+    './app/**/*.{js,jsx,ts,tsx}',
+    './src/**/*.{js,jsx,ts,tsx}',
   ],
   prefix: "",
   theme: {
@@ -50,9 +51,14 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // New gradient colors
+        // Keeping your gradient colors
         gradientPrimary: "hsl(var(--gradient-primary))",
         gradientSecondary: "hsl(var(--gradient-secondary))",
+        // Adding new sidebar colors
+        sidebar: {
+          DEFAULT: "#222222",
+          hover: "#2a2a2a",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -60,10 +66,13 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
+        
         title: "var(--font-title), sans-serif",
         body: "var(--font-body), sans-serif",
+        
+        sans: ["Inter", "sans-serif"],
       },
     },
   },
   plugins: [require("tailwindcss-animate")],
-};
+}
