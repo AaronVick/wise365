@@ -17,4 +17,5 @@ const Checkbox = ({ id, label, checked, onChange }) => (
   </div>
 );
 
-export default Checkbox;
+
+export { Checkbox };

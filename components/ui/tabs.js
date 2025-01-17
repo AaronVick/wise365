@@ -2,9 +2,8 @@
 
 import React, { useState } from 'react';
 
-// Tabs component to hold the logic for tabs
 const Tabs = ({ children, defaultValue }) => {
-  const [activeTab, setActiveTab] = useState(defaultValue || children[0].props.value);
+  const [activeTab, setActiveTab] = useState(defaultValue || children[0]?.props.value);
 
   return (
     <div>
@@ -32,14 +31,9 @@ const Tabs = ({ children, defaultValue }) => {
   );
 };
 
-// Tabs components to be exported separately for better import control
 const TabsList = ({ children }) => <div className="tabs-list">{children}</div>;
 const TabsTrigger = ({ value, children }) => <>{children}</>;
 const TabsContent = ({ value, children }) => <>{children}</>;
 
-// Exporting Tabs and the sub-components
-Tabs.List = TabsList;
-Tabs.Trigger = TabsTrigger;
-Tabs.Content = TabsContent;
-
-export { Tabs };
+// Export all components individually
+export { Tabs, TabsList, TabsTrigger, TabsContent };

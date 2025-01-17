@@ -13,11 +13,11 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import firebaseService from '../../lib/services/firebaseService';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
-import { Select, SelectItem } from '../ui/select';
-import { Card } from '../ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectItem } from '@/components/ui/select';
+import { Card } from '@/components/ui/card';
 import FormChat from './FormChat';
 
 const TEMPLATE_NAME = "Worlds Best Buyer Persona";

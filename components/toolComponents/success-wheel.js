@@ -13,9 +13,9 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import firebaseService from '../../lib/services/firebaseService';
-import { Button } from '../ui/button';
-import { Checkbox } from '../ui/checkbox';
-import { Card } from '../ui/card';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Card } from '@/components/ui/card';
 
 import {
   Select,
@@ -23,7 +23,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
+} from "@/components/ui/select";
 
 import dynamic from 'next/dynamic';
 
