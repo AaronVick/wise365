@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import firebaseService from '../lib/services/firebaseService';
+
 
 export const useFunnelProgression = (funnel, currentUser, userData) => {
   const [currentPhase, setCurrentPhase] = useState(null);
@@ -195,14 +197,9 @@ export const useFunnelProgression = (funnel, currentUser, userData) => {
 
 // Helper functions for data fetching
 async function getFunnelData(userId, funnelName) {
-  const ref = collection(db, 'funnelData');
-  const q = query(ref, 
-    where('userId', '==', userId),
-    where('funnelName', '==', funnelName)
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs[0]?.data();
+  return await firebaseService.getFunnelData(userId, funnelName);
 }
+
 
 async function getConversationData(userId, funnelName) {
   const ref = collection(db, 'conversations');
