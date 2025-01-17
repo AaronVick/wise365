@@ -59,16 +59,17 @@ const DashboardSidebar = ({
 
   return (
     <div 
-      className={cn(
-        "relative bg-gray-900 text-white flex flex-col transition-all duration-300 ease-in-out",
-        isCollapsed ? "w-16" : ""
-      )}
-      style={{ 
-        width: isCollapsed ? `${minWidth}px` : `${sidebarWidth}px`,
-        minWidth: `${minWidth}px`,
-        maxWidth: `${maxWidth}px`
-      }}
-    >
+  className={cn(
+    "relative bg-gray-900 text-white flex flex-col h-screen transition-all duration-300 ease-in-out",
+    isCollapsed ? "w-16" : ""
+  )}
+  style={{ 
+    width: isCollapsed ? `${minWidth}px` : `${sidebarWidth}px`,
+    minWidth: `${minWidth}px`,
+    maxWidth: `${maxWidth}px`
+  }}
+>
+      
       {/* Logo and Home */}
       <div className="p-4 border-b border-gray-700 flex items-center justify-between">
         <Button
