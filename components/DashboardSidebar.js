@@ -25,14 +25,14 @@ import {
 import { cn } from "@/lib/utils";
 
 const DashboardSidebar = ({ 
-  agents = [], 
-  projects = [],
-  userData = {},
+  agents, 
+  projects,
+  userData,
   isCollapsed,
   sidebarWidth,
   minWidth,
   maxWidth,
-  nestedChats = {},
+  nestedChats,
   onCollapse,
   onResize,
   onAgentClick,
@@ -49,6 +49,11 @@ const DashboardSidebar = ({
     setIsDarkMode(!isDarkMode);
     document.documentElement.classList.toggle('dark');
   };
+
+  // Add console logs to debug data flow
+  console.log('Agents in DashboardSidebar:', agents);
+  console.log('Projects in DashboardSidebar:', projects);
+  console.log('NestedChats in DashboardSidebar:', nestedChats);
 
   return (
     <div 
@@ -196,47 +201,38 @@ const DashboardSidebar = ({
           ) : (
             /* Collapsed view - all sections */
             <div className="space-y-6">
-              {/* Agents by category */}
-              {Object.entries(agents).map(([category, categoryAgents]) => (
-                <div key={category} className="space-y-2">
-                  {/* Category indicator */}
-                  <div className="px-2 py-1 text-xs text-gray-400 flex justify-center">
-                    {category === 'Administrative' && <Settings className="h-4 w-4" />}
-                    {category === 'Strategy' && <Target className="h-4 w-4" />}
-                    {category === 'Marketing' && <BookOpen className="h-4 w-4" />}
-                    {category === 'Sales' && <Briefcase className="h-4 w-4" />}
-                  </div>
-                  {/* Category agents */}
-                  {categoryAgents.map(agent => (
-                    <Button
-                      key={agent.id}
-                      variant="ghost"
-                      className="w-full p-2 flex justify-center"
-                      onClick={() => onAgentClick(agent)}
-                      title={agent.name}
-                    >
-                      <Bot className="h-5 w-5 text-gray-400" />
-                    </Button>
-                  ))}
+              {/* Agents Section */}
+              <div className="space-y-2">
+                <div className="px-2 py-1 text-xs text-gray-400 flex justify-center">
+                  <Bot className="h-4 w-4" />
                 </div>
-              ))}
+                {Object.entries(agents).map(([category, categoryAgents]) => (
+                  <Button
+                    key={category}
+                    variant="ghost"
+                    className="w-full p-2 flex justify-center"
+                    title={category}
+                  >
+                    {category === 'Administrative' && <Settings className="h-4 w-4 text-gray-400" />}
+                    {category === 'Strategy' && <Target className="h-4 w-4 text-gray-400" />}
+                    {category === 'Marketing' && <BookOpen className="h-4 w-4 text-gray-400" />}
+                    {category === 'Sales' && <Briefcase className="h-4 w-4 text-gray-400" />}
+                  </Button>
+                ))}
+              </div>
           
               {/* Projects Section */}
               <div className="space-y-2">
                 <div className="px-2 py-1 text-xs text-gray-400 flex justify-center">
                   <Briefcase className="h-4 w-4" />
                 </div>
-                {projects.map(project => (
-                  <Button
-                    key={project.id}
-                    variant="ghost"
-                    className="w-full p-2 flex justify-center"
-                    onClick={() => onProjectClick(project)}
-                    title={project.ProjectName}
-                  >
-                    <Briefcase className="h-5 w-5 text-gray-400" />
-                  </Button>
-                ))}
+                <Button
+                  variant="ghost"
+                  className="w-full p-2 flex justify-center"
+                  title="Projects"
+                >
+                  <Briefcase className="h-5 w-5 text-gray-400" />
+                </Button>
               </div>
           
               {/* Goals Section */}
@@ -247,25 +243,10 @@ const DashboardSidebar = ({
                 <Button
                   variant="ghost"
                   className="w-full p-2 flex justify-center"
+                  title="Goals"
                   onClick={() => setCurrentTool('goals')}
-                  title="Add New Goal"
                 >
                   <Target className="h-5 w-5 text-gray-400" />
-                </Button>
-              </div>
-          
-              {/* Resources Section */}
-              <div className="space-y-2">
-                <div className="px-2 py-1 text-xs text-gray-400 flex justify-center">
-                  <BookOpen className="h-4 w-4" />
-                </div>
-                <Button
-                  variant="ghost"
-                  className="w-full p-2 flex justify-center"
-                  onClick={() => setCurrentTool('resources')}
-                  title="Resources"
-                >
-                  <BookOpen className="h-5 w-5 text-gray-400" />
                 </Button>
               </div>
             </div>
