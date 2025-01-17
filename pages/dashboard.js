@@ -355,11 +355,19 @@ const Dashboard = () => {
         setCurrentTool={setCurrentTool}
       />
 
-  
-
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto bg-slate-50">
-        {currentChat ? (
+        {currentChat && currentChat.agentId === 'shawn' ? (
+          <ChatWithShawn
+            currentUser={userData}
+            chatId={currentChat.id}
+            isNewUser={!hasShawnChat}
+            userId={userData?.authenticationID}
+            isDefault={currentChat.isDefault}
+            title={currentChat.title}
+            conversationName={currentChat.conversationName}
+          />
+        ) : currentChat ? (
           <ChatInterface
             chatId={currentChat.id}
             agentId={currentChat.agentId}
@@ -407,14 +415,13 @@ const Dashboard = () => {
             currentUser={userData}
             currentTool={currentTool}
             setCurrentTool={setCurrentTool}
-            onToolComplete={() => setCurrentTool(null)}
             currentChat={currentChat}
             setCurrentChat={setCurrentChat}
+            hasShawnChat={hasShawnChat}
+            setHasShawnChat={setHasShawnChat}
           />
         )}
       </div>
-
-      
     </div>
   );
 };
