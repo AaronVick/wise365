@@ -286,6 +286,35 @@ const DashboardContent = ({
       }
   
       const analysis = await response.json();
+
+
+      const handleProjectClick = async (project) => {
+        try {
+          setCurrentChat({
+            id: project.id,
+            title: project.name,
+            participants: [userData.authenticationID],
+            conversationName: project.id,
+          });
+          router.push(`/project/${project.id}`);
+        } catch (error) {
+          console.error('Error handling project click:', error);
+        }
+      };
+      
+      const handleNewProject = async () => {
+        try {
+          const newProject = await firebaseService.create('projectNames', {
+            name: `New Project ${Date.now()}`,
+            userId: userData.authenticationID,
+            createdAt: serverTimestamp(),
+          });
+          setProjects((prevProjects) => [...prevProjects, newProject]);
+        } catch (error) {
+          console.error('Error creating new project:', error);
+        }
+      };
+      
   
       // Generate recommendations
       const recommendationsResponse = await fetch('/api/analyze-user-context', {
@@ -512,17 +541,34 @@ const DashboardContent = ({
           </Card>
 
           {/* Projects Section */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Projects</h3>
-            <Button
-              variant="ghost"
-              onClick={() => console.log('Creating new project')}
-              className="w-full justify-start text-gray-400"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Project
-            </Button>
-          </Card>
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Projects</h3>
+                {projects.length > 0 ? (
+                  <div className="space-y-2">
+                    {projects.map((project) => (
+                      <Button
+                        key={project.id}
+                        variant="ghost"
+                        className="w-full justify-between text-gray-800 hover:bg-gray-100"
+                        onClick={() => handleProjectClick(project)}
+                      >
+                        {project.name}
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">No projects found</p>
+                )}
+                <Button
+                  variant="ghost"
+                  onClick={handleNewProject}
+                  className="w-full justify-start text-gray-400 mt-4"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Project
+                </Button>
+              </Card>
+
 
 
 {/* Goals Progress Section */}
