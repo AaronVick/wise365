@@ -1,7 +1,8 @@
 // components/dashboard/WelcomeCard.js
 
 import React from "react";
-import { Card, Button } from "@/components/ui";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { serverTimestamp } from "firebase/firestore";
 import firebaseService from "@/lib/services/firebaseService";
 
