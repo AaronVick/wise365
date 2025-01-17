@@ -2,28 +2,36 @@
 
 import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { serverTimestamp } from "firebase/firestore";
+import MilestoneCard from "@/components/dashboard/MilestoneCard";
 import firebaseService from "@/lib/services/firebaseService";
-
 
 const MilestonesSection = ({ currentUser, setCurrentChat }) => {
   const [milestones, setMilestones] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Fetch milestones when component mounts
+  // Fetch milestones when the component mounts
   useEffect(() => {
     const fetchMilestones = async () => {
       console.log("Fetching milestones for user:", currentUser);
       setLoading(true);
+      setError(null);
+
       try {
+        let queryParams = [{ field: "userId", operator: "==", value: currentUser?.authenticationID }];
+        if (currentUser?.teamId) {
+          queryParams.push({ field: "teamId", operator: "==", value: currentUser.teamId });
+        }
+
         const milestonesData = await firebaseService.queryCollection("milestones", {
-          where: [{ field: "userId", operator: "==", value: currentUser?.authenticationID }],
+          where: queryParams,
         });
+
         console.log("Milestones fetched successfully:", milestonesData);
         setMilestones(milestonesData);
-      } catch (error) {
-        console.error("Error fetching milestones:", error);
+      } catch (err) {
+        console.error("Error fetching milestones:", err);
+        setError("Failed to fetch milestones. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -33,60 +41,26 @@ const MilestonesSection = ({ currentUser, setCurrentChat }) => {
       fetchMilestones();
     } else {
       console.error("No authentication ID found for the current user.");
+      setError("User authentication ID is missing.");
     }
   }, [currentUser]);
-
-  const handleStartMilestoneChat = async (milestone) => {
-    console.log("Starting chat for milestone:", milestone);
-    try {
-      const chatData = {
-        agentId: milestone.id,
-        conversationName: `Milestone: ${milestone.title}`,
-        userId: currentUser.authenticationID,
-        isDefault: false,
-        timestamp: serverTimestamp(),
-      };
-      console.log("Creating conversation with data:", chatData);
-
-      const newChat = await firebaseService.create("conversationNames", chatData);
-      console.log("New milestone chat created:", newChat);
-
-      setCurrentChat({
-        id: newChat.id,
-        agentId: milestone.id,
-        title: `Milestone: ${milestone.title}`,
-        participants: [currentUser.authenticationID, milestone.id],
-        isDefault: false,
-        conversationName: newChat.id,
-      });
-
-      console.log("Milestone chat started successfully.");
-    } catch (error) {
-      console.error("Error starting milestone chat:", error);
-    }
-  };
 
   return (
     <Card className="p-6">
       <h3 className="text-lg font-semibold mb-4">Milestones</h3>
       {loading ? (
         <div className="text-center text-gray-500">Loading milestones...</div>
+      ) : error ? (
+        <div className="text-center text-red-500">{error}</div>
       ) : milestones.length > 0 ? (
         <div className="space-y-4">
           {milestones.map((milestone) => (
-            <div key={milestone.id} className="p-4 border rounded-lg flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-semibold">{milestone.title}</h4>
-                <p className="text-xs text-gray-500">{milestone.description}</p>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleStartMilestoneChat(milestone)}
-              >
-                Start Chat
-              </Button>
-            </div>
+            <MilestoneCard
+              key={milestone.id}
+              milestone={milestone}
+              currentUser={currentUser}
+              setCurrentChat={setCurrentChat}
+            />
           ))}
         </div>
       ) : (

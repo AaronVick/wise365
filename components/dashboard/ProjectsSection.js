@@ -4,13 +4,12 @@ import React, { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
 import firebaseService from "@/lib/services/firebaseService";
-
 
 const ProjectsSection = ({ currentUser, setCurrentChat }) => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Fetch projects when component mounts
   useEffect(() => {
@@ -19,10 +18,12 @@ const ProjectsSection = ({ currentUser, setCurrentChat }) => {
 
       if (!currentUser?.authenticationID) {
         console.error("No authentication ID found for the current user.");
+        setError("User authentication ID is missing.");
         return;
       }
 
       setLoading(true);
+      setError(null);
       try {
         const projectsData = await firebaseService.queryCollection("projectNames", {
           where: [{ field: "userId", operator: "==", value: currentUser.authenticationID }],
@@ -31,6 +32,7 @@ const ProjectsSection = ({ currentUser, setCurrentChat }) => {
         setProjects(projectsData);
       } catch (error) {
         console.error("Error fetching projects:", error);
+        setError("Failed to fetch projects. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -39,13 +41,13 @@ const ProjectsSection = ({ currentUser, setCurrentChat }) => {
     fetchProjects();
   }, [currentUser]);
 
-  const handleProjectClick = async (project) => {
+  const handleProjectClick = (project) => {
     console.log("Opening project:", project);
 
     try {
       setCurrentChat({
         id: project.id,
-        title: project.name,
+        title: project.ProjectName,
         participants: [currentUser.authenticationID],
         conversationName: project.id,
       });
@@ -59,7 +61,7 @@ const ProjectsSection = ({ currentUser, setCurrentChat }) => {
     console.log("Creating a new project...");
     try {
       const newProjectData = {
-        name: `New Project ${Date.now()}`,
+        ProjectName: `New Project ${Date.now()}`,
         userId: currentUser.authenticationID,
         createdAt: new Date().toISOString(),
       };
@@ -78,6 +80,8 @@ const ProjectsSection = ({ currentUser, setCurrentChat }) => {
       <h3 className="text-lg font-semibold mb-4">Projects</h3>
       {loading ? (
         <div className="text-center text-gray-500">Loading projects...</div>
+      ) : error ? (
+        <div className="text-center text-red-500">{error}</div>
       ) : projects.length > 0 ? (
         <div className="space-y-2">
           {projects.map((project) => (
@@ -87,7 +91,7 @@ const ProjectsSection = ({ currentUser, setCurrentChat }) => {
               className="w-full justify-between text-gray-800 hover:bg-gray-100"
               onClick={() => handleProjectClick(project)}
             >
-              {project.name}
+              {project.ProjectName}
             </Button>
           ))}
         </div>
