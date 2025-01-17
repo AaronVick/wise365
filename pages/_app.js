@@ -1,5 +1,4 @@
 // pages/_app.js
-
 import '../styles/globals.css';
 import { Inter } from 'next/font/google';
 import { DashboardProvider } from '../contexts/DashboardContext';
@@ -8,7 +7,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../lib/firebase';
-import { ChakraProvider } from '@chakra-ui/react';
 
 const inter = Inter({ subsets: ['latin'], fallback: ['sans-serif'] });
 
@@ -53,28 +51,16 @@ const MyApp = ({ Component, pageProps }) => {
     );
   }
 
-  const shouldUseChakra = router.pathname.startsWith('/admin'); // Only apply Chakra to specific paths
-
-  const MainContent = (
-    <DashboardProvider>
-      <main className={inter.className}>
-        <Component {...pageProps} />
-      </main>
-    </DashboardProvider>
-  );
-
   return (
     <ErrorBoundary
       FallbackComponent={ErrorFallback}
       onError={(error, info) => console.error("ErrorBoundary caught an error", error, info)}
     >
-      {shouldUseChakra ? (
-        <ChakraProvider>
-          {MainContent}
-        </ChakraProvider>
-      ) : (
-        MainContent
-      )}
+      <DashboardProvider>
+        <main className={inter.className}>
+          <Component {...pageProps} />
+        </main>
+      </DashboardProvider>
     </ErrorBoundary>
   );
 };
