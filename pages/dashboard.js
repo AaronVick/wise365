@@ -430,6 +430,7 @@ const Dashboard = () => {
             setCurrentChat={setCurrentChat}
             hasShawnChat={hasShawnChat}
             setHasShawnChat={setHasShawnChat}
+            projects={projects} 
           />
         )}
       </div>

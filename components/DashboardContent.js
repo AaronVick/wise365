@@ -88,7 +88,8 @@ const DashboardContent = ({
   currentChat, 
   setCurrentChat,
   hasShawnChat,
-  setHasShawnChat
+  setHasShawnChat,
+  projects
 }) => {
   if (!setCurrentChat || typeof setCurrentChat !== 'function') {
     console.error('setCurrentChat is not a function');
@@ -541,33 +542,33 @@ const DashboardContent = ({
           </Card>
 
           {/* Projects Section */}
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Projects</h3>
-                {projects.length > 0 ? (
-                  <div className="space-y-2">
-                    {projects.map((project) => (
-                      <Button
-                        key={project.id}
-                        variant="ghost"
-                        className="w-full justify-between text-gray-800 hover:bg-gray-100"
-                        onClick={() => handleProjectClick(project)}
-                      >
-                        {project.name}
-                      </Button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">No projects found</p>
-                )}
-                <Button
-                  variant="ghost"
-                  onClick={handleNewProject}
-                  className="w-full justify-start text-gray-400 mt-4"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Project
-                </Button>
-              </Card>
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Projects</h3>
+              {projects && projects.length > 0 ? (
+                <div className="space-y-2">
+                  {projects.map((project) => (
+                    <Button
+                      key={project.id}
+                      variant="ghost"
+                      className="w-full justify-between text-gray-800 hover:bg-gray-100"
+                      onClick={() => handleProjectClick(project)}
+                    >
+                      {project.name}
+                    </Button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm">No projects found</p>
+              )}
+              <Button
+                variant="ghost"
+                onClick={handleNewProject}
+                className="w-full justify-start text-gray-400 mt-4"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Project
+              </Button>
+            </Card>
 
 
 
