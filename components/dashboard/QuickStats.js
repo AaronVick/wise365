@@ -1,7 +1,7 @@
 // components/dashboard/QuickStats.js
 
 import React from "react";
-import { Card } from "@/components/ui";
+import { Card } from "@/components/ui/card";
 
 
 const QuickStats = ({ recentActivity, currentUser }) => {

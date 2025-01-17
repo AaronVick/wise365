@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
-import { Card, Button } from "@/components/ui";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
 import firebaseService from "@/lib/services/firebaseService";
 
 
