@@ -1,10 +1,10 @@
 // components/dashboard/ProjectsSection.js
 
 import React, { useState, useEffect } from "react";
-import { Card } from "../ui/card";
-import { Button } from "../ui/button";
 import { Plus } from "lucide-react";
-import firebaseService from "../../lib/services/firebaseService";
+import { Card, Button } from "@/components/ui";
+import firebaseService from "@/lib/services/firebaseService";
+
 
 const ProjectsSection = ({ currentUser, setCurrentChat }) => {
   const [projects, setProjects] = useState([]);

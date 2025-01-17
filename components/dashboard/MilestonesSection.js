@@ -1,10 +1,10 @@
 // components/dashboard/MilestonesSection.js
 
 import React, { useState, useEffect } from "react";
-import { Card } from "../ui/card";
-import { Button } from "../ui/button";
+import { Card, Button } from "@/components/ui";
 import { serverTimestamp } from "firebase/firestore";
-import firebaseService from "../../lib/services/firebaseService";
+import firebaseService from "@/lib/services/firebaseService";
+
 
 const MilestonesSection = ({ currentUser, setCurrentChat }) => {
   const [milestones, setMilestones] = useState([]);

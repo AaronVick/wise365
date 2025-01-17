@@ -1,9 +1,9 @@
 // components/dashboard/ResourcesSection.js
 
 import React, { useEffect, useState } from "react";
-import { Card } from "../ui/card";
-import { Button } from "../ui/button";
-import firebaseService from "../../lib/services/firebaseService";
+import { Card, Button } from "@/components/ui";
+import firebaseService from "@/lib/services/firebaseService";
+
 
 const ResourcesSection = ({ currentUser }) => {
   const [resources, setResources] = useState([]);

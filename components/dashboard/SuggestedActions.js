@@ -1,8 +1,7 @@
 // components/dashboard/SuggestedActions.js
 
 import React from "react";
-import { Card } from "../ui/card";
-import { Button } from "../ui/button";
+import { Card, Button } from "@/components/ui";
 
 const SuggestedActions = ({
   currentUser,

@@ -1,7 +1,8 @@
 // components/dashboard/QuickStats.js
 
 import React from "react";
-import { Card } from "../ui/card";
+import { Card } from "@/components/ui";
+
 
 const QuickStats = ({ recentActivity, currentUser }) => {
   // Debug: Log incoming props

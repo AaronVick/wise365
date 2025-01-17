@@ -1,9 +1,10 @@
 // components/dashboard/WelcomeCard.js
 
 import React from "react";
-import { Card, Button } from "../ui";
+import { Card, Button } from "@/components/ui";
 import { serverTimestamp } from "firebase/firestore";
-import firebaseService from "../../lib/services/firebaseService";
+import firebaseService from "@/lib/services/firebaseService";
+
 
 const WelcomeCard = ({ currentUser, setCurrentChat, setHasShawnChat }) => {
   const startShawnChat = async () => {

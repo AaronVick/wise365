@@ -1,11 +1,11 @@
 // components/dashboard/GoalsProgress.js
 
 import React, { useState, useEffect } from "react";
-import { Card } from "../ui/card";
-import { Button } from "../ui/button";
 import { Target } from "lucide-react";
 import { format } from "date-fns";
-import firebaseService from "../../lib/services/firebaseService";
+import { Card, Button } from "@/components/ui";
+import firebaseService from "@/lib/services/firebaseService";
+
 
 const GoalsProgress = ({ currentUser }) => {
   const [goals, setGoals] = useState([]);
