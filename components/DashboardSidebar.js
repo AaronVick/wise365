@@ -194,18 +194,80 @@ const DashboardSidebar = ({
                 ))}
             </Accordion>
           ) : (
-            /* Collapsed view for agents */
-            <div className="space-y-4">
-              {Object.values(agents).flat().map(agent => (
+            /* Collapsed view - all sections */
+            <div className="space-y-6">
+              {/* Agents by category */}
+              {Object.entries(agents).map(([category, categoryAgents]) => (
+                <div key={category} className="space-y-2">
+                  {/* Category indicator */}
+                  <div className="px-2 py-1 text-xs text-gray-400 flex justify-center">
+                    {category === 'Administrative' && <Settings className="h-4 w-4" />}
+                    {category === 'Strategy' && <Target className="h-4 w-4" />}
+                    {category === 'Marketing' && <BookOpen className="h-4 w-4" />}
+                    {category === 'Sales' && <Briefcase className="h-4 w-4" />}
+                  </div>
+                  {/* Category agents */}
+                  {categoryAgents.map(agent => (
+                    <Button
+                      key={agent.id}
+                      variant="ghost"
+                      className="w-full p-2 flex justify-center"
+                      onClick={() => onAgentClick(agent)}
+                      title={agent.name}
+                    >
+                      <Bot className="h-5 w-5 text-gray-400" />
+                    </Button>
+                  ))}
+                </div>
+              ))}
+          
+              {/* Projects Section */}
+              <div className="space-y-2">
+                <div className="px-2 py-1 text-xs text-gray-400 flex justify-center">
+                  <Briefcase className="h-4 w-4" />
+                </div>
+                {projects.map(project => (
+                  <Button
+                    key={project.id}
+                    variant="ghost"
+                    className="w-full p-2 flex justify-center"
+                    onClick={() => onProjectClick(project)}
+                    title={project.ProjectName}
+                  >
+                    <Briefcase className="h-5 w-5 text-gray-400" />
+                  </Button>
+                ))}
+              </div>
+          
+              {/* Goals Section */}
+              <div className="space-y-2">
+                <div className="px-2 py-1 text-xs text-gray-400 flex justify-center">
+                  <Target className="h-4 w-4" />
+                </div>
                 <Button
-                  key={agent.id}
                   variant="ghost"
                   className="w-full p-2 flex justify-center"
-                  onClick={() => onAgentClick(agent)}
+                  onClick={() => setCurrentTool('goals')}
+                  title="Add New Goal"
                 >
-                  <Bot className="h-5 w-5 text-gray-400" />
+                  <Target className="h-5 w-5 text-gray-400" />
                 </Button>
-              ))}
+              </div>
+          
+              {/* Resources Section */}
+              <div className="space-y-2">
+                <div className="px-2 py-1 text-xs text-gray-400 flex justify-center">
+                  <BookOpen className="h-4 w-4" />
+                </div>
+                <Button
+                  variant="ghost"
+                  className="w-full p-2 flex justify-center"
+                  onClick={() => setCurrentTool('resources')}
+                  title="Resources"
+                >
+                  <BookOpen className="h-5 w-5 text-gray-400" />
+                </Button>
+              </div>
             </div>
           )}
 
