@@ -20,7 +20,9 @@ import {
   BookOpen,
   Settings,
   Moon,
-  Sun
+  Sun,
+  MessageSquare,
+  Edit
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
@@ -395,11 +397,6 @@ const DashboardSidebar = ({
         </div>
         
         
-      {/* Resize Handle */}
-      <div
-        className="absolute right-0 top-0 w-1 h-full cursor-ew-resize bg-gray-700 hover:bg-blue-600 transition-colors"
-        onMouseDown={onResize}
-      />
 
       {/* Collapse Toggle */}
       <Button
