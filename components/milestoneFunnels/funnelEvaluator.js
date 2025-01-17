@@ -1,3 +1,5 @@
+// components/milestoneFunnels/funnelEvaluator.js
+
 'use client';
 
 export const evaluateUserFunnels = (funnels, currentUser, userFunnelData = {}) => {

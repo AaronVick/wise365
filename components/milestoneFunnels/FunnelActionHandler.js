@@ -1,4 +1,4 @@
-// components/FunnelActionHandler.js
+// components/milestoneFunnels/FunnelActionHandler.js
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 

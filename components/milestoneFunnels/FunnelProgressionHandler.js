@@ -1,4 +1,4 @@
-// components/FunnelProgressionHandler.js
+// components/milestoneFunnels/FunnelProgressionHandler.js
 import { useState, useEffect } from 'react';
 import { useFirebaseData } from '../../hooks/useFirebaseData';
 import firebaseService from '../../lib/services/firebaseService';

@@ -1,4 +1,4 @@
-// components/MilestoneProgress.js
+// components/milestoneFunnels/MilestoneProgress.js
 
 import React, { useEffect, useState } from 'react';
 

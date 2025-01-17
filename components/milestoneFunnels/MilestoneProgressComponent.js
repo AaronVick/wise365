@@ -1,4 +1,4 @@
-// /components/MilestoneProgressComponent.js
+// components/milestoneFunnels/MilestoneProgressComponent.js
 
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';

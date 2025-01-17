@@ -1,4 +1,4 @@
-// components/FunnelActionInterface.js
+// components/milestoneFunnels/FunnelActionInterface.js
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { Card } from '@/components/ui/card';

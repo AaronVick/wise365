@@ -1,4 +1,4 @@
-// components/MilestoneFilters.js
+// components/milestoneFunnels/MilestoneFilters.js
 
 import React from 'react';
 import { Button } from '@/components/ui/button';

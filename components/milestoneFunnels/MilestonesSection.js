@@ -1,4 +1,4 @@
-// components/MilestonesSection.js
+// components/milestoneFunnels/MilestonesSection.js
 
 'use client';
 
