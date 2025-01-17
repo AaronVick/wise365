@@ -96,7 +96,7 @@ const DashboardContent = ({
   }
   
   const router = useRouter();
-  const [hasShawnChat, setHasShawnChat] = useState(false);
+
   const [messages, setMessages] = useState([]);
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [userData, setUserData] = useState(null);
