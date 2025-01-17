@@ -1,8 +1,7 @@
 // pages/dashboard.js
 
-// pages/dashboard.js
-
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '../lib/firebase';
@@ -50,6 +49,19 @@ import {
   handleContextMenu 
 } from '../lib/dashboardTools';
 
+
+const ChatWithShawn = dynamic(() => import('@/components/ChatWithShawn'), {
+  loading: () => (
+    <div className="flex items-center justify-center h-screen">
+      <div className="text-center">
+        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading chat interface...</p>
+      </div>
+    </div>
+  ),
+});
+
+
 const Dashboard = () => {
   const router = useRouter();
   const [user, loading] = useAuthState(auth);
@@ -59,6 +71,8 @@ const Dashboard = () => {
   const [nestedChats, setNestedChats] = useState({});
   const [currentTool, setCurrentTool] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [hasShawnChat, setHasShawnChat] = useState(false);
+ 
 
   // New state variables for collapsible sidebar
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -334,7 +348,6 @@ const Dashboard = () => {
 
   return (
     <div className="flex h-screen bg-slate-50">
-      {/* Sidebar */}
       <DashboardSidebar 
         agents={agents}
         projects={projects}
@@ -355,9 +368,8 @@ const Dashboard = () => {
         setCurrentTool={setCurrentTool}
       />
 
-      {/* Main Content Area */}
       <div className="flex-1 overflow-auto bg-slate-50">
-        {currentChat && currentChat.agentId === 'shawn' ? (
+        {currentChat?.agentId === 'shawn' ? (
           <ChatWithShawn
             currentUser={userData}
             chatId={currentChat.id}

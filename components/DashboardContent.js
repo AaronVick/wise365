@@ -84,10 +84,11 @@ const Badge = ({
 const DashboardContent = ({ 
   currentUser, 
   currentTool, 
-  onToolComplete, 
-  setCurrentTool,
-  currentChat,
-  setCurrentChat
+  setCurrentTool, 
+  currentChat, 
+  setCurrentChat,
+  hasShawnChat,
+  setHasShawnChat
 }) => {
   if (!setCurrentChat || typeof setCurrentChat !== 'function') {
     console.error('setCurrentChat is not a function');
@@ -395,55 +396,51 @@ const DashboardContent = ({
       <ScrollArea className="flex-1 p-6">
         <div className="space-y-6 max-w-5xl mx-auto">
 
+          
           {/* Welcome Card */}
-            {!hasShawnChat && (
-              <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                    <span className="text-blue-600 font-semibold">S</span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Welcome to Business Wise365!</h3>
-                    <p className="text-gray-600 mb-4">
-                      Hi, I'm Shawn, your personal guide to our AI team. I'll help you navigate our
-                      platform and connect you with the right experts for your business needs.
-                    </p>
-                    <Button 
-                      onClick={async () => {
-                        try {
-                          console.log('Starting Shawn chat initialization...');
-                          const shawnAgent = {
-                            id: 'shawn',
-                            name: 'Shawn',
-                            role: 'Personal Guide'
-                          };
-                          
-                          // Create a new chat session
-                          const newChat = {
-                            id: `shawn-${currentUser.authenticationID}`,
-                            agentId: 'shawn',
-                            title: 'Chat with Shawn',
-                            participants: [currentUser.authenticationID, 'shawn'],
-                            isDefault: true,
-                            conversationName: `shawn-${currentUser.authenticationID}`
-                          };
-                          
-                          // Update state to show chat interface
-                          setCurrentChat(newChat);
-                          setHasShawnChat(true);
-                          
-                        } catch (error) {
-                          console.error('Error in Shawn chat initialization:', error);
-                        }
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      Chat with Shawn
-                    </Button>
-                  </div>
+          {!hasShawnChat && (
+            <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-blue-600 font-semibold">S</span>
                 </div>
-              </Card>
-            )}
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Welcome to Business Wise365!</h3>
+                  <p className="text-gray-600 mb-4">
+                    Hi, I'm Shawn, your personal guide to our AI team. I'll help you navigate our
+                    platform and connect you with the right experts for your business needs.
+                  </p>
+                  <Button 
+                    onClick={async () => {
+                      try {
+                        console.log('Starting Shawn chat initialization...');
+                        
+                        // Create a new chat session for Shawn
+                        const newChat = {
+                          id: `shawn-${currentUser.authenticationID}`,
+                          agentId: 'shawn',
+                          title: 'Chat with Shawn',
+                          participants: [currentUser.authenticationID, 'shawn'],
+                          isDefault: true,
+                          conversationName: `shawn-${currentUser.authenticationID}`
+                        };
+                        
+                        // Update state
+                        setCurrentChat(newChat);
+                        setHasShawnChat(true);
+                        
+                      } catch (error) {
+                        console.error('Error in Shawn chat initialization:', error);
+                      }
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Chat with Shawn
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
 
 
           {/* Quick Stats - with null checks */}
