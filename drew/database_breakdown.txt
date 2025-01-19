@@ -1,0 +1,111 @@
+The database structure is organized into several key categories, each representing a fundamental aspect of the system. These categories include multi-tenant management, funnel and milestone tracking, conversation analysis, data collection, intelligence and assessments, and website scraping. Below is a detailed narrative of the tables, their purposes, and relationships.
+
+
+(we may not need this due to the framework you installed)
+1. Multi-Tenant and User Management
+This category manages tenants (organizations), users, and their associated teams. It ensures proper segregation of data for multi-tenant applications.
+
+Tenant: Represents an organization or customer entity. Each tenant can have multiple users, teams, and funnel progress records.
+
+Relationships: Connected to User, Team, and FunnelProgress tables.
+User: Represents an individual within a tenant. Users are associated with teams, can engage in conversations, and have progress tracked within funnels.
+
+Relationships: Linked to Tenant, TeamMember, UserConversation, and FunnelProgress.
+Team: Groups users within a tenant for collaborative purposes. Teams have specific funnel progress and members.
+
+Relationships: Connected to Tenant, TeamMember, and FunnelProgress.
+TeamMember: Tracks individual users' membership and roles within a team.
+
+Relationships: Links Team and User.
+
+
+2. Funnel and Milestone Management
+This section defines the structure and tracking of user progress through predefined funnels and milestones.
+
+FunnelDefinition: Represents the blueprint of a funnel, including milestones, prerequisites, data points, and triggers.
+
+Relationships: Linked to FunnelMilestone, FunnelPrerequisite, FunnelProgress, FunnelDataPoint, and FunnelTrigger.
+FunnelMilestone: Defines individual milestones within a funnel. Tracks the order, requirements, and validation rules.
+
+Relationships: Connected to FunnelDefinition and MilestoneProgress.
+FunnelPrerequisite: Establishes relationships between funnels, specifying prerequisite funnels that must be completed.
+
+Relationships: Links FunnelDefinition to itself through prerequisite relationships.
+FunnelProgress: Tracks the progress of a user, team, or tenant through a specific funnel.
+
+Relationships: Connected to Tenant, Team, User, FunnelDefinition, and associated milestones.
+MilestoneProgress: Tracks progress on individual milestones within a funnel.
+
+Relationships: Links FunnelProgress and FunnelMilestone.
+
+
+
+3. Conversation Analysis and Interaction
+Manages conversations between users and agents, extracting insights to enhance user engagement and funnel advancement.
+
+UserConversation: Represents conversations between users and agents, storing metadata and context.
+
+Relationships: Linked to User, ConversationMessage, and ConversationAnalysis.
+ConversationMessage: Stores individual messages within a conversation, including sender and content.
+
+Relationships: Connected to UserConversation.
+ConversationAnalysis: Contains insights derived from analyzing conversations, such as extracted data points and findings.
+
+Relationships: Links to UserConversation.
+
+
+
+4. Data Collection
+Handles data collected from users or processes, associated with funnel progress and milestones.
+
+FunnelDataPoint: Defines specific data points required or tracked in a funnel.
+
+Relationships: Connected to FunnelDefinition.
+DataPointCollection: Stores collected data points for a user's funnel progress, including source and validation status.
+
+Relationships: Linked to FunnelProgress.
+
+
+
+5. Intelligence and Assessments
+Focuses on analyzing user progress and generating recommendations for funnel advancement.
+
+FunnelAssessment: Tracks periodic assessments of user progress in a funnel, including metrics and recommendations.
+
+Relationships: Linked to FunnelProgress.
+FunnelAnalysisRecord: Logs detailed analysis of funnel progress, including findings and next steps.
+
+Relationships: Connected to FunnelProgress.
+FunnelSuggestedAction: Stores recommended actions based on progress and analysis.
+
+Relationships: Linked to FunnelProgress.
+
+
+
+6. Website Scraping
+Automates the collection and analysis of website content to support funnel activities.
+
+WebsiteScrapeJob: Represents a scraping task initiated by a user or team. Tracks status and results.
+
+Relationships: Linked to Tenant, Team, User, and WebsitePage.
+WebsitePage: Stores individual pages scraped during a job, including metadata and content.
+
+Relationships: Connected to WebsiteScrapeJob.
+WebsiteScrapeProgress: Tracks the progress of a scraping job over time.
+
+Relationships: Linked to WebsiteScrapeJob.
+
+
+
+7. Routing and Configuration
+Supports advanced configurations for routing LLM interactions and task prioritization.
+
+RouterConfig: Stores configuration for routing tasks to LLM providers based on type, cost, and performance.
+
+Relationships: None directly relational but integral for routing logic.
+RoutingPreference: Tracks tenant-specific preferences for task routing.
+
+Relationships: Connected to Tenant.
+RoutingHistory: Logs the history of routing decisions for auditing and performance tracking.
+
+Relationships: Links to conversations and messages through identifiers.

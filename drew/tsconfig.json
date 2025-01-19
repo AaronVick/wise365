@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    ...
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "types": ["node"],
+    ...
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "types/global.d.ts"
+  ]
+}
+*/

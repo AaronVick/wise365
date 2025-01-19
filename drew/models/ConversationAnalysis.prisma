@@ -1,0 +1,33 @@
+// models/ConversationAnalysis.prisma
+
+/**
+ * Prisma model for storing conversation analysis results.
+ * 
+ * This model works with:
+ * - api/services/conversation-intelligence.ts (creates records)
+ * - services/analyzeChatContent.ts (provides data structure)
+ * - services/updateFunnelProgress.ts (uses analysis data)
+ * 
+ * @description Defines the database structure for storing the results of
+ * conversation analysis, including extracted data points, findings, and
+ * relevance determination.
+ */
+
+model ConversationAnalysis {
+  id              String   @id @default(cuid())
+  conversationId  String   @map("conversation_id")
+  serviceType     String   @map("service_type") // funnel_intelligence, sentiment_analysis, etc.
+  isRelevant      Boolean  @map("is_relevant")
+  findings        Json?    // Structured data about what was found
+  extractedData   Json?    @map("extracted_data") // Data points extracted for funnel tracking
+  analyzedAt      DateTime @default(now()) @map("analyzed_at")
+  confidence      Float?   // Overall confidence in the analysis
+  metadata        Json?    // Additional analysis metadata
+
+  // Relations
+  conversation    UserConversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId])
+  @@index([serviceType, analyzedAt])
+  @@map("conversation_analysis")
+}

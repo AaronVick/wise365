@@ -1,0 +1,843 @@
+// sample_data.ts
+import { PrismaClient, Role } from '@prisma/client'
+import { hash } from 'bcrypt'
+
+const prisma = new PrismaClient()
+
+async function main() {
+  console.log('Starting database seed...')
+
+  // Clear existing data
+  await clearDatabase()
+
+  // Create test organizations
+  const mainOrg = await prisma.organization.create({
+    data: {
+      stripeCustomerId: 'cus_test_main',
+      name: 'Main Test Organization',
+      email: 'admin@testorg.com',
+      phone: '+1-555-0123',
+      website: 'https://testorg.com',
+      completedOnboarding: true,
+      tier: 'enterprise',
+    }
+  })
+
+  const startupOrg = await prisma.organization.create({
+    data: {
+      stripeCustomerId: 'cus_test_startup',
+      name: 'Startup Test Organization',
+      email: 'admin@startup-test.com',
+      phone: '+1-555-0124',
+      website: 'https://startup-test.com',
+      completedOnboarding: true,
+      tier: 'startup',
+    }
+  })
+
+  // Create admin users
+  const mainAdminPassword = await hash('admin123', 10)
+  const mainAdmin = await prisma.user.create({
+    data: {
+      organizationId: mainOrg.id,
+      tenantId: mainOrg.id, // Using org id as tenant id for simplicity
+      email: 'admin@testorg.com',
+      name: 'Main Admin',
+      password: mainAdminPassword,
+      role: Role.ADMIN,
+      completedOnboarding: true,
+      locale: 'en-US',
+      enabledContactsNotifications: true,
+      enabledInboxNotifications: true,
+      enabledWeeklySummary: true,
+      lastLogin: new Date(),
+    }
+  })
+
+  const startupAdminPassword = await hash('startup123', 10)
+  const startupAdmin = await prisma.user.create({
+    data: {
+      organizationId: startupOrg.id,
+      tenantId: startupOrg.id,
+      email: 'admin@startup-test.com',
+      name: 'Startup Admin',
+      password: startupAdminPassword,
+      role: Role.ADMIN,
+      completedOnboarding: true,
+      locale: 'en-US',
+      enabledContactsNotifications: true,
+      lastLogin: new Date(),
+    }
+  })
+
+  // Create regular users for main organization
+  const regularUsers = await createRegularUsers(mainOrg.id, 3)
+
+  // Create teams for main organization
+  const teams = await createTeams(mainOrg.id, regularUsers)
+
+  // Create funnel definitions
+  const funnels = await createFunnelDefinitions(mainAdmin.id)
+
+  // Create funnel progress records
+  await createFunnelProgress(mainOrg.id, teams[0].id, regularUsers[0].id, funnels[0].id)
+
+  console.log('Seed completed successfully!')
+}
+
+// Helper function to clear the database
+async function clearDatabase() {
+  const tablenames = await prisma.$queryRaw<
+    Array<{ tablename: string }>
+  >`SELECT tablename FROM pg_tables WHERE schemaname='public'`
+
+  for (const { tablename } of tablenames) {
+    if (tablename !== '_prisma_migrations') {
+      try {
+        await prisma.$executeRawUnsafe(
+          `TRUNCATE TABLE "public"."${tablename}" CASCADE;`
+        )
+      } catch (error) {
+        console.log({ error })
+      }
+    }
+  }
+}
+
+// Helper function to create regular users
+async function createRegularUsers(orgId: string, count: number) {
+  const users = []
+  for (let i = 1; i <= count; i++) {
+    const password = await hash(`user${i}pass`, 10)
+    const user = await prisma.user.create({
+      data: {
+        organizationId: orgId,
+        tenantId: orgId,
+        email: `user${i}@testorg.com`,
+        name: `Test User ${i}`,
+        password: password,
+        role: Role.MEMBER,
+        completedOnboarding: true,
+        locale: 'en-US',
+        enabledContactsNotifications: true,
+        lastLogin: new Date(),
+      }
+    })
+    users.push(user)
+  }
+  return users
+}
+
+// Helper function to create teams
+async function createTeams(orgId: string, users: any[]) {
+  const teams = []
+
+  // Create Sales Team
+  const salesTeam = await prisma.team.create({
+    data: {
+      tenantId: orgId,
+      name: 'Sales Team',
+      settings: {
+        meetingDay: 'MONDAY',
+        targetRevenue: 1000000,
+      }
+    }
+  })
+  teams.push(salesTeam)
+
+  // Create Marketing Team
+  const marketingTeam = await prisma.team.create({
+    data: {
+      tenantId: orgId,
+      name: 'Marketing Team',
+      settings: {
+        meetingDay: 'WEDNESDAY',
+        contentCalendarEnabled: true,
+      }
+    }
+  })
+  teams.push(marketingTeam)
+
+  // Assign users to teams
+  for (const user of users) {
+    await prisma.teamMember.create({
+      data: {
+        teamId: salesTeam.id,
+        userId: user.id,
+        role: 'member',
+        joinedAt: new Date()
+      }
+    })
+
+    // Assign first user to marketing team as well
+    if (user === users[0]) {
+      await prisma.teamMember.create({
+        data: {
+          teamId: marketingTeam.id,
+          userId: user.id,
+          role: 'lead',
+          joinedAt: new Date()
+        }
+      })
+    }
+  }
+
+  return teams
+}
+
+// Helper function to create funnel definitions
+async function createFunnelDefinitions(leadAgentId: string) {
+  const funnels = []
+
+  // Create Customer Onboarding Funnel
+  const onboardingFunnel = await prisma.funnelDefinition.create({
+    data: {
+      name: 'Customer Onboarding',
+      description: 'Standard customer onboarding process',
+      priority: 1,
+      level: 1,
+      isActive: true,
+      leadAgentId,
+      supportingAgentIds: ['agent_support_1', 'agent_support_2'],
+      milestones: {
+        create: [
+          {
+            name: 'Initial Setup',
+            description: 'Complete initial account setup and configuration',
+            order: 1,
+            isRequired: true,
+            validationRules: {
+              requiredFields: ['accountName', 'primaryContact', 'billingInfo'],
+              customValidations: {}
+            },
+            kpis: { completionTime: '24h', satisfactionScore: 4.5 }
+          },
+          {
+            name: 'Team Training',
+            description: 'Complete team training sessions',
+            order: 2,
+            isRequired: true,
+            validationRules: {
+              requiredFields: ['trainingCompleted', 'quizScore'],
+              customValidations: { minQuizScore: 80 }
+            },
+            kpis: { attendanceRate: 90, quizPassRate: 85 }
+          },
+          {
+            name: 'Integration Setup',
+            description: 'Set up and test all required integrations',
+            order: 3,
+            isRequired: false,
+            validationRules: {
+              requiredFields: ['integrationsConfigured', 'testsPassed'],
+              customValidations: {}
+            },
+            kpis: { successRate: 95, timeToComplete: '48h' }
+          }
+        ]
+      }
+    }
+  })
+  funnels.push(onboardingFunnel)
+
+  // Create Sales Pipeline Funnel
+  const salesFunnel = await prisma.funnelDefinition.create({
+    data: {
+      name: 'Sales Pipeline',
+      description: 'Standard B2B sales pipeline process',
+      priority: 2,
+      level: 2,
+      isActive: true,
+      leadAgentId,
+      supportingAgentIds: ['agent_sales_1', 'agent_sales_2'],
+      milestones: {
+        create: [
+          {
+            name: 'Lead Qualification',
+            description: 'Qualify and score incoming leads',
+            order: 1,
+            isRequired: true,
+            validationRules: {
+              requiredFields: ['companySize', 'budget', 'timeline'],
+              customValidations: { minScore: 60 }
+            },
+            kpis: { qualificationRate: 70, responseTime: '4h' }
+          },
+          {
+            name: 'Discovery Call',
+            description: 'Initial discovery call with prospect',
+            order: 2,
+            isRequired: true,
+            validationRules: {
+              requiredFields: ['callNotes', 'nextSteps'],
+              customValidations: { minDuration: 30 }
+            },
+            kpis: { showUpRate: 80, conversionToDemo: 60 }
+          },
+          {
+            name: 'Product Demo',
+            description: 'Detailed product demonstration',
+            order: 3,
+            isRequired: true,
+            validationRules: {
+              requiredFields: ['demoCompleted', 'feedback'],
+              customValidations: {}
+            },
+            kpis: { demoCompletionRate: 90, positiveResponseRate: 75 }
+          }
+        ]
+      }
+    }
+  })
+  funnels.push(salesFunnel)
+
+  // Create Marketing Campaign Funnel
+  const marketingFunnel = await prisma.funnelDefinition.create({
+    data: {
+      name: 'Marketing Campaign',
+      description: 'Digital marketing campaign workflow',
+      priority: 3,
+      level: 1,
+      isActive: true,
+      leadAgentId,
+      supportingAgentIds: ['agent_marketing_1', 'agent_marketing_2'],
+      milestones: {
+        create: [
+          {
+            name: 'Campaign Planning',
+            description: 'Define campaign strategy and goals',
+            order: 1,
+            isRequired: true,
+            validationRules: {
+              requiredFields: ['targetAudience', 'goals', 'budget'],
+              customValidations: {}
+            },
+            kpis: { planningCompletionTime: '72h', stakeholderApproval: true }
+          },
+          {
+            name: 'Content Creation',
+            description: 'Create and approve campaign content',
+            order: 2,
+            isRequired: true,
+            validationRules: {
+              requiredFields: ['content', 'approvals'],
+              customValidations: { minContentPieces: 3 }
+            },
+            kpis: { contentQualityScore: 85, reviewCycles: 2 }
+          },
+          {
+            name: 'Campaign Launch',
+            description: 'Launch and monitor campaign',
+            order: 3,
+            isRequired: true,
+            validationRules: {
+              requiredFields: ['launchChecklist', 'monitoringSetup'],
+              customValidations: {}
+            },
+            kpis: { onTimeDeployment: true, initialEngagementRate: 15 }
+          }
+        ]
+      }
+    }
+  })
+  funnels.push(marketingFunnel)
+
+  return funnels
+}
+
+// Helper function to create funnel progress
+async function createFunnelProgress(orgId: string, teamId: string, userId: string, funnelId: string) {
+  // Create funnel progress
+  const progress = await prisma.funnelProgress.create({
+    data: {
+      tenantId: orgId,
+      teamId,
+      userId,
+      funnelId,
+      status: 'IN_PROGRESS',
+      startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+      completionPercentage: 33.3,
+      lastActivity: new Date(),
+      milestones: {
+        create: [
+          {
+            milestoneId: (await prisma.funnelMilestone.findFirst({
+              where: { funnelId, order: 1 }
+            }))!.id,
+            status: 'completed',
+            startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+            completedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+            validationResults: { passed: true, score: 85 },
+            collectedData: { accountName: 'Test Account', primaryContact: 'John Doe' }
+          }
+        ]
+      }
+    }
+  })
+
+  // Create analysis record
+  await prisma.funnelAnalysisRecord.create({
+    data: {
+      progressId: progress.id,
+      analysisType: 'milestone_completion',
+      findings: {
+        completionTime: '24h',
+        efficiency: 'high',
+        bottlenecks: []
+      },
+      recommendations: {
+        nextSteps: ['Schedule team training', 'Prepare integration documentation'],
+        priority: 'high'
+      },
+      nextSteps: {
+        immediate: ['Send welcome email', 'Schedule kick-off call'],
+        upcoming: ['Plan training sessions', 'Prepare technical requirements']
+      }
+    }
+  })
+
+  // Create suggested action
+  await prisma.funnelSuggestedAction.create({
+    data: {
+      progressId: progress.id,
+      type: 'schedule_training',
+      priority: 1,
+      description: 'Schedule initial team training session',
+      reasoning: 'First milestone completed, team training is next critical step',
+      status: 'pending',
+      suggestedAt: new Date(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    }
+  })
+}
+
+// Helper function to create contacts
+async function createContacts(orgId: string, userId: string) {
+  const contacts = []
+
+  // Create company contacts
+  const companyContact = await prisma.contact.create({
+    data: {
+      organizationId: orgId,
+      record: 'COMPANY',
+      name: 'Tech Innovations Inc',
+      email: 'contact@techinnovations.test',
+      phone: '+1-555-0199',
+      address: '123 Tech Plaza, Silicon Valley, CA 94025',
+      stage: 'QUALIFIED',
+      activities: {
+        create: [
+          {
+            actionType: 'CREATE',
+            actorId: userId,
+            actorType: 'MEMBER',
+            metadata: { source: 'manual_entry' },
+            occurredAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          }
+        ]
+      },
+      comments: {
+        create: [
+          {
+            userId,
+            text: 'Initial contact made through conference',
+            createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000)
+          }
+        ]
+      },
+      notes: {
+        create: [
+          {
+            userId,
+            text: 'Enterprise client with 500+ employees',
+            createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000)
+          }
+        ]
+      },
+      tags: {
+        connect: [
+          { text: 'enterprise' },
+          { text: 'tech' }
+        ]
+      }
+    }
+  })
+  contacts.push(companyContact)
+
+  // Create individual contacts
+  const personContact = await prisma.contact.create({
+    data: {
+      organizationId: orgId,
+      record: 'PERSON',
+      name: 'Sarah Anderson',
+      email: 'sarah.anderson@email.test',
+      phone: '+1-555-0200',
+      address: '456 Business Ave, New York, NY 10001',
+      stage: 'OPPORTUNITY',
+      activities: {
+        create: [
+          {
+            actionType: 'CREATE',
+            actorId: userId,
+            actorType: 'MEMBER',
+            metadata: { source: 'web_form' },
+            occurredAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)
+          }
+        ]
+      },
+      tasks: {
+        create: [
+          {
+            title: 'Schedule follow-up call',
+            description: 'Discuss proposal details',
+            status: 'OPEN',
+            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+          }
+        ]
+      }
+    }
+  })
+  contacts.push(personContact)
+
+  return contacts
+}
+
+// Helper function to create conversations
+async function createConversations(userId: string, contacts: any[]) {
+  const conversations = []
+
+  for (const contact of contacts) {
+    const conversation = await prisma.userConversation.create({
+      data: {
+        userId,
+        agentId: 'agent_sales_1',
+        startedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        lastMessage: new Date(),
+        metadata: { contactId: contact.id },
+        messages: {
+          create: [
+            {
+              role: 'user',
+              content: 'Hi, I\'d like to learn more about your enterprise solutions.',
+              contentType: 'text',
+              timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+            },
+            {
+              role: 'agent',
+              content: 'I\'d be happy to help! Our enterprise solutions include...',
+              contentType: 'text',
+              timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000 + 5 * 60 * 1000)
+            }
+          ]
+        },
+        analysis: {
+          create: [
+            {
+              serviceType: 'sentiment_analysis',
+              isRelevant: true,
+              findings: { sentiment: 'positive', confidence: 0.89 },
+              extractedData: { 
+                intent: 'information_request',
+                topics: ['enterprise', 'solutions']
+              },
+              analyzedAt: new Date()
+            }
+          ]
+        }
+      }
+    })
+    conversations.push(conversation)
+  }
+
+  return conversations
+}
+
+// Helper function to create website scraping jobs
+async function createWebsiteScrapeJobs(orgId: string, teamId: string, userId: string) {
+  const scrapeJob = await prisma.websiteScrapeJob.create({
+    data: {
+      tenantId: orgId,
+      teamId,
+      userId,
+      websiteUrl: 'https://techinnovations.test',
+      status: 'COMPLETED',
+      startedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      completedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000),
+      metadata: {
+        maxDepth: 3,
+        excludePatterns: ['/api/*', '/admin/*']
+      },
+      pages: {
+        create: [
+          {
+            url: 'https://techinnovations.test',
+            title: 'Tech Innovations - Home',
+            content: 'Leading provider of enterprise solutions...',
+            scrapedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000 + 15 * 60 * 1000),
+            status: 'success',
+            metadata: {
+              statusCode: 200,
+              contentType: 'text/html',
+              wordCount: 1500
+            }
+          }
+        ]
+      },
+      progress: {
+        create: [
+          {
+            timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000),
+            status: 'completed',
+            message: 'Scraping completed successfully',
+            details: {
+              pagesProcessed: 15,
+              totalPages: 15,
+              errors: []
+            }
+          }
+        ]
+      }
+    }
+  })
+
+  return scrapeJob
+}
+
+// Helper function to create routing configurations
+async function createRoutingConfigs() {
+  // Create base router configs
+  const openAiConfig = await prisma.routerConfig.create({
+    data: {
+      taskType: 'general',
+      priority: 1,
+      provider: 'openai',
+      model: 'gpt-4',
+      isDefault: true,
+      cost: 0.03,
+      capabilities: {
+        supportedTasks: ['chat', 'completion', 'summarization'],
+        maxTokens: 8000,
+        contextWindow: 8000
+      },
+      metadata: {
+        apiVersion: '1.0',
+        timeout: 30000
+      }
+    }
+  })
+
+  const anthropicConfig = await prisma.routerConfig.create({
+    data: {
+      taskType: 'analysis',
+      priority: 2,
+      provider: 'anthropic',
+      model: 'claude-3',
+      isDefault: false,
+      cost: 0.04,
+      capabilities: {
+        supportedTasks: ['analysis', 'complex_reasoning', 'code'],
+        maxTokens: 10000,
+        contextWindow: 10000
+      }
+    }
+  })
+
+  return [openAiConfig, anthropicConfig]
+}
+
+// Helper function to create API keys and webhooks
+async function createApiKeysAndWebhooks(orgId: string) {
+  // Create API key
+  const apiKey = await prisma.apiKey.create({
+    data: {
+      organizationId: orgId,
+      description: 'Development API Key',
+      hashedKey: 'hashed_test_key_123',
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year from now
+    }
+  })
+
+  // Create webhook
+  const webhook = await prisma.webhook.create({
+    data: {
+      organizationId: orgId,
+      url: 'https://api.testorg.com/webhooks',
+      triggers: ['CONTACT_CREATED', 'CONTACT_UPDATED'],
+      secret: 'webhook_secret_123'
+    }
+  })
+
+  return { apiKey, webhook }
+}
+
+// Helper function to create business hours
+async function createBusinessHours(orgId: string) {
+  const workHours = []
+  const workDays = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
+
+  for (const day of workDays) {
+    const workHour = await prisma.workHours.create({
+      data: {
+        organizationId: orgId,
+        dayOfWeek: day,
+        timeSlots: {
+          create: [
+            {
+              start: new Date('2000-01-01T09:00:00'),
+              end: new Date('2000-01-01T17:00:00')
+            }
+          ]
+        }
+      }
+    })
+    workHours.push(workHour)
+  }
+
+  return workHours
+}
+
+// Update main function to use all helpers
+async function main() {
+  console.log('Starting database seed...')
+
+  // Clear existing data
+  await clearDatabase()
+
+  // Create test organizations
+  const mainOrg = await prisma.organization.create({
+    data: {
+      stripeCustomerId: 'cus_test_main',
+      name: 'Main Test Organization',
+      email: 'admin@testorg.com',
+      phone: '+1-555-0123',
+      website: 'https://testorg.com',
+      completedOnboarding: true,
+      tier: 'enterprise',
+    }
+  })
+
+  const startupOrg = await prisma.organization.create({
+    data: {
+      stripeCustomerId: 'cus_test_startup',
+      name: 'Startup Test Organization',
+      email: 'admin@startup-test.com',
+      phone: '+1-555-0124',
+      website: 'https://startup-test.com',
+      completedOnboarding: true,
+      tier: 'startup',
+    }
+  })
+
+  // Create admin users
+  const mainAdminPassword = await hash('admin123', 10)
+  const mainAdmin = await prisma.user.create({
+    data: {
+      organizationId: mainOrg.id,
+      tenantId: mainOrg.id,
+      email: 'admin@testorg.com',
+      name: 'Main Admin',
+      password: mainAdminPassword,
+      role: Role.ADMIN,
+      completedOnboarding: true,
+      locale: 'en-US',
+      enabledContactsNotifications: true,
+      enabledInboxNotifications: true,
+      enabledWeeklySummary: true,
+      lastLogin: new Date(),
+    }
+  })
+
+  // Create regular users
+  const regularUsers = await createRegularUsers(mainOrg.id, 3)
+
+  // Create teams
+  const teams = await createTeams(mainOrg.id, regularUsers)
+
+  // Create funnel definitions
+  const funnels = await createFunnelDefinitions(mainAdmin.id)
+
+  // Create funnel progress
+  await createFunnelProgress(mainOrg.id, teams[0].id, regularUsers[0].id, funnels[0].id)
+
+  // Create contacts
+  const contacts = await createContacts(mainOrg.id, regularUsers[0].id)
+
+  // Create conversations
+  const conversations = await createConversations(regularUsers[0].id, contacts)
+
+  // Create website scraping jobs
+  const scrapeJob = await createWebsiteScrapeJobs(mainOrg.id, teams[0].id, regularUsers[0].id)
+
+  // Create routing configurations
+  const routerConfigs = await createRoutingConfigs()
+
+  // Create API keys and webhooks
+  const { apiKey, webhook } = await createApiKeysAndWebhooks(mainOrg.id)
+
+  // Create business hours
+  const workHours = await createBusinessHours(mainOrg.id)
+
+  console.log('Seed completed successfully!')
+}
+
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })
+}
+
+// Helper function to clear the database
+async function clearDatabase() {
+  const tablenames = await prisma.$queryRaw<
+    Array<{ tablename: string }>
+  >`SELECT tablename FROM pg_tables WHERE schemaname='public'`
+
+  for (const { tablename } of tablenames) {
+    if (tablename !== '_prisma_migrations') {
+      try {
+        await prisma.$executeRawUnsafe(
+          `TRUNCATE TABLE "public"."${tablename}" CASCADE;`
+        )
+      } catch (error) {
+        console.log({ error })
+      }
+    }
+  }
+}
+
+// Helper function to create regular users
+async function createRegularUsers(orgId: string, count: number) {
+  const users = []
+  for (let i = 1; i <= count; i++) {
+    const password = await hash(`user${i}pass`, 10)
+    const user = await prisma.user.create({
+      data: {
+        organizationId: orgId,
+        tenantId: orgId,
+        email: `user${i}@testorg.com`,
+        name: `Test User ${i}`,
+        password: password,
+        role: Role.MEMBER,
+        completedOnboarding: true,
+        locale: 'en-US',
+        enabledContactsNotifications: true,
+        lastLogin: new Date(),
+      }
+    })
+    users.push(user)
+  }
+  return users
+}
+
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })

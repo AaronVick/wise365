@@ -1,0 +1,321 @@
+import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
+
+async function main() {
+  // Clear existing data
+  await clearDatabase()
+
+  // Create basic tenant and user (needed for relationships)
+  const tenant1 = await prisma.tenant.create({
+    data: {
+      name: "Marketing Agency Pro",
+      stripeCustomerId: "cus_123456",
+      subscriptionStatus: "active",
+      settings: { theme: "light", notifications: true }
+    }
+  })
+
+  // Create Funnel Definitions
+  const onboardingFunnel = await prisma.funnelDefinition.create({
+    data: {
+      name: "Onboarding Funnel",
+      description: "Mandatory entry point for all new users",
+      priority: 1,
+      level: 1,
+      isActive: true,
+      leadAgentId: "shawn",
+      supportingAgentIds: ["caner", "ally"],
+      milestones: {
+        create: [
+          {
+            name: "Basic Information Collection",
+            description: "Gather essential business details and goals",
+            order: 1,
+            isRequired: true,
+            validationRules: {
+              requiredFields: ["businessName", "website", "primaryGoals"],
+              minimumFields: 3
+            },
+            kpis: ["completion_rate", "data_quality_score"]
+          },
+          {
+            name: "Website Analysis & Validation",
+            description: "Complete website analysis and gap identification",
+            order: 2,
+            isRequired: true,
+            validationRules: {
+              requiredFields: ["websiteUrl", "analysisComplete"],
+              minimumScore: 70
+            },
+            kpis: ["analysis_accuracy", "gap_identification_rate"]
+          },
+          {
+            name: "MSW Assessment Completion",
+            description: "Complete Marketing Success Wheel assessment",
+            order: 3,
+            isRequired: true,
+            validationRules: {
+              allCategoriesScored: true,
+              minimumCategories: 8
+            },
+            kpis: ["msw_completion_rate", "priority_identification_accuracy"]
+          }
+        ]
+      },
+      dataPoints: {
+        create: [
+          {
+            name: "Business Name",
+            description: "Legal business name",
+            dataType: "string",
+            isRequired: true,
+            validationRules: { minLength: 2, maxLength: 100 },
+            collectionMethod: "form"
+          },
+          {
+            name: "Website URL",
+            description: "Primary business website",
+            dataType: "url",
+            isRequired: true,
+            validationRules: { urlFormat: true },
+            collectionMethod: "form"
+          },
+          {
+            name: "MSW Scores",
+            description: "Marketing Success Wheel category scores",
+            dataType: "json",
+            isRequired: true,
+            validationRules: { 
+              requiredCategories: ["positioning", "awareness", "engagement", "conversion"],
+              scoreRange: { min: 1, max: 10 }
+            },
+            collectionMethod: "assessment"
+          }
+        ]
+      }
+    }
+  })
+
+  const positioningFunnel = await prisma.funnelDefinition.create({
+    data: {
+      name: "Positioning Funnel",
+      description: "Core foundation for market positioning",
+      priority: 2,
+      level: 2,
+      isActive: true,
+      leadAgentId: "ally",
+      supportingAgentIds: ["aaron", "alex"],
+      milestones: {
+        create: [
+          {
+            name: "Positioning Factor Analysis",
+            description: "Identify core differentiators and market position",
+            order: 1,
+            isRequired: true,
+            validationRules: {
+              requiredFactors: ["differentiators", "marketPosition", "competitorAnalysis"],
+              minimumDifferentiators: 3
+            },
+            kpis: ["factor_clarity_score", "competitive_analysis_depth"]
+          },
+          {
+            name: "TINB Development",
+            description: "Create There Is No Better statement and value proposition",
+            order: 2,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["tinbStatement", "valueProposition", "wowFactors"],
+              minimumWowFactors: 2
+            },
+            kpis: ["tinb_effectiveness_score", "value_prop_clarity"]
+          },
+          {
+            name: "Persona Development",
+            description: "Define buyer personas and customer journey",
+            order: 3,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["primaryPersona", "customerJourney"],
+              journeyStages: ["awareness", "consideration", "decision"]
+            },
+            kpis: ["persona_validation_score", "journey_map_completeness"]
+          }
+        ]
+      }
+    }
+  })
+
+  const awarenessFunnel = await prisma.funnelDefinition.create({
+    data: {
+      name: "Awareness Funnel",
+      description: "Establish and expand market visibility",
+      priority: 2,
+      level: 2,
+      isActive: true,
+      leadAgentId: "mike",
+      supportingAgentIds: ["gabriel", "lisa"],
+      milestones: {
+        create: [
+          {
+            name: "Visibility Analysis",
+            description: "Assess current reach and content gaps",
+            order: 1,
+            isRequired: true,
+            validationRules: {
+              requiredAnalysis: ["trafficSources", "contentInventory", "competitorVisibility"],
+              minimumDataPoints: 5
+            },
+            kpis: ["visibility_score", "gap_identification_rate"]
+          },
+          {
+            name: "Multi-Channel Strategy",
+            description: "Develop comprehensive channel strategy",
+            order: 2,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["channelPriorities", "contentTypes", "publishingCalendar"],
+              minimumChannels: 3
+            },
+            kpis: ["strategy_completion_rate", "channel_alignment_score"]
+          },
+          {
+            name: "Implementation Planning",
+            description: "Create detailed execution plan",
+            order: 3,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["resources", "timeline", "metrics"],
+              minimumTimelineDuration: 90
+            },
+            kpis: ["plan_readiness_score", "resource_allocation_efficiency"]
+          }
+        ]
+      }
+    }
+  })
+
+  // Create Funnel Prerequisites
+  await prisma.funnelPrerequisite.create({
+    data: {
+      funnelId: positioningFunnel.id,
+      prerequisiteFunnelId: onboardingFunnel.id,
+      prerequisiteType: "required",
+      conditions: {
+        mswScores: {
+          positioning: { min: 1, max: 3 }
+        },
+        requiredDataPoints: ["businessName", "website", "primaryGoals"]
+      }
+    }
+  })
+
+  await prisma.funnelPrerequisite.create({
+    data: {
+      funnelId: awarenessFunnel.id,
+      prerequisiteFunnelId: onboardingFunnel.id,
+      prerequisiteType: "required",
+      conditions: {
+        mswScores: {
+          awareness: { min: 1, max: 3 }
+        },
+        requiredDataPoints: ["website", "marketingChannels"]
+      }
+    }
+  })
+
+  // Create Form Requirements
+  await prisma.funnelFormRequirement.create({
+    data: {
+      funnelId: onboardingFunnel.id,
+      formId: "basic-info-form",
+      isRequired: true,
+      completionTriggers: {
+        requiredFields: ["businessName", "website", "industry", "goals"],
+        validationRules: {
+          allFieldsComplete: true,
+          websiteValid: true
+        }
+      }
+    }
+  })
+
+  await prisma.funnelFormRequirement.create({
+    data: {
+      funnelId: onboardingFunnel.id,
+      formId: "msw-assessment",
+      isRequired: true,
+      completionTriggers: {
+        requiredFields: ["allCategories", "scores", "priorities"],
+        validationRules: {
+          allCategoriesScored: true,
+          scoresInRange: true,
+          prioritiesIdentified: true
+        }
+      }
+    }
+  })
+
+  // Create Funnel Triggers
+  await prisma.funnelTrigger.create({
+    data: {
+      funnelId: positioningFunnel.id,
+      triggerType: "score_based",
+      conditions: {
+        mswScores: {
+          positioning: { max: 3 }
+        },
+        completedFunnels: ["onboarding"]
+      },
+      actions: {
+        activateFunnel: true,
+        notifyUser: true,
+        assignAgent: "ally"
+      },
+      priority: 1
+    }
+  })
+
+  await prisma.funnelTrigger.create({
+    data: {
+      funnelId: awarenessFunnel.id,
+      triggerType: "completion_based",
+      conditions: {
+        completedFunnels: ["onboarding"],
+        dataPoints: ["website", "primaryGoals"]
+      },
+      actions: {
+        suggestFunnel: true,
+        notifyUser: true,
+        scheduleAssessment: true
+      },
+      priority: 2
+    }
+  })
+
+  console.log('Database has been seeded with funnel system data. 🌱')
+}
+
+async function clearDatabase() {
+  // Delete in reverse order of dependencies
+  await prisma.funnelTrigger.deleteMany({})
+  await prisma.funnelFormRequirement.deleteMany({})
+  await prisma.funnelPrerequisite.deleteMany({})
+  await prisma.dataPointCollection.deleteMany({})
+  await prisma.funnelDataPoint.deleteMany({})
+  await prisma.milestoneProgress.deleteMany({})
+  await prisma.funnelMilestone.deleteMany({})
+  await prisma.funnelDefinition.deleteMany({})
+  await prisma.teamMember.deleteMany({})
+  await prisma.team.deleteMany({})
+  await prisma.user.deleteMany({})
+  await prisma.tenant.deleteMany({})
+}
+
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })

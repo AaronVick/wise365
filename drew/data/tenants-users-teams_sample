@@ -1,0 +1,118 @@
+import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
+
+async function main() {
+  // First, clear existing data
+  await clearDatabase()
+
+  // 1. Create Tenants
+  const tenant1 = await prisma.tenant.create({
+    data: {
+      name: "Marketing Agency Pro",
+      stripeCustomerId: "cus_123456",
+      subscriptionStatus: "active",
+      settings: {
+        theme: "light",
+        notifications: true
+      }
+    }
+  })
+
+  const tenant2 = await prisma.tenant.create({
+    data: {
+      name: "Digital Solutions Inc",
+      stripeCustomerId: "cus_789012",
+      subscriptionStatus: "active",
+      settings: {
+        theme: "dark",
+        notifications: true
+      }
+    }
+  })
+
+  // 2. Create Users
+  const user1 = await prisma.user.create({
+    data: {
+      email: "john@marketingagencypro.com",
+      name: "John Smith",
+      role: "admin",
+      tenantId: tenant1.id,
+      settings: {
+        emailNotifications: true,
+        dashboardView: "compact"
+      }
+    }
+  })
+
+  const user2 = await prisma.user.create({
+    data: {
+      email: "sarah@marketingagencypro.com",
+      name: "Sarah Johnson",
+      role: "user",
+      tenantId: tenant1.id,
+      settings: {
+        emailNotifications: true,
+        dashboardView: "full"
+      }
+    }
+  })
+
+  // 3. Create Teams
+  const team1 = await prisma.team.create({
+    data: {
+      name: "Marketing Strategy",
+      tenantId: tenant1.id,
+      settings: {
+        defaultView: "kanban",
+        collaboration: true
+      }
+    }
+  })
+
+  const team2 = await prisma.team.create({
+    data: {
+      name: "Content Creation",
+      tenantId: tenant1.id,
+      settings: {
+        defaultView: "list",
+        collaboration: true
+      }
+    }
+  })
+
+  // 4. Create Team Members
+  const teamMember1 = await prisma.teamMember.create({
+    data: {
+      teamId: team1.id,
+      userId: user1.id,
+      role: "leader"
+    }
+  })
+
+  const teamMember2 = await prisma.teamMember.create({
+    data: {
+      teamId: team1.id,
+      userId: user2.id,
+      role: "member"
+    }
+  })
+
+  console.log('Database has been seeded. 🌱')
+}
+
+async function clearDatabase() {
+  // Delete in reverse order of dependencies
+  await prisma.teamMember.deleteMany({})
+  await prisma.team.deleteMany({})
+  await prisma.user.deleteMany({})
+  await prisma.tenant.deleteMany({})
+}
+
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })

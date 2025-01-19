@@ -1,0 +1,307 @@
+import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
+
+async function main() {
+  // Create Engagement Funnel
+  const engagementFunnel = await prisma.funnelDefinition.create({
+    data: {
+      name: "Engagement Funnel",
+      description: "Optimize audience engagement across channels",
+      priority: 3,
+      level: 2,
+      isActive: true,
+      leadAgentId: "sylvester",
+      supportingAgentIds: ["jesse", "lisa"],
+      milestones: {
+        create: [
+          {
+            name: "Interactive Content Launch",
+            description: "Create and launch engaging interactive content",
+            order: 1,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["contentTypes", "engagementTriggers", "interactiveElements"],
+              minimumInteractiveElements: 3
+            },
+            kpis: ["engagement_rate", "interaction_time", "content_completion_rate"]
+          },
+          {
+            name: "Email Optimization",
+            description: "Optimize email marketing engagement",
+            order: 2,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["segmentation", "sequences", "testingPlan"],
+              minimumSegments: 2
+            },
+            kpis: ["open_rate", "click_rate", "conversion_rate"]
+          },
+          {
+            name: "Social Media Enhancement",
+            description: "Enhance social media engagement strategy",
+            order: 3,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["platformStrategy", "contentCalendar", "communityPlan"],
+              minimumPlatforms: 2
+            },
+            kpis: ["social_engagement_growth", "community_activity", "response_rate"]
+          }
+        ]
+      },
+      dataPoints: {
+        create: [
+          {
+            name: "Engagement Metrics",
+            description: "Current engagement rates across channels",
+            dataType: "json",
+            isRequired: true,
+            validationRules: {
+              requiredMetrics: ["email", "social", "website"],
+              minimumPeriod: 30
+            },
+            collectionMethod: "analytics"
+          },
+          {
+            name: "Content Performance",
+            description: "Performance metrics for different content types",
+            dataType: "json",
+            isRequired: true,
+            validationRules: {
+              requiredTypes: ["blog", "social", "email"],
+              minimumDataPoints: 5
+            },
+            collectionMethod: "analytics"
+          }
+        ]
+      }
+    }
+  })
+
+  // Create Lead Generation Funnel
+  const leadGenFunnel = await prisma.funnelDefinition.create({
+    data: {
+      name: "Lead Generation Funnel",
+      description: "Optimize and scale lead generation",
+      priority: 3,
+      level: 3,
+      isActive: true,
+      leadAgentId: "orion",
+      supportingAgentIds: ["gabriel", "ally"],
+      milestones: {
+        create: [
+          {
+            name: "Lead Magnet Development",
+            description: "Create and optimize lead magnets",
+            order: 1,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["valueProposition", "deliverySystem", "leadMagnet"],
+              minimumMagnets: 1
+            },
+            kpis: ["conversion_rate", "lead_quality_score", "download_rate"]
+          },
+          {
+            name: "Landing Page Optimization",
+            description: "Optimize landing pages for conversion",
+            order: 2,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["pageAnalysis", "abTests", "conversionPath"],
+              minimumTests: 2
+            },
+            kpis: ["page_conversion_rate", "bounce_rate", "time_on_page"]
+          },
+          {
+            name: "Lead Nurture Strategy",
+            description: "Develop lead nurturing processes",
+            order: 3,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["sequences", "automation", "followup"],
+              minimumTouchpoints: 5
+            },
+            kpis: ["qualification_rate", "nurture_engagement", "conversion_to_sale"]
+          }
+        ]
+      },
+      dataPoints: {
+        create: [
+          {
+            name: "Lead Sources",
+            description: "Active lead generation sources",
+            dataType: "json",
+            isRequired: true,
+            validationRules: {
+              minimumSources: 2,
+              requiredMetrics: ["volume", "cost", "quality"]
+            },
+            collectionMethod: "analytics"
+          },
+          {
+            name: "Conversion Metrics",
+            description: "Conversion rates and performance",
+            dataType: "json",
+            isRequired: true,
+            validationRules: {
+              requiredStages: ["visitor", "lead", "qualified"],
+              minimumPeriod: 30
+            },
+            collectionMethod: "analytics"
+          }
+        ]
+      }
+    }
+  })
+
+  // Create Customer Ladder Funnel
+  const customerLadderFunnel = await prisma.funnelDefinition.create({
+    data: {
+      name: "Customer Ladder Funnel",
+      description: "Optimize customer value and progression",
+      priority: 3,
+      level: 3,
+      isActive: true,
+      leadAgentId: "troy",
+      supportingAgentIds: ["sylvester", "aaron"],
+      milestones: {
+        create: [
+          {
+            name: "Customer Segmentation",
+            description: "Develop detailed customer segments",
+            order: 1,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["segments", "valueAnalysis", "opportunities"],
+              minimumSegments: 3
+            },
+            kpis: ["segmentation_effectiveness", "value_potential", "targeting_accuracy"]
+          },
+          {
+            name: "Loyalty Program Development",
+            description: "Create and launch loyalty program",
+            order: 2,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["programStructure", "rewards", "implementation"],
+              minimumTiers: 2
+            },
+            kpis: ["program_engagement", "retention_impact", "reward_redemption"]
+          },
+          {
+            name: "Upsell Strategy",
+            description: "Develop systematic upsell approach",
+            order: 3,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["opportunities", "campaigns", "communication"],
+              minimumCampaigns: 2
+            },
+            kpis: ["upsell_conversion", "average_order_value", "customer_satisfaction"]
+          }
+        ]
+      },
+      dataPoints: {
+        create: [
+          {
+            name: "Customer Value Metrics",
+            description: "Customer lifetime value and metrics",
+            dataType: "json",
+            isRequired: true,
+            validationRules: {
+              requiredMetrics: ["ltv", "retention", "satisfaction"],
+              minimumHistory: 90
+            },
+            collectionMethod: "analytics"
+          },
+          {
+            name: "Usage Patterns",
+            description: "Service usage and engagement patterns",
+            dataType: "json",
+            isRequired: true,
+            validationRules: {
+              requiredPatterns: ["frequency", "depth", "duration"],
+              minimumPeriod: 60
+            },
+            collectionMethod: "analytics"
+          }
+        ]
+      }
+    }
+  })
+
+  // Create Prerequisites
+  await prisma.funnelPrerequisite.create({
+    data: {
+      funnelId: leadGenFunnel.id,
+      prerequisiteFunnelId: engagementFunnel.id,
+      prerequisiteType: "recommended",
+      conditions: {
+        mswScores: {
+          engagement: { min: 6 },
+          leadGeneration: { max: 3 }
+        },
+        requiredDataPoints: ["engagementMetrics", "contentPerformance"]
+      }
+    }
+  })
+
+  await prisma.funnelPrerequisite.create({
+    data: {
+      funnelId: customerLadderFunnel.id,
+      prerequisiteFunnelId: leadGenFunnel.id,
+      prerequisiteType: "recommended",
+      conditions: {
+        mswScores: {
+          leadGeneration: { min: 5 },
+          customerSatisfaction: { max: 4 }
+        },
+        requiredDataPoints: ["leadSources", "conversionMetrics"]
+      }
+    }
+  })
+
+  // Create Form Requirements
+  await prisma.funnelFormRequirement.createMany({
+    data: [
+      {
+        funnelId: engagementFunnel.id,
+        formId: "engagement-metrics-assessment",
+        isRequired: true,
+        completionTriggers: {
+          requiredFields: ["currentMetrics", "goals", "channels"],
+          validationRules: { allChannelsAssessed: true }
+        }
+      },
+      {
+        funnelId: leadGenFunnel.id,
+        formId: "lead-generation-audit",
+        isRequired: true,
+        completionTriggers: {
+          requiredFields: ["leadSources", "conversionRates", "costs"],
+          validationRules: { allSourcesAudited: true }
+        }
+      },
+      {
+        funnelId: customerLadderFunnel.id,
+        formId: "customer-value-assessment",
+        isRequired: true,
+        completionTriggers: {
+          requiredFields: ["segments", "value", "opportunities"],
+          validationRules: { allSegmentsAnalyzed: true }
+        }
+      }
+    ]
+  })
+
+  console.log('Growth & Optimization Funnels have been seeded. 🌱')
+}
+
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })

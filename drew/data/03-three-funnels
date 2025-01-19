@@ -1,0 +1,345 @@
+import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
+
+async function main() {
+  // Create Retention & Referrals Funnel
+  const retentionFunnel = await prisma.funnelDefinition.create({
+    data: {
+      name: "Retention & Referrals Funnel",
+      description: "Advanced funnel focused on maximizing customer retention and generating referrals through systematic programs and advocacy",
+      priority: 4,
+      level: 4,
+      isActive: true,
+      leadAgentId: "daniela",
+      supportingAgentIds: ["troy", "jesse"],
+      milestones: {
+        create: [
+          {
+            name: "Referral Program Launch",
+            description: "Design and implement customer referral system",
+            order: 1,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["programStructure", "incentives", "trackingSystem"],
+              minimumIncentiveValue: 1
+            },
+            kpis: ["referral_conversion_rate", "program_participation_rate"]
+          },
+          {
+            name: "Testimonial Collection",
+            description: "Establish systematic testimonial gathering process",
+            order: 2,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["collectionProcess", "qualityGuidelines", "publicationStrategy"],
+              minimumTestimonials: 5
+            },
+            kpis: ["testimonial_quality_score", "collection_rate"]
+          },
+          {
+            name: "Advocate Program",
+            description: "Create and launch customer advocacy program",
+            order: 3,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["programDesign", "advocateIdentification", "engagementPlan"],
+              minimumAdvocates: 3
+            },
+            kpis: ["advocate_participation_rate", "advocacy_impact_score"]
+          }
+        ]
+      },
+      dataPoints: {
+        create: [
+          {
+            name: "Current Referral Rate",
+            description: "Existing customer referral metrics",
+            dataType: "float",
+            isRequired: true,
+            validationRules: { min: 0, max: 100 },
+            collectionMethod: "metrics"
+          },
+          {
+            name: "Customer Satisfaction Scores",
+            description: "CSAT or NPS data",
+            dataType: "json",
+            isRequired: true,
+            validationRules: { 
+              scoreRange: { min: 0, max: 100 },
+              minimumResponses: 10
+            },
+            collectionMethod: "survey"
+          },
+          {
+            name: "Advocate List",
+            description: "Identified potential customer advocates",
+            dataType: "json",
+            isRequired: true,
+            validationRules: { minimumAdvocates: 3 },
+            collectionMethod: "analysis"
+          }
+        ]
+      }
+    }
+  })
+
+  // Create Sales Enablement Funnel
+  const salesFunnel = await prisma.funnelDefinition.create({
+    data: {
+      name: "Sales Enablement Funnel",
+      description: "Advanced funnel for optimizing sales processes and improving close rates",
+      priority: 4,
+      level: 4,
+      isActive: true,
+      leadAgentId: "jen",
+      supportingAgentIds: ["aaron", "jr"],
+      milestones: {
+        create: [
+          {
+            name: "Sales Process Optimization",
+            description: "Map and improve sales workflow",
+            order: 1,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["processMap", "gapAnalysis", "improvementPlan"],
+              minimumStages: 4
+            },
+            kpis: ["process_efficiency_score", "conversion_rate_improvement"]
+          },
+          {
+            name: "Sales Tool Development",
+            description: "Create and implement sales enablement tools",
+            order: 2,
+            isRequired: true,
+            validationRules: {
+              requiredTools: ["scripts", "resources", "trainingPlan"],
+              minimumResources: 5
+            },
+            kpis: ["tool_utilization_rate", "sales_efficiency_score"]
+          },
+          {
+            name: "Performance Tracking",
+            description: "Establish sales performance monitoring",
+            order: 3,
+            isRequired: true,
+            validationRules: {
+              requiredMetrics: ["closeRate", "cycleLength", "dealSize"],
+              minimumKPIs: 5
+            },
+            kpis: ["performance_improvement_rate", "tracking_accuracy"]
+          }
+        ]
+      },
+      dataPoints: {
+        create: [
+          {
+            name: "Sales Metrics",
+            description: "Current sales performance data",
+            dataType: "json",
+            isRequired: true,
+            validationRules: {
+              requiredMetrics: ["closeRate", "cycleLength", "pipelineValue"],
+              minimumMonths: 3
+            },
+            collectionMethod: "crm"
+          },
+          {
+            name: "Common Objections",
+            description: "Documented sales objections",
+            dataType: "json",
+            isRequired: true,
+            validationRules: { minimumObjections: 5 },
+            collectionMethod: "analysis"
+          },
+          {
+            name: "Team Performance",
+            description: "Individual sales rep metrics",
+            dataType: "json",
+            isRequired: true,
+            validationRules: { minimumReps: 1 },
+            collectionMethod: "reporting"
+          }
+        ]
+      }
+    }
+  })
+
+  // Create Content Expansion Funnel
+  const contentFunnel = await prisma.funnelDefinition.create({
+    data: {
+      name: "Content Expansion Funnel",
+      description: "Advanced funnel for scaling content production and optimization",
+      priority: 4,
+      level: 4,
+      isActive: true,
+      leadAgentId: "antonio",
+      supportingAgentIds: ["mason", "gabriel"],
+      milestones: {
+        create: [
+          {
+            name: "Content Strategy Expansion",
+            description: "Develop comprehensive content scaling plan",
+            order: 1,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["contentFormats", "channelPriorities", "resourcePlan"],
+              minimumFormats: 3
+            },
+            kpis: ["strategy_comprehensiveness", "format_diversity_score"]
+          },
+          {
+            name: "Content Production System",
+            description: "Establish scalable content creation workflow",
+            order: 2,
+            isRequired: true,
+            validationRules: {
+              requiredElements: ["workflow", "teamRoles", "tools"],
+              minimumWorkflowSteps: 4
+            },
+            kpis: ["production_efficiency", "content_quality_score"]
+          },
+          {
+            name: "Performance Optimization",
+            description: "Implement content performance tracking",
+            order: 3,
+            isRequired: true,
+            validationRules: {
+              requiredMetrics: ["engagement", "conversion", "roi"],
+              minimumTrackingPeriod: 30
+            },
+            kpis: ["content_effectiveness", "optimization_impact"]
+          }
+        ]
+      },
+      dataPoints: {
+        create: [
+          {
+            name: "Content Performance",
+            description: "Current content metrics",
+            dataType: "json",
+            isRequired: true,
+            validationRules: {
+              requiredMetrics: ["views", "engagement", "conversion"],
+              minimumPeriod: 90
+            },
+            collectionMethod: "analytics"
+          },
+          {
+            name: "Resource Capacity",
+            description: "Content production resources",
+            dataType: "json",
+            isRequired: true,
+            validationRules: { minimumCapacity: 1 },
+            collectionMethod: "assessment"
+          },
+          {
+            name: "Channel Performance",
+            description: "Performance by content channel",
+            dataType: "json",
+            isRequired: true,
+            validationRules: { minimumChannels: 2 },
+            collectionMethod: "analytics"
+          }
+        ]
+      }
+    }
+  })
+
+  // Create Prerequisites
+  await prisma.funnelPrerequisite.create({
+    data: {
+      funnelId: retentionFunnel.id,
+      prerequisiteFunnelId: "customer-ladder",
+      prerequisiteType: "required",
+      conditions: {
+        mswScores: {
+          retention: { min: 1, max: 3 }
+        },
+        requiredDataPoints: ["customerBase", "satisfactionScores"]
+      }
+    }
+  })
+
+  await prisma.funnelPrerequisite.create({
+    data: {
+      funnelId: salesFunnel.id,
+      prerequisiteFunnelId: "lead-generation",
+      prerequisiteType: "required",
+      conditions: {
+        mswScores: {
+          sales: { min: 1, max: 3 }
+        },
+        requiredDataPoints: ["salesProcess", "teamSize"]
+      }
+    }
+  })
+
+  await prisma.funnelPrerequisite.create({
+    data: {
+      funnelId: contentFunnel.id,
+      prerequisiteFunnelId: "awareness",
+      prerequisiteType: "recommended",
+      conditions: {
+        hasActiveChannels: true,
+        minimumContentTypes: 2
+      }
+    }
+  })
+
+  // Create Form Requirements
+  await prisma.funnelFormRequirement.create({
+    data: {
+      funnelId: retentionFunnel.id,
+      formId: "referral-program-setup",
+      isRequired: true,
+      completionTriggers: {
+        requiredFields: ["programStructure", "incentives", "tracking"],
+        validationRules: {
+          allFieldsComplete: true,
+          incentivesValid: true
+        }
+      }
+    }
+  })
+
+  await prisma.funnelFormRequirement.create({
+    data: {
+      funnelId: salesFunnel.id,
+      formId: "sales-process-audit",
+      isRequired: true,
+      completionTriggers: {
+        requiredFields: ["currentProcess", "painPoints", "objectives"],
+        validationRules: {
+          processDocumented: true,
+          objectivesSet: true
+        }
+      }
+    }
+  })
+
+  await prisma.funnelFormRequirement.create({
+    data: {
+      funnelId: contentFunnel.id,
+      formId: "content-audit",
+      isRequired: true,
+      completionTriggers: {
+        requiredFields: ["contentInventory", "performance", "gaps"],
+        validationRules: {
+          inventoryComplete: true,
+          performanceAnalyzed: true
+        }
+      }
+    }
+  })
+
+  console.log('Database has been seeded with Level 4 funnel data. 🌱')
+}
+
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })

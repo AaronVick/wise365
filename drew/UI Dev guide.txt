@@ -1,0 +1,155 @@
+# UI Development Guide
+
+
+## Overview
+This guide organizes the system's functionality from a UI perspective, mapping user interfaces to their corresponding backend services.
+
+
+
+## Key UI Sections
+
+
+
+### 1. Website Integration UI
+
+#### UI Components Needed:
+- Website URL input form
+- Scraping progress indicator
+- Results display dashboard
+- Error message displays
+
+#### Backend Services to Trigger:
+- Start Scraping: `POST /api/website-scrape/start`
+- Check Status: `GET /api/website-scrape/status`
+- View Results: `GET /api/website-scrape/progress`
+
+
+
+
+### 2. HubSpot Integration UI
+
+#### UI Components Needed:
+- HubSpot Connect button/flow
+- Integration status dashboard
+- Sync status indicators
+- Error displays
+- Analytics visualizations
+
+#### Backend Services to Trigger:
+- Connect HubSpot: `GET /api/integrations/hubspot/connect`
+- Sync CRM Data: `POST /api/integrations/hubspot/sync-crm`
+- Sync Marketing: `POST /api/integrations/hubspot/sync-marketing`
+- View Status: `GET /api/integrations/hubspot/status`
+- View Logs: `GET /api/integrations/hubspot/logs`
+
+
+
+
+### 3. Funnel Progress UI
+
+#### UI Components Needed:
+- Progress visualization dashboard
+- Milestone completion indicators
+- User/team progress views
+- Achievement notifications
+
+#### Backend Services to Trigger:
+- Get Progress: `GET /api/funnel-progress`
+- Update Progress: Through `services/updateFunnelProgress.ts`
+- View Team Progress: Through `services/user-progress.ts`
+
+
+
+
+### 4. Dashboard Analytics UI
+
+#### UI Components Needed:
+- Analytics dashboard
+- Performance metrics displays
+- Data visualization components
+- Filtering controls
+
+#### Backend Services to Trigger:
+- Fetch Analytics: Through `services/dashboard-analytics.ts`
+- Get Tool Usage: Through `services/tool-progress.ts`
+- Get Recent Activity: Through `services/dashboard-analytics.ts`
+
+
+
+
+### 5. Conversation Interface
+
+#### UI Components Needed:
+- Chat interface
+- Context display area
+- Form input areas
+- Response formatting
+
+#### Backend Services to Trigger:
+- Start Chat: Through `services/conversation-manager.ts`
+- Process Forms: Through `services/form-chat-context.ts`
+- Analyze Content: Through `services/analyzeChatContent.ts`
+
+
+
+
+### 6. Admin Panel UI
+
+#### UI Components Needed:
+- Agent management interface
+- Testing console
+- Configuration panels
+- Monitoring dashboards
+
+#### Backend Services to Trigger:
+- Manage Agents: Through `services/admin/agent-manager.ts`
+- Test Interactions: Through `services/admin/agent-tester.ts`
+- View Metrics: Through `services/admin/conversation-tracker.ts`
+
+
+
+
+### 7. Team Highlights UI
+
+#### UI Components Needed:
+- Team dashboard
+- Highlight cards/panels
+- Progress summaries
+- Recommendation displays
+
+#### Backend Services to Trigger:
+- Get Highlights: `GET /api/team/highlights`
+- View Progress: Through `services/team/highlight-service.ts`
+
+
+
+
+Common UI Components & Integration Points
+Core Integration Areas
+
+
+1. HubSpot Integration UI Components
+
+OAuth connection flow handlers (connects to /api/integrations/hubspot/connect)
+Sync status monitors (connects to /api/integrations/hubspot/status)
+CRM data display (uses data from /api/integrations/hubspot/sync-crm)
+Marketing analytics views (uses data from /api/integrations/hubspot/sync-marketing)
+Integration logs viewer (connects to /api/integrations/hubspot/logs)
+
+2. Website Scraping UI Components
+
+URL input and validation (connects to /api/website-scrape/start)
+Scraping progress indicators (connects to /api/website-scrape/status)
+Results viewer (connects to /api/website-scrape/progress)
+
+3. Funnel Management UI Components
+
+Progress trackers (connects to /api/funnel-progress)
+Milestone completion indicators (uses services/updateFunnelProgress.ts)
+Form interfaces (connects to services/form-manager.ts)
+
+4. Team Insights UI Components
+
+Team progress dashboards (connects to /api/team/highlights)
+Insights display (uses data from services/team/highlight-service.ts)
+Activity logs (uses services/team/highlight-data-aggregator.ts)

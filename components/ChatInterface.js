@@ -316,7 +316,7 @@ const handleSendMessage = async (e) => {
       }),
     });
 
-    if (!response.ok) {
+    if (!response.ok) {a
       const errorText = await response.text();
       console.error('Chat API error:', {
         status: response.status,
