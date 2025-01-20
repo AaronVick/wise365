@@ -2173,3 +2173,55 @@ Provides comprehensive tracking and analysis of marketing journey progress, iden
   - `models/ConversationAnalysis`: Analyzes conversation patterns
   - `models/Project`: Manages collaborative projects
   - `models/Goal`: Tracks team goals and actions
+
+
+  #### `api/conversations/access.ts`
+- **Description**: Creates or retrieves agent conversations (both main chats and sub-chats), handling special cases for Shawn and maintaining conversation history.
+- **What Developers Need to Send**:
+  - **HTTP Method**: `POST`
+  - **Payload**:
+    ```json
+    {
+      "userId": "required-user-id",
+      "agentId": "required-agent-id",
+      "subChatId": "optional-existing-subchat-id",
+      "subChatName": "optional-new-subchat-name"
+    }
+    ```
+- **Response**:
+  - **Success**:
+    - `200 OK`: JSON object with conversation details and history
+    - Example:
+      ```json
+      {
+        "conversationId": "conv_123",
+        "isNew": false,
+        "messages": [
+          {
+            "id": "msg_1",
+            "role": "agent",
+            "content": "Hello! How can I help you today?",
+            "contentType": "text",
+            "timestamp": "2025-01-20T10:00:00Z"
+          }
+        ],
+        "agent": {
+          "id": "agent_456",
+          "name": "Shawn",
+          "category": "ADMINISTRATIVE"
+        },
+        "metadata": {
+          "lastContext": {},
+          "tags": []
+        }
+      }
+      ```
+  - **Errors**:
+    - `400 Bad Request`: Missing userId or agentId
+    - `405 Method Not Allowed`: Invalid HTTP method
+    - `500 Internal Server Error`: Failed to access conversation
+- **Supporting Files**:
+  - `api/conversations/shawn/initiate`: Special handling for Shawn
+  - `models/UserConversation`: Conversation management
+  - `models/ConversationMessage`: Message history
+  - `models/ConversationName`: Named sub-chats
