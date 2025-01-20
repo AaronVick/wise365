@@ -19,6 +19,7 @@ export default function Training() {
           id: doc.id,
           ...doc.data()
         }));
+        console.log('Fetched agents:', agentsList);
         setAgents(agentsList);
       } catch (err) {
         console.error('Error fetching agents:', err);
@@ -38,21 +39,40 @@ export default function Training() {
       setError(null);
       
       try {
-        console.log('Fetching data for agent:', selectedAgent);
+        console.log('Selected agent from dropdown:', selectedAgent);
         
-        // Query agentData collection using agentId
+        // Create an array of possible case variations
+        const agentVariations = [
+          selectedAgent,               // original
+          selectedAgent.toLowerCase(), // lowercase
+          selectedAgent.toUpperCase(), // uppercase
+          selectedAgent.charAt(0).toUpperCase() + selectedAgent.slice(1), // Title Case
+        ];
+        
+        console.log('Trying agent name variations:', agentVariations);
+        
+        // Query agentData collection using agentId with all case variations
         const q = query(
           collection(db, 'agentData'),
-          where('agentId', '==', selectedAgent)
+          where('agentId', 'in', agentVariations)
         );
         
         const querySnapshot = await getDocs(q);
+        
+        // Log the raw query snapshot for debugging
+        console.log('Query snapshot size:', querySnapshot.size);
+        querySnapshot.forEach(doc => {
+          console.log('Document data:', { id: doc.id, ...doc.data() });
+        });
+        
         const records = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
         
+        console.log('Total records found:', records.length);
         console.log('Fetched records:', records);
+        
         setTrainingData(records);
       } catch (err) {
         console.error('Error fetching training data:', err);
@@ -119,15 +139,22 @@ export default function Training() {
         </label>
         <select
           value={selectedAgent || ''}
-          onChange={(e) => setSelectedAgent(e.target.value)}
+          onChange={(e) => {
+            const selectedValue = e.target.value;
+            console.log('Selected agent from dropdown:', selectedValue);
+            setSelectedAgent(selectedValue);
+          }}
           className="w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         >
           <option value="">Select an Agent</option>
-          {agents.map((agent) => (
-            <option key={agent.id} value={agent.agentId}>
-              {agent.agentName || agent.agentId}
-            </option>
-          ))}
+          {agents.map((agent) => {
+            console.log('Agent in dropdown:', agent);
+            return (
+              <option key={agent.id} value={agent.agentName || agent.agentId}>
+                {agent.agentName || agent.agentId}
+              </option>
+            );
+          })}
         </select>
       </div>
 
