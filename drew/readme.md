@@ -1944,3 +1944,232 @@ Provides comprehensive tracking and analysis of marketing journey progress, iden
    - Detect progress obstacles
    - Analyze impact and priority
    - Suggest resolution strategies
+
+
+# 14. Navigation
+
+#### `api/navigation/sidebar_agents.ts`
+- **Description**: Retrieves and organizes agent hierarchy and conversations for sidebar navigation, including main agent chats and sub-conversations categorized by agent type.
+- **What Developers Need to Send**:
+  - **HTTP Method**: `GET`
+  - **Query Parameters**:
+    - `userId` (required): The ID of the user requesting the navigation data.
+- **Response**:
+  - **Success**:
+    - `200 OK`: JSON object with categorized agents and their conversations.
+    - Example:
+      ```json
+      {
+        "categories": {
+          "ADMINISTRATIVE": [
+            {
+              "id": "conv_123",
+              "agentId": "agent_456",
+              "agentName": "Shawn",
+              "category": "ADMINISTRATIVE",
+              "lastMessage": "2025-01-20T10:00:00Z",
+              "subChats": [
+                {
+                  "id": "conv_789",
+                  "name": "Project A Discussion",
+                  "lastMessage": "2025-01-20T09:00:00Z"
+                }
+              ]
+            }
+          ],
+          "MARKETING": [],
+          "SALES": [],
+          "SOCIAL_MEDIA": [],
+          "COPY_EDITING": []
+        }
+      }
+      ```
+  - **Errors**:
+    - `400 Bad Request`: Missing userId parameter.
+    - `405 Method Not Allowed`: Invalid HTTP method used.
+    - `500 Internal Server Error`: Failed to fetch navigation data.
+- **Supporting Files**:
+  - `models/Agent`: Prisma model for agent data.
+  - `models/UserConversation`: Prisma model for conversations.
+  - `models/ConversationName`: Prisma model for named conversations.
+  - `types/AgentCategory`: Enum for agent categories.
+
+
+  #### `api/suggestions/actions.ts`
+- **Description**: Provides intelligent next action suggestions based on user's funnel progress, data completeness, and system prerequisites. Analyzes current state to recommend the most important next steps.
+- **What Developers Need to Send**:
+  - **HTTP Method**: `GET`
+  - **Query Parameters**:
+    - `userId` (required): The ID of the user requesting suggestions.
+    - `teamId` (optional): Team ID for team-specific suggestions.
+- **Response**:
+  - **Success**:
+    - `200 OK`: JSON object with prioritized suggested actions.
+    - Example:
+      ```json
+      {
+        "suggestions": [
+          {
+            "id": "onboarding-1234567890",
+            "type": "start_funnel",
+            "title": "Complete Your Onboarding",
+            "description": "Start with providing basic information about your business",
+            "priority": 1,
+            "action": {
+              "type": "navigate",
+              "target": "/funnels/abc123/start"
+            }
+          },
+          {
+            "id": "data-def456-1234567890",
+            "type": "complete_data",
+            "title": "Complete Positioning Information",
+            "description": "Provide missing information: Business Goals",
+            "priority": 2,
+            "action": {
+              "type": "form",
+              "target": "/funnels/def456/data",
+              "metadata": {
+                "missingFields": ["businessGoals"]
+              }
+            }
+          }
+        ]
+      }
+      ```
+  - **Errors**:
+    - `400 Bad Request`: Missing userId parameter.
+    - `405 Method Not Allowed`: Invalid HTTP method used.
+    - `500 Internal Server Error`: Failed to generate suggestions.
+- **Supporting Files**:
+  - `services/funnel-progress.ts`: Gets current funnel progress
+  - `services/user-progress.ts`: Gets overall user progress
+  - `models/FunnelDefinition`: Funnel requirements and structure
+  - `models/FunnelPrerequisite`: Prerequisites between funnels
+  - `models/DataPointCollection`: User's collected data
+
+
+
+#### `api/resources/list.ts`
+- **Description**: Retrieves available resources and forms with completion status for both individual users and teams. Provides filtering and pagination capabilities.
+- **What Developers Need to Send**:
+  - **HTTP Method**: `GET`
+  - **Query Parameters**:
+    - `userId` (required): ID of the user requesting resources
+    - `teamId` (optional): Team ID for team completion status
+    - `category` (optional): Filter by resource category
+    - `type` (optional): Filter by resource type ('assessment', 'form', 'worksheet')
+    - `status` (optional): Filter by completion status ('new', 'completed', 'pending')
+    - `page` (optional): Page number for pagination (default: 1)
+    - `pageSize` (optional): Items per page (default: 10)
+- **Response**:
+  - **Success**:
+    - `200 OK`: JSON object with resources and pagination info
+    - Example:
+      ```json
+      {
+        "resources": [
+          {
+            "id": "form_123",
+            "name": "Marketing Success Wheel Assessment",
+            "description": "Evaluate your marketing effectiveness",
+            "type": "assessment",
+            "category": "marketing",
+            "status": {
+              "isNew": true,
+              "userCompleted": false,
+              "teamCompleted": true,
+              "lastUpdated": "2025-01-20T10:00:00Z",
+              "completedBy": "user_456"
+            },
+            "metadata": {
+              "estimatedTime": "30 minutes",
+              "difficulty": "intermediate",
+              "prerequisites": ["basic_info_form"],
+              "relatedFunnels": ["onboarding"],
+              "isRequired": true
+            }
+          }
+        ],
+        "pagination": {
+          "currentPage": 1,
+          "pageSize": 10,
+          "totalPages": 5,
+          "totalCount": 48
+        }
+      }
+      ```
+  - **Errors**:
+    - `400 Bad Request`: Missing userId parameter
+    - `405 Method Not Allowed`: Invalid HTTP method
+    - `500 Internal Server Error`: Failed to fetch resources
+- **Supporting Files**:
+  - `models/FunnelFormRequirement`: Available forms/resources
+  - `models/DataPointCollection`: Tracks form completion
+  - `services/funnel-progress.ts`: Checks funnel progress for requirements
+
+  
+
+
+
+#### `api/conversations/shawn/initiate.ts`
+- **Description**: Initializes or continues conversation with Shawn based on comprehensive user and team context, including cross-agent interactions and collaborative activities.
+- **What Developers Need to Send**:
+  - **HTTP Method**: `POST`
+  - **Payload**:
+    ```json
+    {
+      "userId": "required-user-id",
+      "teamId": "optional-team-id"
+    }
+    ```
+- **Response**:
+  - **Success**:
+    - `200 OK`: JSON object with conversation details and enhanced context
+    - Example:
+      ```json
+      {
+        "conversationId": "conv_123",
+        "context": {
+          "isNewUser": false,
+          "agentInteractions": [
+            {
+              "agentName": "Larry",
+              "lastInteraction": "2025-01-20T10:00:00Z",
+              "topic": "Market Analysis",
+              "status": "ongoing"
+            }
+          ],
+          "teamActivity": [
+            {
+              "type": "milestone_completion",
+              "member": "Jane Smith",
+              "action": "completed",
+              "resource": "Buyer Persona Workshop",
+              "timestamp": "2025-01-20T09:00:00Z"
+            }
+          ],
+          "globalProgress": [
+            {
+              "milestone": "Market Research",
+              "status": "completed",
+              "contributors": ["John", "Jane"],
+              "lastUpdate": "2025-01-19T15:30:00Z"
+            }
+          ],
+          "collaborationInsights": {
+            "activeProjects": ["Q1 Marketing Plan"],
+            "sharedMilestones": ["Persona Development"],
+            "pendingTeamActions": ["Review Content Strategy"]
+          }
+        },
+        "initialMessage": "Welcome back, John! I see you've been working with Larry on Market Analysis. Your team has been active - would you like an update on their progress?"
+      }
+      ```
+  - **Errors**: (same as before)
+- **Supporting Files**:
+  - Previous files, plus:
+  - `services/team/highlight-generator.ts`: Gets team insights
+  - `models/ConversationAnalysis`: Analyzes conversation patterns
+  - `models/Project`: Manages collaborative projects
+  - `models/Goal`: Tracks team goals and actions
