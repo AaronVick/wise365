@@ -35,7 +35,80 @@ export async function initiateMilestoneChat(
 }> {
   const prisma = new PrismaClient();
 
-  // Get all necessary context for the agent
+  // Check for existing active conversation
+  const existingConversation = await prisma.userConversation.findFirst({
+    where: {
+      userId: context.userId,
+      funnelId: context.funnelId,
+      milestoneId: context.milestoneId,
+      status: 'active', // Assuming you have a status field to track conversation state
+      metadata: {
+        teamId: context.teamId,
+        purpose: 'milestone_completion'
+      }
+    },
+    orderBy: {
+      createdAt: 'desc'
+    }
+  });
+
+  if (existingConversation) {
+    // Get all necessary context for the agent
+    const [user, funnel, milestone, funnelProgress, teamData] = await Promise.all([
+      prisma.user.findUnique({ where: { id: context.userId } }),
+      prisma.funnelDefinition.findUnique({ 
+        where: { id: context.funnelId },
+        include: { milestones: true, dataPoints: true }
+      }),
+      prisma.funnelMilestone.findUnique({ 
+        where: { id: context.milestoneId } 
+      }),
+      prisma.funnelProgress.findFirst({
+        where: {
+          funnelId: context.funnelId,
+          OR: [
+            { userId: context.userId },
+            { teamId: context.teamId || '' }
+          ]
+        },
+        include: {
+          analysis: {
+            orderBy: { timestamp: 'desc' },
+            take: 1
+          }
+        }
+      }),
+      context.teamId ? prisma.team.findUnique({ 
+        where: { id: context.teamId } 
+      }) : null
+    ]);
+
+    // Prepare agent context with existing conversation
+    const agentContext = {
+      userName: user?.name,
+      teamName: teamData?.name,
+      funnel: {
+        name: funnel?.name,
+        description: funnel?.description,
+        currentProgress: funnelProgress?.completionPercentage
+      },
+      milestone: {
+        name: milestone?.name,
+        description: milestone?.description,
+        requiredDataPoints: funnel?.dataPoints.filter(dp => dp.isRequired)
+      },
+      latestAnalysis: funnelProgress?.analysis[0],
+      existingConversation: true
+    };
+
+    return {
+      conversationId: existingConversation.id,
+      agentContext,
+      initialPrompt: await generateInitialPrompt(agentContext)
+    };
+  }
+
+  // If no existing conversation, create a new one
   const [user, funnel, milestone, funnelProgress, teamData] = await Promise.all([
     prisma.user.findUnique({ where: { id: context.userId } }),
     prisma.funnelDefinition.findUnique({ 
@@ -72,6 +145,7 @@ export async function initiateMilestoneChat(
       agentId: context.agentId,
       funnelId: context.funnelId,
       milestoneId: context.milestoneId,
+      status: 'active',
       metadata: {
         teamId: context.teamId,
         purpose: 'milestone_completion',
@@ -80,7 +154,7 @@ export async function initiateMilestoneChat(
     }
   });
 
-  // Prepare agent context
+  // Prepare agent context for new conversation
   const agentContext = {
     userName: user?.name,
     teamName: teamData?.name,
@@ -95,6 +169,7 @@ export async function initiateMilestoneChat(
       requiredDataPoints: funnel?.dataPoints.filter(dp => dp.isRequired)
     },
     latestAnalysis: funnelProgress?.analysis[0],
+    existingConversation: false
   };
 
   return {

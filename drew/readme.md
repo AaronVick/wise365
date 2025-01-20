@@ -1,4 +1,5 @@
 # API Guide and File Documentation
+// can also check out the UI Development Guide.txt
 
 # System File Organization
 
