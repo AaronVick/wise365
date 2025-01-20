@@ -1,8 +1,6 @@
-// pages/admin/index.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import dynamic from 'next/dynamic';
 import { 
   Bot, 
   MessageCircle, 
@@ -18,40 +16,126 @@ import {
   LineChart
 } from 'lucide-react';
 
-// Lazy load components with error boundaries
-const DynamicComponent = ({ importFunc, loadingText = 'Loading...' }) => {
-  const Component = dynamic(importFunc, {
-    ssr: false,
-    loading: () => (
-      <div className="p-4 text-center">
-        <p>{loadingText}</p>
-      </div>
-    )
-  });
-  
-  return (
-    <ErrorBoundary
-      fallback={<div className="p-4 text-red-500">Error loading component</div>}
-    >
-      <Component />
-    </ErrorBoundary>
-  );
-};
+// Lazy load components
+const Chat = React.lazy(() => import('./chat'));
+const Training = React.lazy(() => import('./training'));
+const Prompts = React.lazy(() => import('./prompts'));
+const AgentStats = React.lazy(() => import('./agentStats'));
+const AdminManagement = React.lazy(() => import('./adminManagement'));
+const UsageStats = React.lazy(() => import('./usageStats'));
+const BillingManagement = React.lazy(() => import('./billingManagement'));
+const AuditLogs = React.lazy(() => import('./auditLogs'));
+const TenantManagement = React.lazy(() => import('./tenantManagement'));
+const ManageAgents = React.lazy(() => import('./manage'));
 
-const ManageAgents = () => (
-  <DynamicComponent importFunc={() => import('./manage')} />
+// Loading component
+const LoadingFallback = () => (
+  <div className="flex justify-center items-center h-64">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+  </div>
 );
 
-// Dynamic imports remain the same
-const Chat = dynamic(() => import('./chat'), { ssr: false });
-const Training = dynamic(() => import('./training'), { ssr: false });
-const Prompts = dynamic(() => import('./prompts'), { ssr: false });
-const AgentStats = dynamic(() => import('./agentStats'), { ssr: false });
-const AdminManagement = dynamic(() => import('./adminManagement'), { ssr: false });
-const UsageStats = dynamic(() => import('./usageStats'), { ssr: false });
-const BillingManagement = dynamic(() => import('./billingManagement'), { ssr: false });
-const AuditLogs = dynamic(() => import('./auditLogs'), { ssr: false });
-const TenantManagement = dynamic(() => import('./tenantManagement'), { ssr: false });
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 text-red-500">
+          Something went wrong. Please try refreshing the page.
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Define navigation sections
+const navigationSections = {
+  agentManagement: {
+    title: "Agent Management",
+    description: "Manage and monitor your AI agents",
+    items: [
+      {
+        name: "Manage Agents",
+        description: "Create and configure AI agents",
+        icon: Bot,
+        path: "manage",
+        component: ManageAgents
+      },
+      {
+        name: "Chat Interface",
+        description: "Interact with AI agents",
+        icon: MessageCircle,
+        path: "chat",
+        component: Chat
+      },
+      {
+        name: "Training",
+        description: "Train and improve agents",
+        icon: BookOpen,
+        path: "training",
+        component: Training
+      },
+      {
+        name: "Prompts",
+        description: "Manage agent prompts",
+        icon: Code,
+        path: "prompts",
+        component: Prompts
+      }
+    ]
+  },
+  systemManagement: {
+    title: "System Management",
+    description: "System-wide settings and analytics",
+    items: [
+      {
+        name: "Usage Statistics",
+        description: "View system usage metrics",
+        icon: BarChart3,
+        path: "usageStats",
+        component: UsageStats
+      },
+      {
+        name: "Admin Management",
+        description: "Manage admin users",
+        icon: Users,
+        path: "adminManagement",
+        component: AdminManagement
+      },
+      {
+        name: "Billing",
+        description: "Manage billing and subscriptions",
+        icon: Receipt,
+        path: "billing",
+        component: BillingManagement
+      },
+      {
+        name: "Audit Logs",
+        description: "View system audit logs",
+        icon: ClipboardList,
+        path: "auditLogs",
+        component: AuditLogs
+      },
+      {
+        name: "Tenant Management",
+        description: "Manage system tenants",
+        icon: Settings,
+        path: "tenantManagement",
+        component: TenantManagement
+      }
+    ]
+  }
+};
 
 const AdminDashboard = () => {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -85,106 +169,101 @@ const AdminDashboard = () => {
     fetchStats();
   }, []);
 
-  const navigationSections = {
-    // ... navigation sections remain the same ...
-  };
-
   const handleNavigation = (view) => {
     setCurrentView(view);
   };
-
-  const renderNavigationSection = (section) => (
-    <div className="mb-8">
-      <h2 className="text-xl font-semibold mb-2">{section.title}</h2>
-      <p className="text-gray-500 mb-4">{section.description}</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {section.items.map((item) => (
-          <div
-            key={item.name}
-            className="p-4 border border-gray-200 rounded-md shadow-md hover:shadow-lg hover:-translate-y-1 transition-all duration-200"
-          >
-            <div className="flex items-center mb-4">
-              <div className="bg-blue-50 p-2 rounded-md mr-3">
-                <item.icon size={24} className="text-blue-600" />
-              </div>
-              <h3 className="text-sm font-semibold">{item.name}</h3>
-            </div>
-            <p className="mb-4">{item.description}</p>
-            <button 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors duration-200"
-              onClick={() => handleNavigation(item.path)}
-            >
-              Access
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 
   const renderContent = () => {
     if (currentView === 'dashboard') {
       return (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="p-4 border border-gray-200 rounded-md shadow-md">
-              <p className="text-gray-600">Total Agents</p>
-              <h2 className="text-2xl font-bold">{stats.totalAgents}</h2>
+            {/* Dashboard stats cards */}
+            <div className="p-4 border rounded-lg shadow-sm">
+              <h3 className="text-lg font-semibold mb-2">Total Agents</h3>
+              <p className="text-2xl">{stats.totalAgents}</p>
             </div>
-            <div className="p-4 border border-gray-200 rounded-md shadow-md">
-              <p className="text-gray-600">Active Users</p>
-              <h2 className="text-2xl font-bold">{stats.totalUsers}</h2>
+            <div className="p-4 border rounded-lg shadow-sm">
+              <h3 className="text-lg font-semibold mb-2">Total Users</h3>
+              <p className="text-2xl">{stats.totalUsers}</p>
             </div>
-            <div className="p-4 border border-gray-200 rounded-md shadow-md">
-              <p className="text-gray-600">Total Conversations</p>
-              <h2 className="text-2xl font-bold">{stats.totalConversations}</h2>
+            <div className="p-4 border rounded-lg shadow-sm">
+              <h3 className="text-lg font-semibold mb-2">Total Conversations</h3>
+              <p className="text-2xl">{stats.totalConversations}</p>
             </div>
           </div>
-          {renderNavigationSection(navigationSections.agentManagement)}
-          {renderNavigationSection(navigationSections.systemManagement)}
+          
+          {Object.entries(navigationSections).map(([key, section]) => (
+            <div key={key} className="mb-8">
+              <h2 className="text-xl font-semibold mb-2">{section.title}</h2>
+              <p className="text-gray-600 mb-4">{section.description}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {section.items.map((item) => (
+                  <button
+                    key={item.path}
+                    onClick={() => handleNavigation(item.path)}
+                    className="p-4 border rounded-lg hover:shadow-md transition-shadow text-left"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <item.icon className="h-5 w-5" />
+                      <h3 className="font-semibold">{item.name}</h3>
+                    </div>
+                    <p className="text-sm text-gray-600">{item.description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </>
       );
     }
 
-    const selectedItem = [
+    const allItems = [
       ...navigationSections.agentManagement.items,
       ...navigationSections.systemManagement.items,
-    ].find((item) => item.path === currentView);
+    ];
+    const selectedItem = allItems.find((item) => item.path === currentView);
 
     if (selectedItem?.component) {
       const Component = selectedItem.component;
-      return <Component />;
+      return (
+        <ErrorBoundary>
+          <Suspense fallback={<LoadingFallback />}>
+            <Component />
+          </Suspense>
+        </ErrorBoundary>
+      );
     }
 
-    return <p>Page not found</p>;
+    return <div>Page not found</div>;
   };
 
-  if (error) {
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-        <h2 className="text-sm font-semibold text-red-600">Error</h2>
-        <p className="text-red-500">{error}</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4">
-      <div className="flex items-center mb-8">
+    <div className="max-w-7xl mx-auto p-6">
+      <div className="flex items-center mb-6">
         {currentView !== 'dashboard' && (
           <button
-            className="mr-4 p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
             onClick={() => handleNavigation('dashboard')}
-            aria-label="Go back"
+            className="mr-4 p-2 hover:bg-gray-100 rounded-full"
+            aria-label="Back to dashboard"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
         )}
         <h1 className="text-2xl font-bold">
           {currentView === 'dashboard' ? 'Admin Dashboard' : 
-           navigationSections.agentManagement.items.find((item) => item.path === currentView)?.name || 'Not Found'}
+           navigationSections.agentManagement.items.find((item) => item.path === currentView)?.name || 
+           navigationSections.systemManagement.items.find((item) => item.path === currentView)?.name || 
+           'Not Found'}
         </h1>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md mb-6">
+          {error}
+        </div>
+      )}
+
       {renderContent()}
     </div>
   );
