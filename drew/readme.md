@@ -2225,3 +2225,54 @@ Provides comprehensive tracking and analysis of marketing journey progress, iden
   - `models/UserConversation`: Conversation management
   - `models/ConversationMessage`: Message history
   - `models/ConversationName`: Named sub-chats
+
+
+  #### `api/conversations/inject.ts`
+- **Description**: Injects content into the conversation context for guiding user interactions with the agent. Can be used for initial prompt setup, injecting context, or guiding conversation flow.
+- **What Developers Need to Send**:
+  - **HTTP Method**: `POST`
+  - **Payload**:
+    ```json
+    {
+      "conversationId": "required-conversation-id",
+      "content": {
+        "prompt": "Text to inject into conversation",
+        "type": "initial | context | guide",
+        "metadata": {
+          "role": "system | user",
+          "priority": "high | normal | low",
+          "persistence": "temporary | permanent"
+        }
+      }
+    }
+    ```
+- **Response**:
+  - **Success**:
+    - `200 OK`: Confirmation of prompt injection
+    - Example:
+      ```json
+      {
+        "success": true,
+        "conversationId": "conv_123",
+        "injectedContent": {
+          "id": "inj_456",
+          "timestamp": "2025-01-20T10:00:00Z",
+          "status": "active"
+        }
+      }
+      ```
+  - **Errors**:
+    - `400 Bad Request`: Missing or invalid parameters
+    - `403 Forbidden`: Unauthorized to modify conversation
+    - `404 Not Found`: Conversation not found
+    - `500 Internal Server Error`: Injection failed
+- **Supporting Files**:
+  - `models/UserConversation`: For conversation context
+  - `services/context-gatherer.ts`: For managing injected context
+  - `services/prompt-manager.ts`: For handling prompt transformations
+
+Common Use Cases:
+- Injecting onboarding instructions
+- Setting up context for specific tasks or agent behaviors
+- Guiding conversation flow for specific milestones
+- Adding system-level instructions
