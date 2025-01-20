@@ -1,0 +1,824 @@
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = []
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---- Enumerations ---- //
+
+enum ActionType {
+  CREATE @map("create")
+  UPDATE @map("update")
+  DELETE @map("delete")
+}
+
+enum ActorType {
+  SYSTEM @map("system")
+  MEMBER @map("member")
+  API    @map("api")
+}
+
+enum ContactRecord {
+  PERSON  @map("person")
+  COMPANY @map("company")
+}
+
+enum ContactStage {
+  LEAD           @map("lead")
+  QUALIFIED      @map("qualified")
+  OPPORTUNITY    @map("opportunity")
+  PROPOSAL       @map("proposal")
+  IN_NEGOTIATION @map("inNegotiation")
+  LOST          @map("lost")
+  WON           @map("won")
+}
+
+enum ContactTaskStatus {
+  OPEN      @map("open")
+  COMPLETED @map("completed")
+}
+
+enum DayOfWeek {
+  SUNDAY    @map("sunday")
+  MONDAY    @map("monday")
+  TUESDAY   @map("tuesday")
+  WEDNESDAY @map("wednesday")
+  THURSDAY  @map("thursday")
+  FRIDAY    @map("friday")
+  SATURDAY  @map("saturday")
+}
+
+enum FeedbackCategory {
+  SUGGESTION @map("suggestion")
+  PROBLEM    @map("problem")
+  QUESTION   @map("question")
+}
+
+enum InvitationStatus {
+  PENDING  @map("pending")
+  ACCEPTED @map("accepted")
+  REVOKED  @map("revoked")
+}
+
+enum Role {
+  MEMBER @map("member")
+  ADMIN  @map("admin")
+}
+
+enum WebhookTrigger {
+  CONTACT_CREATED @map("contactCreated")
+  CONTACT_UPDATED @map("contactUpdated")
+  CONTACT_DELETED @map("contactDeleted")
+}
+
+// New Enums from Update
+enum FunnelStatus {
+  NOT_STARTED    @map("not_started")
+  IN_PROGRESS    @map("in_progress")
+  COMPLETED      @map("completed")
+  PAUSED         @map("paused")
+}
+
+enum WebsiteScrapeStatus {
+  QUEUED       @map("queued")
+  IN_PROGRESS  @map("in_progress")
+  COMPLETED    @map("completed")
+  FAILED       @map("failed")
+}
+
+enum AgentCategory {
+  ADMINISTRATIVE @map("administrative")
+  MARKETING     @map("marketing")
+  SALES         @map("sales")
+  SOCIAL_MEDIA  @map("social_media")
+  COPY_EDITING  @map("copy_editing")
+}
+
+enum DataType {
+  PERSONALITY @map("personality")
+  SKILLS      @map("skills")
+  KNOWLEDGE   @map("knowledge")
+}
+
+enum GoalStatus {
+  PENDING   @map("pending")
+  ACCEPTED  @map("accepted")
+  IGNORED   @map("ignored")
+  COMPLETED @map("completed")
+}
+
+
+
+
+// ---- Core Models ---- //
+
+model Account {
+  id                String   @id(map: "PK_Account") @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?  @db.Text
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId], map: "IX_Account_userId")
+}
+
+// [Previous models remain unchanged through WorkTimeSlot]
+// Keeping all original models as is through Organization, maintaining consistency
+
+// Update the User model to include new fields and relations while keeping existing ones
+model User {
+  id                           String               @id(map: "PK_User") @default(uuid()) @db.Uuid
+  organizationId               String?              @db.Uuid
+  tenantId                     String               @map("tenant_id")  // New field
+  image                        String?              @db.VarChar(2048)
+  name                         String               @db.VarChar(64)
+  email                        String?              @unique
+  emailVerified                DateTime?
+  password                     String?              @db.VarChar(60)
+  lastLogin                    DateTime?
+  lastActive                   DateTime?            @map("last_active") // New field
+  role                         Role                 @default(MEMBER)
+  phone                        String?              @db.VarChar(32)
+  locale                       String               @default("en-US") @db.VarChar(8)
+  settings                     Json?                // New field
+  completedOnboarding          Boolean              @default(false)
+  enabledContactsNotifications Boolean              @default(false)
+  enabledInboxNotifications    Boolean              @default(false)
+  enabledWeeklySummary         Boolean              @default(false)
+  enabledNewsletter            Boolean              @default(false)
+  enabledProductUpdates        Boolean              @default(false)
+  createdAt                    DateTime             @default(now())
+  updatedAt                    DateTime             @updatedAt
+
+  // Original relations
+  accounts                     Account[]
+  authenticatorApp             AuthenticatorApp?
+  changeEmailRequests          ChangeEmailRequest[]
+  comments                     ContactComment[]
+  favorites                    Favorite[]
+  feedback                     Feedback[]
+  notes                        ContactNote[]
+  notifications                Notification[]
+  organization                 Organization?        @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  pageVisits                   ContactPageVisit[]
+  sessions                     Session[]
+
+  // New relations from update
+  teamMembers                  TeamMember[]
+  conversations               UserConversation[]
+  funnelProgress              FunnelProgress[]
+  websiteScrapeJobs           WebsiteScrapeJob[]
+
+  @@index([organizationId], map: "IX_User_organizationId")
+  @@map("users")
+}
+
+// Organization model remains unchanged
+model Organization {
+  id                  String       @id(map: "PK_Organization") @default(uuid()) @db.Uuid
+  stripeCustomerId    String
+  name                String       @db.VarChar(255)
+  address             String?      @db.VarChar(255)
+  phone               String?      @db.VarChar(32)
+  email               String?      @db.VarChar(255)
+  website             String?      @db.VarChar(2000)
+  linkedInProfile     String?      @db.VarChar(2000)
+  instagramProfile    String?      @db.VarChar(2000)
+  youTubeChannel      String?      @db.VarChar(2000)
+  xProfile            String?      @db.VarChar(2000)
+  tikTokProfile       String?      @db.VarChar(2000)
+  facebookPage        String?      @db.VarChar(2000)
+  completedOnboarding Boolean      @default(false)
+  tier                String       @default("free") @db.VarChar(255)
+  apiKeys             ApiKey[]
+  businessHours       WorkHours[]
+  contacts            Contact[]
+  feedback            Feedback[]
+  invitations         Invitation[]
+  users               User[]
+  webhooks            Webhook[]
+
+  @@index([stripeCustomerId], map: "IX_Organization_stripeCustomerId")
+}
+
+
+// ---- New Team Models ---- //
+
+model Team {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  settings  Json?
+
+  // Relations
+  members   TeamMember[]
+  funnelProgress FunnelProgress[]
+  websiteScrapeJobs WebsiteScrapeJob[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String   @map("team_id")
+  userId    String   @map("user_id")
+  role      String
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  // Relations
+  team      Team     @relation(fields: [teamId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("team_members")
+}
+
+// ---- New Funnel Models ---- //
+
+model FunnelDefinition {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  priority    Int
+  level       Int
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  leadAgentId String   @map("lead_agent_id")
+  supportingAgentIds Json @map("supporting_agent_ids")
+  metadata   Json
+  pineconeId String @unique
+
+  // Relations
+  milestones        FunnelMilestone[]
+  prerequisites     FunnelPrerequisite[] @relation("DependentFunnels")
+  requiredBy        FunnelPrerequisite[] @relation("PrerequisiteFunnels")
+  progress          FunnelProgress[]
+  requiredForms     FunnelFormRequirement[]
+  dataPoints        FunnelDataPoint[]
+  triggers          FunnelTrigger[]
+
+  @@map("funnel_definitions")
+}
+
+model FunnelPrerequisite {
+  id                    String   @id @default(cuid())
+  funnelId             String   @map("funnel_id")
+  prerequisiteFunnelId String   @map("prerequisite_funnel_id")
+  prerequisiteType     String   @map("prerequisite_type")
+  conditions           Json
+
+  // Relations
+  funnel              FunnelDefinition @relation("DependentFunnels", fields: [funnelId], references: [id])
+  prerequisiteFunnel  FunnelDefinition @relation("PrerequisiteFunnels", fields: [prerequisiteFunnelId], references: [id])
+
+  @@map("funnel_prerequisites")
+}
+
+model FunnelMilestone {
+  id          String   @id @default(cuid())
+  funnelId    String   @map("funnel_id")
+  name        String
+  description String?
+  order       Int
+  isRequired  Boolean  @map("is_required")
+  validationRules Json @map("validation_rules")
+  kpis        Json
+
+  // Relations
+  funnel      FunnelDefinition @relation(fields: [funnelId], references: [id])
+  progress    MilestoneProgress[]
+
+  @@map("funnel_milestones")
+}
+
+model FunnelProgress {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  teamId      String?  @map("team_id")
+  userId      String?  @map("user_id")
+  funnelId    String   @map("funnel_id")
+  status      FunnelStatus
+  startedAt   DateTime @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  completionPercentage Float    @map("completion_percentage")
+  lastActivity DateTime @default(now()) @map("last_activity")
+  metadata   Json
+  pineconeId String @unique
+
+  // Relations
+  user        User?     @relation(fields: [userId], references: [id])
+  team        Team?     @relation(fields: [teamId], references: [id])
+  funnel      FunnelDefinition @relation(fields: [funnelId], references: [id])
+  milestones  MilestoneProgress[]
+  assessments FunnelAssessment[]
+  analysis    FunnelAnalysisRecord[]
+  suggestedActions FunnelSuggestedAction[]
+  dataPoints  DataPointCollection[]
+
+  @@map("funnel_progress")
+}
+
+model MilestoneProgress {
+  id            String    @id @default(cuid())
+  progressId    String    @map("funnel_progress_id")
+  milestoneId   String    @map("milestone_id")
+  status        String
+  startedAt     DateTime  @default(now()) @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+  validationResults Json? @map("validation_results")
+  collectedData    Json? @map("collected_data")
+
+  // Relations
+  progress    FunnelProgress   @relation(fields: [progressId], references: [id])
+  milestone   FunnelMilestone @relation(fields: [milestoneId], references: [id])
+
+  @@map("milestone_progress")
+}
+
+// ---- Funnel Analysis Models ---- //
+
+model FunnelAnalysisRecord {
+  id          String   @id @default(cuid())
+  progressId  String   @map("funnel_progress_id")
+  analysisType String  @map("analysis_type")
+  timestamp   DateTime @default(now())
+  findings    Json
+  recommendations Json
+  nextSteps   Json    @map("next_steps")
+  metadata    Json
+  pineconeId  String @unique
+
+  // Relations
+  progress    FunnelProgress @relation(fields: [progressId], references: [id])
+
+  @@map("funnel_analysis_records")
+}
+
+model FunnelSuggestedAction {
+  id          String   @id @default(cuid())
+  progressId  String   @map("funnel_progress_id")
+  type        String
+  priority    Int
+  description String
+  reasoning   String
+  status      String
+  suggestedAt DateTime @default(now()) @map("suggested_at")
+  expiresAt   DateTime @map("expires_at")
+
+  // Relations
+  progress    FunnelProgress @relation(fields: [progressId], references: [id])
+
+  @@map("funnel_suggested_actions")
+}
+
+model FunnelDataPoint {
+  id          String   @id @default(cuid())
+  funnelId    String   @map("funnel_id")
+  name        String
+  description String?
+  dataType    String   @map("data_type")
+  isRequired  Boolean  @map("is_required")
+  validationRules Json @map("validation_rules")
+  collectionMethod String @map("collection_method")
+
+  // Relations
+  funnel      FunnelDefinition @relation(fields: [funnelId], references: [id])
+
+  @@map("funnel_data_points")
+}
+
+model DataPointCollection {
+  id          String   @id @default(cuid())
+  progressId  String   @map("funnel_progress_id")
+  dataPointId String   @map("data_point_id")
+  value       Json
+  source      String
+  collectedAt DateTime @default(now()) @map("collected_at")
+  confidence  Float
+  isValidated Boolean  @default(false) @map("is_validated")
+
+  // Relations
+  progress    FunnelProgress @relation(fields: [progressId], references: [id])
+
+  @@map("data_point_collection")
+}
+
+// ---- Agent System Models ---- //
+
+model Agent {
+  id          String        @id @default(cuid())
+  name        String        @db.VarChar(255)
+  role        String        @db.VarChar(255)
+  category    AgentCategory
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  metadata    Json
+  pineconeId  String @unique
+  
+  // Relations
+  agentData       AgentData[]
+  agentsDefined   AgentsDefined[]
+  conversations   UserConversation[]
+
+  @@map("agents")
+}
+
+model AgentData {
+  id          String    @id @default(cuid())
+  agentId     String    @map("agent_id")
+  dataType    DataType  @map("data_type")
+  content     Json
+  version     String
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  metadata    Json
+  pineconeId  String @unique
+
+  // Relations
+  agent       Agent     @relation(fields: [agentId], references: [id])
+
+  @@map("agent_data")
+}
+
+model AgentsDefined {
+  id             String   @id @default(cuid())
+  agentId        String   @map("agent_id")
+  llmProvider    String   @map("llm_provider")
+  promptTemplate String   @db.Text @map("prompt_template")
+  parameters     Json
+  version        String
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  metadata       Json
+  pineconeId     String @unique
+
+  // Relations
+  agent          Agent    @relation(fields: [agentId], references: [id])
+
+  @@map("agents_defined")
+}
+
+// ---- Conversation Models ---- //
+
+model UserConversation {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  agentId     String   @map("agent_id")
+  projectId   String?  @map("project_id")
+  funnelId    String?  @map("funnel_id")
+  milestoneId String?  @map("milestone_id")
+  startedAt   DateTime @default(now()) @map("started_at")
+  lastMessage DateTime @default(now()) @map("last_message")
+  nameId      String?  @map("name_id")
+  tags        String[] 
+  category    String?  
+  metadata    Json?
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id])
+  agent       Agent    @relation(fields: [agentId], references: [id])
+  messages    ConversationMessage[]
+  analysis    ConversationAnalysis[]
+  name        ConversationName? @relation(fields: [nameId], references: [id])
+
+  @@map("user_conversations")
+}
+
+model ConversationMessage {
+  id            String   @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  role          String
+  content       String?  @db.Text
+  contentType   String
+  metadata      Json?
+  timestamp     DateTime @default(now())
+
+  // Relations
+  conversation  UserConversation @relation(fields: [conversationId], references: [id])
+
+  @@map("conversation_messages")
+}
+
+model ConversationAnalysis {
+  id              String   @id @default(cuid())
+  conversationId  String   @map("conversation_id")
+  serviceType     String   @map("service_type")
+  isRelevant      Boolean  @map("is_relevant")
+  findings        Json?
+  extractedData   Json?    @map("extracted_data")
+  analyzedAt      DateTime @default(now()) @map("analyzed_at")
+  analyzedBy      String
+  metadata        Json
+  pineconeId      String @unique
+
+  // Relations
+  conversation    UserConversation @relation(fields: [conversationId], references: [id])
+
+  @@map("conversation_analysis")
+}
+
+// ---- Project and Goals Models ---- //
+
+model Project {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  teamId      String?  @map("team_id")
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  status      String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id])
+  team        Team?    @relation(fields: [teamId], references: [id])
+  goals       Goal[]
+  conversations ConversationName[]
+
+  @@map("projects")
+}
+
+model Goal {
+  id          String      @id @default(cuid())
+  userId      String      @map("user_id")
+  projectId   String?     @map("project_id")
+  title       String      @db.VarChar(255)
+  description String?     @db.Text
+  deadline    DateTime?
+  status      GoalStatus  @default(PENDING)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  user        User        @relation(fields: [userId], references: [id])
+  project     Project?    @relation(fields: [projectId], references: [id])
+  suggestedGoals SuggestedGoal[]
+  funnelRelations GoalFunnelRelation[]
+
+  @@map("goals")
+}
+
+model SuggestedGoal {
+  id          String      @id @default(cuid())
+  goalId      String      @map("goal_id")
+  agentId     String      @map("agent_id")
+  suggestion  String      @db.Text
+  reasoning   String      @db.Text
+  status      GoalStatus  @default(PENDING)
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  goal        Goal        @relation(fields: [goalId], references: [id])
+
+  @@map("suggested_goals")
+}
+
+model GoalFunnelRelation {
+  id          String   @id @default(cuid())
+  goalId      String   @map("goal_id")
+  funnelId    String   @map("funnel_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  goal        Goal     @relation(fields: [goalId], references: [id])
+  funnel      FunnelDefinition @relation(fields: [funnelId], references: [id])
+
+  @@map("goal_funnel_relations")
+}
+
+model ConversationName {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  projectId   String?  @map("project_id")
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  metadata    Json
+  pineconeId  String @unique
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id])
+  project     Project? @relation(fields: [projectId], references: [id])
+  conversations UserConversation[]
+
+  @@map("conversation_names")
+}
+
+
+// ---- Integration Models ---- //
+
+model IntegrationConfig {
+  id            String    @id @default(cuid())
+  userId        String?   @db.Uuid
+  teamId        String?   @db.Uuid
+  platform      String    // "HubSpot", "LinkedIn", "Google Analytics", etc.
+  status        String    // "enabled", "disabled"
+  authData      Json      // Stores tokens, keys, and other auth details
+  settings      Json?     // User-specific settings for the integration
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  user          User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team          Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  logs          IntegrationLogs[]
+  analysis      IntegrationAnalysis[]
+
+  @@index([userId], map: "IX_IntegrationConfig_userId")
+  @@index([teamId], map: "IX_IntegrationConfig_teamId")
+}
+
+model IntegrationLogs {
+  id             String    @id @default(cuid())
+  integrationId  String    @db.Uuid
+  eventType      String    // "sync", "fetch", "error", etc.
+  description    String    @db.VarChar(1024)
+  details        Json?     // Optional details about the event
+  timestamp      DateTime  @default(now())
+
+  // Relations
+  integration    IntegrationConfig @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId], map: "IX_IntegrationLogs_integrationId")
+}
+
+model IntegrationAnalysis {
+  id             String    @id @default(cuid())
+  integrationId  String    @db.Uuid
+  backendService String?   // Optional: Name of the service used for analysis
+  analysisType   String    // Type of analysis performed
+  findings       Json      // LLM-analyzed data
+  recommendations Json?    // Optional: Actionable insights based on findings
+  analyzedAt     DateTime  @default(now())
+
+  // Relations
+  integration    IntegrationConfig @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId], map: "IX_IntegrationAnalysis_integrationId")
+}
+
+// ---- Router Models ---- //
+
+model RouterConfig {
+  id          String    @id @default(cuid())
+  taskType    String
+  priority    Int
+  provider    String
+  model       String
+  isDefault   Boolean
+  cost        Float
+  capabilities Json
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("router_configs")
+}
+
+model RoutingPreference {
+  id          String    @id @default(cuid())
+  tenantId    String
+  taskType    String
+  provider    String
+  model       String
+  priority    Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("routing_preferences")
+}
+
+model RoutingHistory {
+  id              String    @id @default(cuid())
+  conversationId  String
+  messageId       String
+  notDiamondRoute Json
+  actualRoute     Json
+  reason          String
+  performance     Json
+  createdAt      DateTime @default(now())
+
+  @@map("routing_history")
+}
+
+// ---- Website Scraping Models ---- //
+
+model WebsiteScrapeJob {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  teamId      String?  @map("team_id")
+  userId      String   @map("user_id")
+  websiteUrl  String
+  status      WebsiteScrapeStatus
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  error       String
+  metadata    Json
+  pineconeId  String @unique
+  
+  // Relations
+  team        Team?    @relation(fields: [teamId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+  pages       WebsitePage[]
+  progress    WebsiteScrapeProgress[]
+
+  @@map("website_scrape_jobs")
+}
+
+model WebsitePage {
+  id            String   @id @default(cuid())
+  scrapeJobId   String   @map("scrape_job_id")
+  url           String
+  title         String?
+  content       String?  @db.Text
+  metadata      Json?
+  scrapedAt     DateTime @default(now())
+  status        String
+  errorMessage  String?
+  
+  // Relations
+  scrapeJob     WebsiteScrapeJob @relation(fields: [scrapeJobId], references: [id])
+
+  @@map("website_pages")
+}
+
+model WebsiteScrapeProgress {
+  id            String   @id @default(cuid())
+  scrapeJobId   String   @map("scrape_job_id")
+  timestamp     DateTime @default(now())
+  status        String
+  message       String
+  details       Json?
+  
+  // Relations
+  scrapeJob     WebsiteScrapeJob @relation(fields: [scrapeJobId], references: [id])
+
+  @@map("website_scrape_progress")
+}
+
+// ---- Additional Form Models ---- //
+
+model FunnelFormRequirement {
+  id          String   @id @default(cuid())
+  funnelId    String   @map("funnel_id")
+  formId      String   @map("form_id")
+  isRequired  Boolean  @map("is_required")
+  milestoneId String?  @map("milestone_id")
+  completionTriggers Json? @map("completion_triggers")
+
+  // Relations
+  funnel      FunnelDefinition @relation(fields: [funnelId], references: [id])
+
+  @@map("funnel_form_requirements")
+}
+
+model FunnelAssessment {
+  id          String   @id @default(cuid())
+  progressId  String   @map("funnel_progress_id")
+  type        String
+  conductedAt DateTime @default(now()) @map("conducted_at")
+  metrics     Json
+  recommendations Json
+  nextAssessmentDue DateTime @map("next_assessment_due")
+  metadata    Json
+  pineconeId  String @unique
+
+  // Relations
+  progress    FunnelProgress @relation(fields: [progressId], references: [id])
+
+  @@map("funnel_assessments")
+}
+
+model FunnelTrigger {
+  id          String   @id @default(cuid())
+  funnelId    String   @map("funnel_id")
+  triggerType String   @map("trigger_type")
+  conditions  Json
+  actions     Json
+  priority    Int
+
+  // Relations
+  funnel      FunnelDefinition @relation(fields: [funnelId], references: [id])
+
+  @@map("funnel_triggers")
+}
+

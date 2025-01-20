@@ -664,9 +664,6 @@ model UserConversation {
   startedAt   DateTime @default(now()) @map("started_at")
   lastMessage DateTime @default(now()) @map("last_message")
   metadata    Json?
-  agentId     String   @map("agent_id")
-  nameId      String?  @map("name_id")
-  projectId    String?  @map("project_id")
   tags         String[] 
   category     String?  
   metadata     Json?
